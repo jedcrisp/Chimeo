@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow public read access to all files
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+    
+    // Allow authenticated users to upload files
+    match /{allPaths=**} {
+      allow write: if request.auth != null;
+    }
+    
+    // Specific rules for organization photos
+    match /organizations/{orgId}/photos/{fileName} {
+        allow read: if true; // Anyone can view organization photos
+        allow write: if request.auth != null; // Authenticated users can upload
+    }
+  }
+}

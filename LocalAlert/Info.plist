@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>Google</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.280448574070-f48qmlvujo8qh4ro5fq750a8qgaa6gme</string>
+			</array>
+		</dict>
+	</array>
+	
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>LocalAlert needs location access to show you nearby incidents, alerts, and organizations in your area.</string>
+	
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>LocalAlert needs location access to show you nearby incidents, alerts, and organizations in your area, and to send you location-based notifications.</string>
+	
+	<key>NSFaceIDUsageDescription</key>
+	<string>LocalAlert uses Face ID to securely sign you into your account.</string>
+	
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	
+	<!-- Push Notification Capabilities -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>background-processing</string>
+	</array>
+	
+	<!-- Push Notification Entitlements -->
+	<key>aps-environment</key>
+	<string>development</string>
+	
+	<!-- Firebase Configuration -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+</dict>
+</plist>

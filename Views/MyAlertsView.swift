@@ -193,20 +193,20 @@ struct MyAlertsView: View {
         
         switch organization.type.lowercased() {
         case "school":
-            groupNames = ["General Announcements", "Emergency Alerts", "Sports & Events", "Academic Updates"]
-            descriptions = ["Important school-wide announcements", "Urgent safety and emergency information", "Sports schedules and event updates", "Academic calendar and updates"]
+            groupNames = ["Emergency Alerts", "Sports & Events", "Academic Updates"]
+            descriptions = ["Urgent safety and emergency information", "Sports schedules and event updates", "Academic calendar and updates"]
         case "church":
-            groupNames = ["General Announcements", "Youth Ministry", "Community Events", "Prayer Requests"]
-            descriptions = ["Church-wide announcements and updates", "Youth group activities and events", "Community outreach and events", "Prayer request updates"]
+            groupNames = ["Youth Ministry", "Community Events", "Prayer Requests"]
+            descriptions = ["Youth group activities and events", "Community outreach and events", "Prayer request updates"]
         case "business":
-            groupNames = ["General Updates", "Promotions & Deals", "Events & Workshops", "Customer Service"]
-            descriptions = ["Business updates and news", "Special offers and promotions", "Upcoming events and workshops", "Customer service announcements"]
+            groupNames = ["Promotions & Deals", "Events & Workshops", "Customer Service"]
+            descriptions = ["Special offers and promotions", "Upcoming events and workshops", "Customer service announcements"]
         case "emergency":
             groupNames = ["Emergency Alerts", "Public Safety", "Weather Updates", "Community Notices"]
             descriptions = ["Critical emergency information", "Public safety announcements", "Weather-related alerts", "General community notices"]
         default:
-            groupNames = ["General Announcements", "Updates", "Events", "News"]
-            descriptions = ["General organization updates", "Important announcements", "Upcoming events", "Latest news and updates"]
+            groupNames = ["Updates", "Events", "News"]
+            descriptions = ["Important announcements", "Upcoming events", "Latest news and updates"]
         }
         
         return zip(groupNames, descriptions).enumerated().map { index, tuple in

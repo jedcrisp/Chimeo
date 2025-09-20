@@ -1531,30 +1531,7 @@ class APIService: ObservableObject {
             
             print("✅ Successfully parsed \(groups.count) groups for organization \(organizationId)")
             
-            // For development: if no groups exist, create some sample groups
-            #if DEBUG
-            if groups.isEmpty {
-                print("🔧 DEBUG: No groups found, creating sample groups for testing...")
-                await createSampleGroupsForTesting(organizationId: organizationId, db: db)
-                
-                // Retry fetching after creating sample groups
-                let retrySnapshot = try await groupsRef.getDocuments()
-                print("📊 After creating samples, found \(retrySnapshot.documents.count) groups")
-                
-                for document in retrySnapshot.documents {
-                    do {
-                        let data = document.data()
-                        let group = try parseOrganizationGroupFromFirestore(document: document, data: data)
-                        groups.append(group)
-                    } catch {
-                        print("⚠️ Error parsing retry group \(document.documentID): \(error)")
-                        continue
-                    }
-                }
-                
-                print("✅ After samples: Successfully parsed \(groups.count) groups")
-            }
-            #endif
+            // No default groups will be created - organizations start with empty group lists
             
             return groups
             
@@ -1780,53 +1757,6 @@ class APIService: ObservableObject {
         try await listOrganizationsWithIds()
     }
     
-    private func createSampleGroupsForTesting(organizationId: String, db: Firestore) async {
-        print("🔧 Creating sample groups for organization: \(organizationId)")
-        
-        let sampleGroups = [
-            [
-                "name": "General Alerts",
-                "description": "General announcements and updates",
-                "organizationId": organizationId,
-                "isActive": true,
-                "memberCount": 0,
-                "createdAt": FieldValue.serverTimestamp(),
-                "updatedAt": FieldValue.serverTimestamp()
-            ],
-            [
-                "name": "Emergency Alerts",
-                "description": "Critical emergency notifications",
-                "organizationId": organizationId,
-                "isActive": true,
-                "memberCount": 0,
-                "createdAt": FieldValue.serverTimestamp(),
-                "updatedAt": FieldValue.serverTimestamp()
-            ],
-            [
-                "name": "Community Events",
-                "description": "Community events and activities",
-                "organizationId": organizationId,
-                "isActive": true,
-                "memberCount": 0,
-                "createdAt": FieldValue.serverTimestamp(),
-                "updatedAt": FieldValue.serverTimestamp()
-            ]
-        ]
-        
-        for (index, groupData) in sampleGroups.enumerated() {
-            do {
-                let groupRef = db.collection("organizations")
-                    .document(organizationId)
-                    .collection("groups")
-                    .document("sample_group_\(index + 1)")
-                
-                try await groupRef.setData(groupData)
-                print("✅ Created sample group: \(groupData["name"] as? String ?? "Unknown")")
-            } catch {
-                print("❌ Failed to create sample group \(index): \(error)")
-            }
-        }
-    }
     
     func deleteOrganizationGroup(_ groupName: String, organizationId: String) async throws {
         print("🗑️ Deleting organization group: \(groupName) for organization: \(organizationId)")
@@ -1846,7 +1776,7 @@ class APIService: ObservableObject {
     func deleteDefaultGroups(organizationId: String) async throws {
         print("🗑️ Deleting default groups for organization: \(organizationId)")
         
-        let defaultGroupNames = ["General Alerts", "Emergency Alerts", "Community Events"]
+        let defaultGroupNames: [String] = []
         
         for groupName in defaultGroupNames {
             do {
@@ -1858,6 +1788,89 @@ class APIService: ObservableObject {
         }
         
         print("✅ Finished deleting default groups")
+    }
+    
+    func deleteAllDefaultGroups() async throws {
+        print("🗑️ Deleting all default groups from all organizations")
+        
+        let db = Firestore.firestore()
+        
+        // Get all organizations
+        let organizationsSnapshot = try await db.collection("organizations").getDocuments()
+        
+        let defaultGroupNames = ["General Alerts", "Emergency Alerts", "Community Events", "sample_group_1", "sample_group_2"]
+        var totalDeletedCount = 0
+        var totalErrorCount = 0
+        
+        for orgDoc in organizationsSnapshot.documents {
+            let organizationId = orgDoc.documentID
+            let organizationName = orgDoc.data()["name"] as? String ?? "Unknown"
+            
+            print("🔍 Checking organization: \(organizationName)")
+            
+            for groupName in defaultGroupNames {
+                do {
+                    // Check if group exists
+                    let groupRef = db.collection("organizations")
+                        .document(organizationId)
+                        .collection("groups")
+                        .document(groupName)
+                    
+                    let groupDoc = try await groupRef.getDocument()
+                    
+                    if groupDoc.exists {
+                        try await groupRef.delete()
+                        totalDeletedCount += 1
+                        print("✅ Deleted '\(groupName)' from \(organizationName)")
+                    } else {
+                        print("ℹ️ No '\(groupName)' group found in \(organizationName)")
+                    }
+                } catch {
+                    totalErrorCount += 1
+                    print("❌ Failed to delete '\(groupName)' from \(organizationName): \(error.localizedDescription)")
+                }
+            }
+        }
+        
+        print("✅ Finished deleting all default groups")
+        print("   - Total deleted: \(totalDeletedCount) groups")
+        print("   - Total errors: \(totalErrorCount) groups")
+    }
+    
+    func deleteSampleGroupsFromOrganization(organizationId: String) async throws {
+        print("🗑️ Deleting sample groups from organization: \(organizationId)")
+        
+        let db = Firestore.firestore()
+        
+        let sampleGroupNames = ["sample_group_1", "sample_group_2"]
+        var deletedCount = 0
+        var errorCount = 0
+        
+        for groupName in sampleGroupNames {
+            do {
+                let groupRef = db.collection("organizations")
+                    .document(organizationId)
+                    .collection("groups")
+                    .document(groupName)
+                
+                let groupDoc = try await groupRef.getDocument()
+                
+                if groupDoc.exists {
+                    try await groupRef.delete()
+                    deletedCount += 1
+                    print("✅ Deleted '\(groupName)' from organization \(organizationId)")
+                } else {
+                    print("ℹ️ No '\(groupName)' group found in organization \(organizationId)")
+                }
+            } catch {
+                errorCount += 1
+                print("❌ Failed to delete '\(groupName)' from organization \(organizationId): \(error.localizedDescription)")
+            }
+        }
+        
+        print("✅ Finished deleting sample groups from organization \(organizationId)")
+        print("   - Deleted: \(deletedCount) groups")
+        print("   - Errors: \(errorCount) groups")
     }
     
     func searchOrganizations(query: String) async throws -> [Organization] {

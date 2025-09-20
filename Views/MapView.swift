@@ -69,6 +69,17 @@ struct MapView: View {
                     }
                 }
                 
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: deleteAllDefaultGroups) {
+                        Image(systemName: "trash.circle")
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: deleteSampleGroupsFromVelocity) {
+                        Image(systemName: "trash.circle.fill")
+                    }
+                }
                 
                 // Location circle button removed
             }
@@ -1011,6 +1022,34 @@ struct MapView: View {
         
         // Refresh the organizations data to get updated logo URLs
         await refreshOrganizations()
+    }
+    
+    private func deleteAllDefaultGroups() {
+        Task {
+            do {
+                try await apiService.deleteAllDefaultGroups()
+                print("✅ All default groups deleted successfully")
+                
+                // Refresh the organizations data to reflect the changes
+                await refreshOrganizations()
+            } catch {
+                print("❌ Failed to delete default groups: \(error)")
+            }
+        }
+    }
+    
+    private func deleteSampleGroupsFromVelocity() {
+        Task {
+            do {
+                try await apiService.deleteSampleGroupsFromOrganization(organizationId: "velocity_physical_therapy_north_denton")
+                print("✅ Sample groups deleted from Velocity Physical Therapy")
+                
+                // Refresh the organizations data to reflect the changes
+                await refreshOrganizations()
+            } catch {
+                print("❌ Failed to delete sample groups from Velocity: \(error)")
+            }
+        }
     }
     
     /// Geocode Firestore addresses to get real coordinates for pins

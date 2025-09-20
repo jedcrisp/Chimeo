@@ -322,8 +322,8 @@ struct SimpleLocationPickerView: View {
         verified: true,
         groups: [
             OrganizationGroup(
-                name: "General",
-                description: "General announcements",
+                name: "Emergency Alerts",
+                description: "Critical emergency notifications",
                 organizationId: "sample"
             )
         ]

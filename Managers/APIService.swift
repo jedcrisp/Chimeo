@@ -1302,10 +1302,25 @@ class APIService: ObservableObject {
         print("🎉 Sync completed! Successfully synced: \(totalSynced), Errors: \(totalErrors)")
     }
     
-    func deleteOrganizationAlert(alertId: String, organizationId: String) async {
-        // This method would delete an organization alert
-        // For now, it's a placeholder
+    func deleteOrganizationAlert(alertId: String, organizationId: String) async throws {
         print("🗑️ Deleting organization alert: \(alertId) from organization: \(organizationId)")
+        
+        let db = Firestore.firestore()
+        
+        // Delete from organization's alerts subcollection
+        let alertRef = db.collection("organizations")
+            .document(organizationId)
+            .collection("alerts")
+            .document(alertId)
+        
+        try await alertRef.delete()
+        
+        // Update organization alert count
+        try await db.collection("organizations").document(organizationId).updateData([
+            "alertCount": FieldValue.increment(Int64(-1))
+        ])
+        
+        print("✅ Organization alert deleted successfully from Firestore")
     }
     
     func editOrganizationAlert(_ alert: OrganizationAlert) async throws -> OrganizationAlert {

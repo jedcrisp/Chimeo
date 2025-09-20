@@ -1138,14 +1138,18 @@ struct OrganizationProfileView: View {
         Task {
             do {
                 try await apiService.deleteOrganizationAlert(alertId: alert.id, organizationId: alert.organizationId)
-                print("✅ Alert deleted successfully")
+                print("✅ Alert deleted successfully from Firestore")
                 
                 // Remove from local state and refresh
                 await MainActor.run {
                     recentAlerts.removeAll { $0.id == alert.id }
                 }
             } catch {
-                print("❌ Failed to delete alert: \(error)")
+                print("❌ Failed to delete alert from Firestore: \(error)")
+                await MainActor.run {
+                    errorMessage = "Failed to delete alert: \(error.localizedDescription)"
+                    showingErrorAlert = true
+                }
             }
         }
     }
@@ -1557,13 +1561,13 @@ struct AlertRowView: View {
         Task {
             do {
                 try await apiService.deleteOrganizationAlert(alertId: alert.id, organizationId: alert.organizationId)
-                print("✅ Alert deleted successfully")
+                print("✅ Alert deleted successfully from Firestore")
                 // Call the parent's deletion callback to update the UI
                 await MainActor.run {
                     onDelete()
                 }
             } catch {
-                print("❌ Failed to delete alert: \(error)")
+                print("❌ Failed to delete alert from Firestore: \(error)")
             }
         }
     }

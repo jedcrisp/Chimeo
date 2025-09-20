@@ -62,6 +62,7 @@ struct OrganizationProfileView: View {
                 // Groups Section (only for organization admins)
                 if isOrganizationAdmin {
                     groupsSection
+                    groupManagementButtons
                 }
                 
                 // Contact Section
@@ -638,6 +639,53 @@ struct OrganizationProfileView: View {
         .background(Color(.systemGray6).opacity(0.1))
         .cornerRadius(12)
         .padding(.horizontal)
+    }
+    
+    // MARK: - Group Management Buttons
+    private var groupManagementButtons: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                // Manage Groups Button
+                Button(action: {
+                    print("🔧 Manage Groups button tapped")
+                    showingGroupManagement = true
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 16))
+                        Text("Manage Groups")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.blue)
+                    .cornerRadius(10)
+                }
+                
+                // Add Group Button
+                Button(action: {
+                    print("➕ Add Group button tapped")
+                    showingCreateGroupAlert = true
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 16))
+                        Text("Add Group")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.green)
+                    .cornerRadius(10)
+                }
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top, 8)
     }
     
     // MARK: - Post Alert Button

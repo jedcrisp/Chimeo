@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var apiService = APIService()
+    @StateObject private var calendarService = CalendarService()
     
     var body: some View {
         TabView {
@@ -16,6 +17,12 @@ struct ContentView: View {
                 .tabItem {
                     Image(systemName: "list.bullet")
                     Text("Feed")
+                }
+            
+            CalendarView()
+                .tabItem {
+                    Image(systemName: "calendar")
+                    Text("Calendar")
                 }
             
             MyAlertsView()
@@ -32,6 +39,7 @@ struct ContentView: View {
         }
         .environmentObject(locationManager)
         .environmentObject(apiService)
+        .environmentObject(calendarService)
         .onAppear {
             // Request location permissions when app launches
             locationManager.requestLocationPermission()

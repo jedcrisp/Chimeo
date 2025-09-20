@@ -83,6 +83,12 @@ struct MyAlertsView: View {
                     await loadFollowedOrganizations()
                 }
             }
+            .onReceive(followStatusManager.$followStatusChanges) { _ in
+                // Refresh followed organizations when follow status changes
+                Task {
+                    await loadFollowedOrganizations()
+                }
+            }
         }
     }
     

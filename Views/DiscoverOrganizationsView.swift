@@ -398,11 +398,11 @@ struct DiscoverOrganizationRowView: View {
             do {
                 print("🔄 Starting follow/unfollow operation...")
                 if isFollowing {
-                    print("🔄 Currently following, so following organization again: \(organization.id)")
-                    try await serviceCoordinator.followOrganization(organization.id)
-                } else {
-                    print("🔄 Currently not following, so unfollowing organization: \(organization.id)")
+                    print("🔄 Currently following, so unfollowing organization: \(organization.id)")
                     try await serviceCoordinator.unfollowOrganization(organization.id)
+                } else {
+                    print("🔄 Currently not following, so following organization: \(organization.id)")
+                    try await serviceCoordinator.followOrganization(organization.id)
                 }
                 
                 // Update the FollowStatusManager to reflect the new state

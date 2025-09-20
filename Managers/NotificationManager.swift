@@ -4,6 +4,7 @@ import Combine
 import UIKit
 import FirebaseMessaging
 import FirebaseFirestore
+import FirebaseAuth
 
 // MARK: - Notification Names
 extension Notification.Name {
@@ -130,9 +131,19 @@ class NotificationManager: NSObject, ObservableObject {
     private func registerFCMTokenWithUser(_ token: String) async {
         print("📱 Registering FCM token with user profile...")
         
-        // Get current user from UserDefaults
-        guard let data = UserDefaults.standard.data(forKey: "currentUser"),
-              let user = try? JSONDecoder().decode(User.self, from: data) else {
+        // First try to get current user from Firebase Auth
+        var userId: String?
+        
+        if let firebaseUser = Auth.auth().currentUser {
+            print("✅ Found Firebase Auth user for FCM registration: \(firebaseUser.uid)")
+            userId = firebaseUser.uid
+        } else if let data = UserDefaults.standard.data(forKey: "currentUser"),
+                  let user = try? JSONDecoder().decode(User.self, from: data) {
+            print("✅ Found UserDefaults user for FCM registration: \(user.id)")
+            userId = user.id
+        }
+        
+        guard let userId = userId else {
             print("❌ No current user found for FCM token registration")
             // Store token for later registration
             UserDefaults.standard.set(token, forKey: "pending_fcm_token")
@@ -144,14 +155,14 @@ class NotificationManager: NSObject, ObservableObject {
             let db = Firestore.firestore()
             let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
             
-            try await db.collection("users").document(user.id).updateData([
+            try await db.collection("users").document(userId).updateData([
                 "fcmToken": token,
                 "lastTokenUpdate": FieldValue.serverTimestamp(),
                 "platform": "ios",
                 "appVersion": appVersion,
                 "tokenStatus": "active"
             ])
-            print("✅ FCM token registered for user: \(user.id)")
+            print("✅ FCM token registered for user: \(userId)")
             
             // Clear any pending token
             UserDefaults.standard.removeObject(forKey: "pending_fcm_token")

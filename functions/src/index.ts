@@ -827,3 +827,180 @@ export const notifyAdminsOfOrganizationRequest = functions.firestore
     }
   });
 
+// ⏰ Scheduled Alert Execution Function
+export const executeScheduledAlerts = functions.pubsub
+  .schedule('every 1 minutes')
+  .onRun(async (context) => {
+    console.log('⏰ Running scheduled alert execution...');
+    
+    try {
+      const now = new Date();
+      console.log(`   Current time: ${now.toISOString()}`);
+      
+      // Get all organizations
+      const organizationsSnapshot = await admin.firestore()
+        .collection('organizations')
+        .get();
+      
+      console.log(`   Found ${organizationsSnapshot.docs.length} organizations`);
+      
+      let totalProcessed = 0;
+      let totalExecuted = 0;
+      
+      for (const orgDoc of organizationsSnapshot.docs) {
+        const orgId = orgDoc.id;
+        console.log(`   Checking organization: ${orgId}`);
+        
+        // Get due scheduled alerts for this organization
+        const dueAlertsSnapshot = await admin.firestore()
+          .collection('organizations')
+          .doc(orgId)
+          .collection('scheduledAlerts')
+          .where('isActive', '==', true)
+          .where('scheduledDate', '<=', now)
+          .orderBy('scheduledDate', 'asc')
+          .get();
+        
+        console.log(`   Found ${dueAlertsSnapshot.docs.length} due alerts for ${orgId}`);
+        
+        for (const alertDoc of dueAlertsSnapshot.docs) {
+          const alertId = alertDoc.id;
+          const alert = alertDoc.data();
+          
+          console.log(`   Processing scheduled alert: ${alert.title} (${alertId})`);
+          console.log(`   Scheduled for: ${alert.scheduledDate?.toDate?.()?.toISOString() || 'Invalid date'}`);
+          console.log(`   Group: ${alert.groupName || 'All members'}`);
+          
+          try {
+            // Execute the scheduled alert
+            await executeScheduledAlert(orgId, alertId, alert);
+            totalExecuted++;
+            console.log(`   ✅ Successfully executed scheduled alert: ${alert.title}`);
+          } catch (error) {
+            console.error(`   ❌ Error executing scheduled alert ${alertId}:`, error);
+          }
+          
+          totalProcessed++;
+        }
+      }
+      
+      console.log(`⏰ Scheduled alert execution completed:`);
+      console.log(`   Total processed: ${totalProcessed}`);
+      console.log(`   Total executed: ${totalExecuted}`);
+      
+    } catch (error) {
+      console.error('❌ Error in scheduled alert execution:', error);
+    }
+  });
+
+// 🚨 Execute individual scheduled alert
+async function executeScheduledAlert(orgId: string, alertId: string, alert: any) {
+  console.log(`🚨 Executing scheduled alert: ${alert.title}`);
+  
+  // Create organization alert from scheduled alert
+  const organizationAlert = {
+    title: alert.title,
+    description: alert.description,
+    organizationId: alert.organizationId,
+    organizationName: alert.organizationName,
+    groupId: alert.groupId || '',
+    groupName: alert.groupName || '',
+    type: alert.type,
+    severity: alert.severity,
+    location: alert.location || {},
+    postedBy: alert.postedBy,
+    postedByUserId: alert.postedByUserId,
+    imageURLs: alert.imageURLs || [],
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    isActive: true,
+    scheduledAlertId: alertId // Track that this came from a scheduled alert
+  };
+  
+  // Post the alert to the regular alerts collection to trigger notifications
+  await admin.firestore()
+    .collection('organizations')
+    .doc(orgId)
+    .collection('alerts')
+    .add(organizationAlert);
+  
+  // Handle recurrence if applicable
+  if (alert.isRecurring && alert.recurrencePattern) {
+    await handleScheduledAlertRecurrence(orgId, alertId, alert);
+  } else {
+    // Deactivate the scheduled alert since it's not recurring
+    await admin.firestore()
+      .collection('organizations')
+      .doc(orgId)
+      .collection('scheduledAlerts')
+      .doc(alertId)
+      .update({
+        isActive: false,
+        executedAt: admin.firestore.FieldValue.serverTimestamp(),
+        executed: true
+      });
+  }
+}
+
+// 🔄 Handle recurrence for scheduled alerts
+async function handleScheduledAlertRecurrence(orgId: string, alertId: string, alert: any) {
+  console.log(`🔄 Handling recurrence for scheduled alert: ${alert.title}`);
+  
+  const pattern = alert.recurrencePattern;
+  const currentDate = new Date(alert.scheduledDate?.toDate?.() || new Date());
+  let nextDate: Date;
+  
+  switch (pattern.frequency) {
+    case 'daily':
+      nextDate = new Date(currentDate.getTime() + (pattern.interval || 1) * 24 * 60 * 60 * 1000);
+      break;
+    case 'weekly':
+      nextDate = new Date(currentDate.getTime() + (pattern.interval || 1) * 7 * 24 * 60 * 60 * 1000);
+      break;
+    case 'monthly':
+      nextDate = new Date(currentDate);
+      nextDate.setMonth(nextDate.getMonth() + (pattern.interval || 1));
+      break;
+    case 'yearly':
+      nextDate = new Date(currentDate);
+      nextDate.setFullYear(nextDate.getFullYear() + (pattern.interval || 1));
+      break;
+    default:
+      console.log(`   ⚠️ Unknown recurrence frequency: ${pattern.frequency}`);
+      return;
+  }
+  
+  // Check if we've reached the end date
+  if (pattern.endDate) {
+    const endDate = new Date(pattern.endDate.toDate?.() || pattern.endDate);
+    if (nextDate > endDate) {
+      console.log(`   📅 Recurrence end date reached, deactivating scheduled alert`);
+      await admin.firestore()
+        .collection('organizations')
+        .doc(orgId)
+        .collection('scheduledAlerts')
+        .doc(alertId)
+        .update({
+          isActive: false,
+          executedAt: admin.firestore.FieldValue.serverTimestamp(),
+          executed: true,
+          recurrenceEnded: true
+        });
+      return;
+    }
+  }
+  
+  // Update the scheduled alert with the next occurrence
+  await admin.firestore()
+    .collection('organizations')
+    .doc(orgId)
+    .collection('scheduledAlerts')
+    .doc(alertId)
+    .update({
+      scheduledDate: admin.firestore.Timestamp.fromDate(nextDate),
+      lastExecutedAt: admin.firestore.FieldValue.serverTimestamp(),
+      executionCount: admin.firestore.FieldValue.increment(1)
+    });
+  
+  console.log(`   ✅ Next occurrence scheduled for: ${nextDate.toISOString()}`);
+}
+

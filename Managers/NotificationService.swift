@@ -1,6 +1,7 @@
 import Foundation
 import FirebaseMessaging
 import FirebaseFirestore
+import FirebaseAuth
 import Combine
 import SwiftUI
 
@@ -155,10 +156,20 @@ class iOSNotificationService: ObservableObject {
     
     // MARK: - Utility Methods
     private func getCurrentUserId() -> String? {
+        // First try to get current user from Firebase Auth
+        if let firebaseUser = Auth.auth().currentUser {
+            print("✅ Found Firebase Auth user for FCM: \(firebaseUser.uid)")
+            return firebaseUser.uid
+        }
+        
+        // Fallback: Try to get current user from UserDefaults
         if let data = UserDefaults.standard.data(forKey: "currentUser"),
            let user = try? JSONDecoder().decode(User.self, from: data) {
+            print("✅ Found UserDefaults user for FCM: \(user.id)")
             return user.id
         }
+        
+        print("❌ No current user found for FCM token registration")
         return nil
     }
     

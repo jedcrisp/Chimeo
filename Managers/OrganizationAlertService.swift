@@ -1,6 +1,7 @@
 import Foundation
 import FirebaseFirestore
 import FirebaseStorage
+import FirebaseAuth
 
 // MARK: - Organization Alert Service
 class OrganizationAlertService: ObservableObject {
@@ -127,15 +128,63 @@ class OrganizationAlertService: ObservableObject {
 
 // MARK: - Helper Functions
 private func getCurrentUser() async throws -> User {
-    // Get current user from UserDefaults (stored by AuthenticationService)
-    guard let data = UserDefaults.standard.data(forKey: "currentUser"),
-          let user = try? JSONDecoder().decode(User.self, from: data) else {
-        print("❌ No current user found in UserDefaults")
-        throw NSError(domain: "UserNotFound", code: 404, userInfo: [NSLocalizedDescriptionKey: "Current user not found"])
+    // First try to get current user from Firebase Auth
+    if let firebaseUser = Auth.auth().currentUser {
+        print("✅ Found Firebase Auth user: \(firebaseUser.uid)")
+        
+        // Try to get user data from Firestore
+        let db = Firestore.firestore()
+        do {
+            let userDoc = try await db.collection("users").document(firebaseUser.uid).getDocument()
+            
+            if userDoc.exists, let userData = userDoc.data() {
+                let user = User(
+                    id: firebaseUser.uid,
+                    email: userData["email"] as? String ?? firebaseUser.email,
+                    name: userData["name"] as? String ?? firebaseUser.displayName ?? "User",
+                    phone: userData["phone"] as? String ?? firebaseUser.phoneNumber,
+                    homeLocation: nil,
+                    workLocation: nil,
+                    schoolLocation: nil,
+                    alertRadius: userData["alertRadius"] as? Double ?? 10.0,
+                    preferences: UserPreferences(
+                        incidentTypes: [.weather, .road, .other],
+                        criticalAlertsOnly: false,
+                        pushNotifications: true,
+                        quietHoursEnabled: false,
+                        quietHoursStart: nil,
+                        quietHoursEnd: nil
+                    ),
+                    createdAt: (userData["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                    isAdmin: userData["isAdmin"] as? Bool ?? false,
+                    displayName: userData["customDisplayName"] as? String ?? userData["name"] as? String ?? firebaseUser.displayName ?? "User",
+                    isOrganizationAdmin: userData["isOrganizationAdmin"] as? Bool,
+                    organizations: userData["organizations"] as? [String],
+                    updatedAt: (userData["updatedAt"] as? Timestamp)?.dateValue(),
+                    needsPasswordSetup: userData["needsPasswordSetup"] as? Bool,
+                    needsPasswordChange: userData["needsPasswordChange"] as? Bool,
+                    firebaseAuthId: firebaseUser.uid
+                )
+                
+                print("✅ Current user found from Firestore: \(user.name ?? "Unknown") (ID: \(user.id))")
+                return user
+            } else {
+                print("⚠️ Firebase user exists but no Firestore document found")
+            }
+        } catch {
+            print("⚠️ Error getting user from Firestore: \(error)")
+        }
     }
     
-    print("✅ Current user found: \(user.name ?? "Unknown") (ID: \(user.id))")
-    return user
+    // Fallback: Try to get current user from UserDefaults (stored by AuthenticationService)
+    if let data = UserDefaults.standard.data(forKey: "currentUser"),
+       let user = try? JSONDecoder().decode(User.self, from: data) {
+        print("✅ Current user found from UserDefaults: \(user.name ?? "Unknown") (ID: \(user.id))")
+        return user
+    }
+    
+    print("❌ No current user found in Firebase Auth or UserDefaults")
+    throw NSError(domain: "UserNotFound", code: 404, userInfo: [NSLocalizedDescriptionKey: "Current user not found"])
 }
     
     func updateOrganizationAlert(_ alert: OrganizationAlert) async throws {

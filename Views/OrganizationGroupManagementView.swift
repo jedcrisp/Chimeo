@@ -7,6 +7,10 @@ struct OrganizationGroupManagementView: View {
     @State private var isLoading = false
     @State private var showingCreateGroup = false
     @State private var errorMessage: String?
+    @State private var showingEditGroup = false
+    @State private var editingGroup: OrganizationGroup?
+    @State private var editGroupName = ""
+    @State private var editGroupDescription = ""
     
     var body: some View {
         NavigationView {
@@ -47,7 +51,7 @@ struct OrganizationGroupManagementView: View {
                         Section(header: Text("Organization Groups")) {
                             ForEach(groups) { group in
                                 GroupRowView(group: group) {
-                                    // Edit group action
+                                    editGroup(group)
                                 }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     Button(role: .destructive) {
@@ -79,6 +83,17 @@ struct OrganizationGroupManagementView: View {
                     groups.append(newGroup)
                 }
             }
+            .sheet(isPresented: $showingEditGroup) {
+                EditGroupView(
+                    group: editingGroup!,
+                    organization: organization,
+                    onSave: { updatedGroup in
+                        if let index = groups.firstIndex(where: { $0.id == updatedGroup.id }) {
+                            groups[index] = updatedGroup
+                        }
+                    }
+                )
+            }
             .alert("Error", isPresented: .constant(errorMessage != nil)) {
                 Button("OK") {
                     errorMessage = nil
@@ -109,6 +124,13 @@ struct OrganizationGroupManagementView: View {
                 }
             }
         }
+    }
+    
+    private func editGroup(_ group: OrganizationGroup) {
+        editingGroup = group
+        editGroupName = group.name
+        editGroupDescription = group.description ?? ""
+        showingEditGroup = true
     }
     
     private func deleteGroup(_ group: OrganizationGroup) {
@@ -151,7 +173,7 @@ struct GroupRowView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "person.2.fill")
                             .font(.caption)
-                        Text("\(group.memberCount)")
+                        Text("0") // Default to 0 since memberCount might not be available
                             .font(.caption)
                     }
                     .foregroundColor(.secondary)
@@ -174,6 +196,95 @@ struct GroupRowView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+struct EditGroupView: View {
+    let group: OrganizationGroup
+    let organization: Organization
+    let onSave: (OrganizationGroup) -> Void
+    
+    @EnvironmentObject var apiService: APIService
+    @Environment(\.presentationMode) var presentationMode
+    
+    @State private var groupName: String
+    @State private var groupDescription: String
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    
+    init(group: OrganizationGroup, organization: Organization, onSave: @escaping (OrganizationGroup) -> Void) {
+        self.group = group
+        self.organization = organization
+        self.onSave = onSave
+        self._groupName = State(initialValue: group.name)
+        self._groupDescription = State(initialValue: group.description ?? "")
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Group Details")) {
+                    TextField("Group Name", text: $groupName)
+                    TextField("Description (Optional)", text: $groupDescription, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+            }
+            .navigationTitle("Edit Group")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveGroup()
+                    }
+                    .disabled(isLoading || groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .alert("Error", isPresented: .constant(errorMessage != nil)) {
+                Button("OK") {
+                    errorMessage = nil
+                }
+            } message: {
+                if let errorMessage = errorMessage {
+                    Text(errorMessage)
+                }
+            }
+        }
+    }
+    
+    private func saveGroup() {
+        isLoading = true
+        
+        Task {
+            do {
+                let updatedGroup = OrganizationGroup(
+                    id: group.id,
+                    name: groupName.trimmingCharacters(in: .whitespacesAndNewlines),
+                    description: groupDescription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : groupDescription.trimmingCharacters(in: .whitespacesAndNewlines),
+                    organizationId: organization.id,
+                    isActive: group.isActive,
+                    createdAt: group.createdAt,
+                    updatedAt: Date()
+                )
+                
+                try await apiService.updateOrganizationGroup(updatedGroup)
+                
+                await MainActor.run {
+                    onSave(updatedGroup)
+                    presentationMode.wrappedValue.dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to update group: \(error.localizedDescription)"
+                    isLoading = false
+                }
+            }
+        }
     }
 }
 
@@ -241,8 +352,7 @@ struct CreateGroupView: View {
         let newGroup = OrganizationGroup(
             name: groupName,
             description: groupDescription.isEmpty ? nil : groupDescription,
-            organizationId: organization.id,
-            memberCount: 0
+            organizationId: organization.id
         )
         
         Task {

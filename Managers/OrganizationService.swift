@@ -64,6 +64,16 @@ class OrganizationService: ObservableObject {
         let verified = data["verified"] as? Bool ?? false
         let followerCount = data["followerCount"] as? Int ?? 0
         let logoURL = data["logoURL"] as? String
+        
+        // Debug logging for logo URL
+        print("🔍 OrganizationService parseOrganizationFromFirestore:")
+        print("   - Organization ID: \(docId)")
+        print("   - Organization name: \(name)")
+        print("   - Raw logoURL from Firestore: \(String(describing: data["logoURL"]))")
+        print("   - Parsed logoURL: \(String(describing: logoURL))")
+        print("   - logoURL isEmpty: \(logoURL?.isEmpty ?? true)")
+        print("   - logoURL is nil: \(logoURL == nil)")
+        
         let adminIds = data["adminIds"] as? [String: Bool] ?? [:]
         let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
         let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
@@ -671,6 +681,7 @@ class OrganizationService: ObservableObject {
                     let lowercased = logoURL.lowercased()
                     if lowercased.contains("example.com") || 
                        lowercased.contains("placeholder") ||
+                       lowercased.contains("via.placeholder.com") ||
                        lowercased.contains("dummy.com") ||
                        lowercased.contains("test.com") {
                         organizationsWithPlaceholderLogos += 1
@@ -752,6 +763,7 @@ class OrganizationService: ObservableObject {
                     let lowercased = logoURL.lowercased()
                     if lowercased.contains("example.com") || 
                        lowercased.contains("placeholder") ||
+                       lowercased.contains("via.placeholder.com") ||
                        lowercased.contains("dummy.com") ||
                        lowercased.contains("test.com") ||
                        lowercased.contains("sample.com") ||

@@ -93,22 +93,70 @@ class OrganizationGroupService: ObservableObject {
     
     func updateOrganizationGroup(_ group: OrganizationGroup) async throws {
         print("🏢 Updating organization group: \(group.name)")
+        print("   Group ID: \(group.id)")
         
         let db = Firestore.firestore()
-        let groupRef = db.collection("organizations")
-            .document(group.organizationId)
-            .collection("groups")
-            .document(group.name) // Use group name as document ID
         
-        let updateData: [String: Any] = [
-            "name": group.name,
-            "description": group.description ?? "",
-            "isActive": group.isActive,
-            "updatedAt": FieldValue.serverTimestamp()
-        ]
+        // Check if the group name has changed
+        let originalName = group.id // The ID contains the original name
+        let newName = group.name
         
-        try await groupRef.updateData(updateData)
-        print("✅ Successfully updated organization group: \(group.name)")
+        if originalName != newName {
+            print("   🔄 Group name changed from '\(originalName)' to '\(newName)'")
+            
+            // Get the original document data
+            let originalRef = db.collection("organizations")
+                .document(group.organizationId)
+                .collection("groups")
+                .document(originalName)
+            
+            let originalDoc = try await originalRef.getDocument()
+            guard originalDoc.exists else {
+                throw NSError(domain: "GroupUpdateError", code: 404, userInfo: [NSLocalizedDescriptionKey: "Original group not found"])
+            }
+            
+            let originalData = originalDoc.data() ?? [:]
+            
+            // Create new document with updated data
+            let newGroupData: [String: Any] = [
+                "name": newName,
+                "description": group.description ?? "",
+                "organizationId": group.organizationId,
+                "isActive": group.isActive,
+                "createdAt": originalData["createdAt"] ?? FieldValue.serverTimestamp(),
+                "updatedAt": FieldValue.serverTimestamp(),
+                "memberCount": originalData["memberCount"] ?? 0
+            ]
+            
+            let newRef = db.collection("organizations")
+                .document(group.organizationId)
+                .collection("groups")
+                .document(newName)
+            
+            // Create the new document
+            try await newRef.setData(newGroupData)
+            
+            // Delete the old document
+            try await originalRef.delete()
+            
+            print("✅ Successfully updated organization group: \(newName) (moved from \(originalName))")
+        } else {
+            // Name hasn't changed, just update the existing document
+            let groupRef = db.collection("organizations")
+                .document(group.organizationId)
+                .collection("groups")
+                .document(originalName)
+            
+            let updateData: [String: Any] = [
+                "name": group.name,
+                "description": group.description ?? "",
+                "isActive": group.isActive,
+                "updatedAt": FieldValue.serverTimestamp()
+            ]
+            
+            try await groupRef.updateData(updateData)
+            print("✅ Successfully updated organization group: \(group.name)")
+        }
     }
     
     func deleteOrganizationGroup(_ groupName: String, organizationId: String) async throws {
@@ -118,7 +166,7 @@ class OrganizationGroupService: ObservableObject {
         let groupRef = db.collection("organizations")
             .document(organizationId)
             .collection("groups")
-            .document(groupName) // Use group name as document ID
+            .document(groupName) // Use group name as document ID (this should work for existing groups)
         
         try await groupRef.delete()
         print("✅ Successfully deleted organization group: \(groupName)")

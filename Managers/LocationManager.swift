@@ -108,6 +108,28 @@ class LocationManager: NSObject, ObservableObject, @unchecked Sendable {
     private func requestSingleLocationUpdate() {
         print("📍 Requesting single location update...")
         
+        // Check if location services are enabled
+        guard CLLocationManager.locationServicesEnabled() else {
+            print("❌ Location services are disabled")
+            DispatchQueue.main.async {
+                self.hasError = true
+                self.errorMessage = "Location services are disabled"
+                self.isLocationEnabled = false
+            }
+            return
+        }
+        
+        // Check authorization status
+        guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
+            print("❌ No location permission, cannot request location")
+            DispatchQueue.main.async {
+                self.hasError = true
+                self.errorMessage = "Location permission not granted"
+                self.isLocationEnabled = false
+            }
+            return
+        }
+        
         // Configure for single-shot location request
         locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
         locationManager.requestLocation()
@@ -182,7 +204,22 @@ extension LocationManager: CLLocationManagerDelegate {
         DispatchQueue.main.async {
             self.isLocationEnabled = false
             self.hasError = true
-            self.errorMessage = error.localizedDescription
+            
+            // Provide more specific error messages
+            if let clError = error as? CLError {
+                switch clError.code {
+                case .denied:
+                    self.errorMessage = "Location access denied. Please enable location services in Settings."
+                case .locationUnknown:
+                    self.errorMessage = "Unable to determine location. Please check your GPS signal."
+                case .network:
+                    self.errorMessage = "Network error while getting location. Please check your internet connection."
+                default:
+                    self.errorMessage = "Location error: \(clError.localizedDescription)"
+                }
+            } else {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
     

@@ -69,6 +69,7 @@ struct MapView: View {
                     }
                 }
                 
+                
                 // Location circle button removed
             }
         }
@@ -133,7 +134,10 @@ struct MapView: View {
         // Create pins for organizations
         for org in organizations {
             // Check if we have valid coordinates
-            let coordinate = org.location.coordinate
+            let coordinate = CLLocationCoordinate2D(
+                latitude: org.location.latitude,
+                longitude: org.location.longitude
+            )
             let hasValidCoordinates = coordinate.latitude != 0.0 && coordinate.longitude != 0.0
             
             if hasValidCoordinates {
@@ -307,6 +311,9 @@ struct MapView: View {
             // Load basic data only
             Task {
                 await loadData()
+                
+                // Check and fix logo URLs for organizations that might have photos but no logo URL set
+                await checkAndFixOrganizationLogos()
             }
         }
         .onDisappear {
@@ -611,7 +618,10 @@ struct MapView: View {
 
             // Perform geocoding
             if let geocodedLocation = await geocodeAddress(fullAddress) {
-                let current = org.location.coordinate
+                let current = CLLocationCoordinate2D(
+                    latitude: org.location.latitude,
+                    longitude: org.location.longitude
+                )
                 print("      ✅ Geocoded to: (\(geocodedLocation.latitude), \(geocodedLocation.longitude))")
 
                 // Determine if an update is needed: missing coords or far from geocoded coords
@@ -681,7 +691,7 @@ struct MapView: View {
                     state: placemark.administrativeArea,
                     zipCode: placemark.postalCode
                 )
-                print("   ✅ Geocoded to: (\(geocodedLocation.coordinate.latitude), \(geocodedLocation.coordinate.longitude))")
+                print("   ✅ Geocoded to: (\(geocodedLocation.latitude), \(geocodedLocation.longitude))")
                 return geocodedLocation
             } else {
                 print("   ❌ No placemarks found for address")
@@ -697,17 +707,17 @@ struct MapView: View {
     private func logOrganizationCoordinateState() async {
         print("🗺️ Final organization coordinate state:")
         let validOrgs = organizations.filter { 
-            $0.location.coordinate.latitude != 0.0 && 
-            $0.location.coordinate.longitude != 0.0 
+            $0.location.latitude != 0.0 && 
+            $0.location.longitude != 0.0 
         }
         let invalidOrgs = organizations.filter { 
-            $0.location.coordinate.latitude == 0.0 || 
-            $0.location.coordinate.longitude == 0.0 
+            $0.location.latitude == 0.0 || 
+            $0.location.longitude == 0.0 
         }
         
         print("   ✅ Valid coordinates: \(validOrgs.count) organizations")
         for org in validOrgs {
-            print("      - \(org.name): (\(org.location.coordinate.latitude), \(org.location.coordinate.longitude))")
+            print("      - \(org.name): (\(org.location.latitude), \(org.location.longitude))")
         }
         
         print("   ❌ Invalid coordinates: \(invalidOrgs.count) organizations")
@@ -721,8 +731,8 @@ struct MapView: View {
     /// Update existing organizations that might be missing coordinates
     private func updateExistingOrganizationCoordinates() async {
         let invalidOrgs = organizations.filter { 
-            $0.location.coordinate.latitude == 0.0 || 
-            $0.location.coordinate.longitude == 0.0 
+            $0.location.latitude == 0.0 || 
+            $0.location.longitude == 0.0 
         }
         
         if !invalidOrgs.isEmpty {
@@ -733,7 +743,7 @@ struct MapView: View {
                 if fullAddress.isEmpty { continue }
                 
                 if let geocodedLocation = await geocodeAddress(fullAddress) {
-                    print("📍 Updating coordinates for \(org.name): \(geocodedLocation.coordinate.latitude), \(geocodedLocation.coordinate.longitude)")
+                    print("📍 Updating coordinates for \(org.name): \(geocodedLocation.latitude), \(geocodedLocation.longitude)")
                     
                     // Update the organization in our local array
                     let updatedOrganization = Organization(
@@ -773,7 +783,10 @@ struct MapView: View {
             print("   📍 Processing \(org.name)...")
             
             // Check if this organization already has valid coordinates
-            let currentCoordinate = org.location.coordinate
+            let currentCoordinate = CLLocationCoordinate2D(
+                latitude: org.location.latitude,
+                longitude: org.location.longitude
+            )
             if currentCoordinate.latitude != 0.0 && currentCoordinate.longitude != 0.0 {
                 print("      ✅ \(org.name) already has valid coordinates: (\(currentCoordinate.latitude), \(currentCoordinate.longitude))")
                 continue
@@ -798,7 +811,7 @@ struct MapView: View {
                 print("      🌍 Geocoding \(org.name): \(fullAddress)")
                 
                 if let geocodedLocation = await geocodeAddress(fullAddress) {
-                    print("      ✅ Geocoded to: (\(geocodedLocation.coordinate.latitude), \(geocodedLocation.coordinate.longitude))")
+                    print("      ✅ Geocoded to: (\(geocodedLocation.latitude), \(geocodedLocation.longitude))")
                     
                     // Update the organization with geocoded coordinates
                     let updatedOrganization = Organization(
@@ -944,7 +957,7 @@ struct MapView: View {
                 print("      📍 Full Address: \(fullAddress)")
                 
                 if let geocodedLocation = await geocodeAddress(fullAddress) {
-                    print("      ✅ Geocoded to: (\(geocodedLocation.coordinate.latitude), \(geocodedLocation.coordinate.longitude))")
+                    print("      ✅ Geocoded to: (\(geocodedLocation.latitude), \(geocodedLocation.longitude))")
                     
                     // Update the organization with real coordinates
                     let updatedOrganization = Organization(
@@ -986,6 +999,20 @@ struct MapView: View {
         print("🌍 Geocoding completed")
     }
     
+    
+    /// Check and fix organization logo URLs
+    private func checkAndFixOrganizationLogos() async {
+        for organization in organizations {
+            // Only check organizations that don't have a logo URL set
+            if organization.logoURL == nil || organization.logoURL?.isEmpty == true {
+                await apiService.checkAndFixOrganizationLogoURL(organizationId: organization.id)
+            }
+        }
+        
+        // Refresh the organizations data to get updated logo URLs
+        await refreshOrganizations()
+    }
+    
     /// Geocode Firestore addresses to get real coordinates for pins
     private func geocodeFirestoreAddresses() async {
         print("🌍 Geocoding Firestore addresses...")
@@ -1003,7 +1030,7 @@ struct MapView: View {
                 print("   📍 Geocoding \(org.name): \(fullAddress)")
                 
                 if let geocodedLocation = await geocodeAddress(fullAddress) {
-                    print("      ✅ Geocoded to: (\(geocodedLocation.coordinate.latitude), \(geocodedLocation.coordinate.longitude))")
+                    print("      ✅ Geocoded to: (\(geocodedLocation.latitude), \(geocodedLocation.longitude))")
                     
                     // Update the organization with real coordinates
                     let updatedOrganization = Organization(

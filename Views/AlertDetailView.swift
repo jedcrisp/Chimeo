@@ -71,6 +71,48 @@ struct AlertDetailView: View {
                             .stroke(Color(.systemGray5), lineWidth: 1)
                     )
                     
+                    // Images
+                    if !alert.imageURLs.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Images")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.primary)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 12) {
+                                    ForEach(alert.imageURLs, id: \.self) { imageURL in
+                                        AsyncImage(url: URL(string: imageURL)) { image in
+                                            image
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fill)
+                                                .frame(width: 200, height: 150)
+                                                .clipped()
+                                                .cornerRadius(12)
+                                        } placeholder: {
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(Color(.systemGray6))
+                                                .frame(width: 200, height: 150)
+                                                .overlay(
+                                                    ProgressView()
+                                                        .scaleEffect(0.8)
+                                                )
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal, 4)
+                            }
+                        }
+                        .padding(20)
+                        .background(Color(.systemBackground))
+                        .cornerRadius(16)
+                        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color(.systemGray5), lineWidth: 1)
+                        )
+                    }
+                    
                     // Description
                     if !alert.description.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {

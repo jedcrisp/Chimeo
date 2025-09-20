@@ -95,8 +95,22 @@ struct OrganizationProfileView: View {
                             showingCreateGroupAlert = true 
                         }) {
                             HStack(spacing: 4) {
-                                Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 20))
+                                // Show organization logo if available, otherwise show plus icon
+                                if let logoURL = organization.logoURL, !logoURL.isEmpty {
+                                    AsyncImage(url: URL(string: logoURL)) { image in
+                                        image
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                    } placeholder: {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.system(size: 20))
+                                    }
+                                    .frame(width: 20, height: 20)
+                                    .clipShape(Circle())
+                                } else {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 20))
+                                }
                                 Text("Add Group")
                                 .font(.caption)
                                 .fontWeight(.medium)
@@ -107,6 +121,26 @@ struct OrganizationProfileView: View {
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(Color.green.opacity(0.1))
+                            )
+                        }
+                        
+                        // Delete Default Groups button for org admins
+                        Button(action: { 
+                            deleteDefaultGroups() 
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "trash.circle.fill")
+                                    .font(.system(size: 16))
+                                Text("Delete Default Groups")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.red)
                             )
                         }
                         
@@ -1183,6 +1217,26 @@ struct OrganizationProfileView: View {
                 }
             } catch {
                 // Handle error silently or show user-friendly message
+            }
+        }
+    }
+    
+    private func deleteDefaultGroups() {
+        print("🗑️ Delete default groups tapped")
+        Task {
+            do {
+                try await apiService.deleteDefaultGroups(organizationId: organization.id)
+                await MainActor.run {
+                    // Refresh the groups list
+                    fetchGroups()
+                }
+                print("✅ Default groups deleted successfully")
+            } catch {
+                print("❌ Error deleting default groups: \(error)")
+                await MainActor.run {
+                    errorMessage = "Failed to delete default groups: \(error.localizedDescription)"
+                    showingErrorAlert = true
+                }
             }
         }
     }

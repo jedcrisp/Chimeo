@@ -200,6 +200,49 @@ class FileUploadService: ObservableObject {
         print("✅ File deleted successfully")
     }
     
+    // MARK: - List Files in Storage Path
+    func listFilesInPath(_ path: String) async throws -> [String] {
+        let storageRef = storage.reference().child(path)
+        var files: [String] = []
+        
+        do {
+            let listResult = try await storageRef.listAll()
+            
+            for item in listResult.items {
+                files.append(item.name)
+            }
+            
+        } catch {
+            throw error
+        }
+        
+        return files
+    }
+    
+    // MARK: - Get Organization Logo URL
+    func getOrganizationLogoURL(organizationId: String) async throws -> String? {
+        let photosPath = "organizations/\(organizationId)/photos"
+        
+        do {
+            let files = try await listFilesInPath(photosPath)
+            
+            // Look for logo files (files that start with "logo_")
+            let logoFiles = files.filter { $0.hasPrefix("logo_") }
+            
+            if let logoFile = logoFiles.first {
+                let logoPath = "\(photosPath)/\(logoFile)"
+                let storageRef = storage.reference().child(logoPath)
+                let downloadURL = try await storageRef.downloadURL()
+                return downloadURL.absoluteString
+            } else {
+                return nil
+            }
+            
+        } catch {
+            return nil
+        }
+    }
+    
     // MARK: - File Download
     func downloadImage(from url: String) async throws -> UIImage {
         print("⬇️ Downloading image from: \(url)")

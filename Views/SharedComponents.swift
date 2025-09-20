@@ -378,7 +378,11 @@ struct OrganizationLogoView: View {
     
     var body: some View {
         Group {
-            if let logoURL = organization.logoURL, !logoURL.isEmpty, isValidURL(logoURL), !isPlaceholderURL(logoURL) {
+            // Check if we have a valid logo URL first
+            if let logoURL = organization.logoURL, 
+               !logoURL.isEmpty, 
+               isValidURL(logoURL), 
+               !isPlaceholderURL(logoURL) {
                 // Display uploaded logo with caching
                 CachedAsyncImage(
                     url: logoURL,
@@ -389,52 +393,32 @@ struct OrganizationLogoView: View {
                     print("🖼️ OrganizationLogoView: Displaying uploaded logo: \(logoURL)")
                     print("   - Organization ID: \(organization.id)")
                     print("   - Organization name: \(organization.name)")
-                    print("   - Logo URL valid: \(isValidURL(logoURL))")
-                    if let url = URL(string: logoURL) {
-                        print("   - URL scheme: \(url.scheme ?? "nil")")
-                        print("   - URL host: \(url.host ?? "nil")")
-                        print("   - URL path: \(url.path)")
-                    }
                 }
                 .onChange(of: organization.logoURL) { _, newLogoURL in
-                    print("🔄 OrganizationLogoView: Logo URL onChange triggered")
-                    print("   - Old logoURL: \(organization.logoURL ?? "nil")")
-                    print("   - New logoURL: \(newLogoURL ?? "nil")")
-                    print("   - Organization ID: \(organization.id)")
-                    print("   - Organization name: \(organization.name)")
-                    
-                    if let newLogoURL = newLogoURL, !newLogoURL.isEmpty, isValidURL(newLogoURL), !isPlaceholderURL(newLogoURL) {
+                    if let newLogoURL = newLogoURL, 
+                       !newLogoURL.isEmpty, 
+                       isValidURL(newLogoURL), 
+                       !isPlaceholderURL(newLogoURL) {
                         print("✅ OrganizationLogoView: Valid new logo URL, reloading image: \(newLogoURL)")
                         imageLoader.loadImage(from: newLogoURL)
-                    } else {
-                        print("⚠️ OrganizationLogoView: Invalid or placeholder new logo URL")
-                        if let newLogoURL = newLogoURL {
-                            print("   - URL validation failed: \(isValidURL(newLogoURL))")
-                            print("   - URL is empty: \(newLogoURL.isEmpty)")
-                            print("   - URL is placeholder: \(isPlaceholderURL(newLogoURL))")
-                        }
                     }
                 }
             } else {
                 // Fallback to default icon based on organization type
                 defaultIconView
                     .onAppear {
-                        print("🖼️ OrganizationLogoView: No logo URL or invalid URL, using default icon for type: \(organization.type)")
+                        let logoURL = organization.logoURL
+                        if logoURL == nil || logoURL?.isEmpty == true {
+                            print("🖼️ OrganizationLogoView: No logo URL, using default icon for type: \(organization.type)")
+                        } else if let logoURL = logoURL {
+                            if isPlaceholderURL(logoURL) {
+                                print("🖼️ OrganizationLogoView: Placeholder logo URL detected, using default icon for type: \(organization.type)")
+                            } else {
+                                print("🖼️ OrganizationLogoView: Invalid logo URL, using default icon for type: \(organization.type)")
+                            }
+                        }
                         print("   - Organization ID: \(organization.id)")
                         print("   - Organization name: \(organization.name)")
-                        if let logoURL = organization.logoURL {
-                            print("   - Logo URL: \(logoURL)")
-                            print("   - URL valid: \(isValidURL(logoURL))")
-                            print("   - URL empty: \(logoURL.isEmpty)")
-                            print("   - URL is placeholder: \(isPlaceholderURL(logoURL))")
-                            if let url = URL(string: logoURL) {
-                                print("   - URL scheme: \(url.scheme ?? "nil")")
-                                print("   - URL host: \(url.host ?? "nil")")
-                            }
-                        } else {
-                            print("   - No logo URL provided")
-                            print("   - Organization logoURL field is nil")
-                        }
                     }
             }
         }
@@ -493,6 +477,7 @@ struct OrganizationLogoView: View {
         let placeholderDomains = [
             "example.com",
             "placeholder.com", 
+            "via.placeholder.com",
             "dummy.com",
             "test.com"
         ]

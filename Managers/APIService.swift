@@ -598,6 +598,16 @@ class APIService: ObservableObject {
         let verified = data["verified"] as? Bool ?? false
         let followerCount = data["followerCount"] as? Int ?? 0
         let logoURL = data["logoURL"] as? String
+        
+        // Debug logging for logo URL
+        print("🔍 APIService parseOrganizationFromFirestore:")
+        print("   - Organization ID: \(id)")
+        print("   - Organization name: \(name)")
+        print("   - Raw logoURL from Firestore: \(String(describing: data["logoURL"]))")
+        print("   - Parsed logoURL: \(String(describing: logoURL))")
+        print("   - logoURL isEmpty: \(logoURL?.isEmpty ?? true)")
+        print("   - logoURL is nil: \(logoURL == nil)")
+        
         let website = data["website"] as? String
         let phone = data["phone"] as? String
         let email = data["email"] as? String
@@ -960,10 +970,69 @@ class APIService: ObservableObject {
     }
     
     func createOrganizationGroup(group: OrganizationGroup, organizationId: String) async throws -> OrganizationGroup {
-        // This method would create an organization group
-        // For now, it's a placeholder
         print("👥 Creating organization group: \(group.name) for organization: \(organizationId)")
-        return group
+        
+        let db = Firestore.firestore()
+        
+        // First, verify the organization exists
+        let orgDoc = try await db.collection("organizations").document(organizationId).getDocument()
+        
+        if !orgDoc.exists {
+            throw NSError(domain: "GroupCreationError", code: 404, userInfo: [NSLocalizedDescriptionKey: "Organization not found"])
+        }
+        
+        // Create the group data
+        let groupData: [String: Any] = [
+            "name": group.name,
+            "description": group.description ?? "",
+            "organizationId": organizationId,
+            "isActive": group.isActive,
+            "createdAt": FieldValue.serverTimestamp(),
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        
+        // Add to the organization's groups subcollection using group name as document ID
+        let groupRef = db.collection("organizations")
+            .document(organizationId)
+            .collection("groups")
+            .document(group.name)
+        try await groupRef.setData(groupData)
+        
+        // Get the created document to return the complete group
+        let createdDoc = try await groupRef.getDocument()
+        let createdData = createdDoc.data() ?? [:]
+        
+        let createdGroup = OrganizationGroup(
+            id: group.name, // Use group name as ID
+            name: group.name,
+            description: group.description,
+            organizationId: organizationId,
+            isActive: group.isActive,
+            createdAt: (createdData["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+            updatedAt: (createdData["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
+        )
+        
+        print("✅ Successfully created organization group: \(createdGroup.name)")
+        return createdGroup
+    }
+    
+    func updateOrganizationGroup(_ group: OrganizationGroup) async throws {
+        print("🏢 Updating organization group: \(group.name)")
+        print("   Group ID: \(group.id)")
+
+        let db = Firestore.firestore()
+        let organizationRef = db.collection("organizations").document(group.organizationId)
+
+        // Update the existing document
+        let groupRef = organizationRef.collection("groups").document(group.name)
+        let updateData: [String: Any] = [
+            "name": group.name,
+            "description": group.description ?? "",
+            "isActive": group.isActive,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        try await groupRef.updateData(updateData)
+        print("✅ Successfully updated organization group: \(group.name)")
     }
     
     func uploadOrganizationLogo(_ image: UIImage, organizationId: String, organizationName: String? = nil) async throws -> String {
@@ -976,6 +1045,19 @@ class APIService: ObservableObject {
         let logoURL = try await fileUploadService.uploadOrganizationLogo(image, organizationId: organizationId, organizationName: organizationName)
         
         print("✅ Organization logo uploaded successfully: \(logoURL)")
+        
+        // Update the organization document with the new logo URL
+        do {
+            let db = Firestore.firestore()
+            try await db.collection("organizations").document(organizationId).updateData([
+                "logoURL": logoURL,
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+            print("✅ Organization document updated with new logo URL: \(logoURL)")
+        } catch {
+            print("❌ Failed to update organization document with logo URL: \(error)")
+            throw error
+        }
         
         // Refresh the organization data to ensure UI updates
         await refreshOrganizationData(organizationId: organizationId)
@@ -993,6 +1075,29 @@ class APIService: ObservableObject {
         print("✅ APIService: User profile photo uploaded successfully: \(photoURL)")
         
         return photoURL
+    }
+    
+    // MARK: - Check and Fix Organization Logo URL
+    func checkAndFixOrganizationLogoURL(organizationId: String) async {
+        do {
+            let fileUploadService = FileUploadService()
+            
+            // Check if there's a logo file in the organization's photos folder
+            if let logoURL = try await fileUploadService.getOrganizationLogoURL(organizationId: organizationId) {
+                // Update the organization document with the logo URL
+                let db = Firestore.firestore()
+                try await db.collection("organizations").document(organizationId).updateData([
+                    "logoURL": logoURL,
+                    "updatedAt": FieldValue.serverTimestamp()
+                ])
+                
+                // Refresh the organization data
+                await refreshOrganizationData(organizationId: organizationId)
+            }
+            
+        } catch {
+            // Silently handle errors - organization will just use default icon
+        }
     }
     
     // MARK: - Refresh Organization Data
@@ -1709,9 +1814,35 @@ class APIService: ObservableObject {
     }
     
     func deleteOrganizationGroup(_ groupName: String, organizationId: String) async throws {
-        // This method would delete an organization group
-        // For now, it's a placeholder
-        print("🗑️ Deleting organization group: \(groupName) from organization: \(organizationId)")
+        print("🗑️ Deleting organization group: \(groupName) for organization: \(organizationId)")
+        
+        let db = Firestore.firestore()
+        
+        // Delete the group document
+        let groupRef = db.collection("organizations")
+            .document(organizationId)
+            .collection("groups")
+            .document(groupName)
+        
+        try await groupRef.delete()
+        print("✅ Successfully deleted organization group: \(groupName)")
+    }
+    
+    func deleteDefaultGroups(organizationId: String) async throws {
+        print("🗑️ Deleting default groups for organization: \(organizationId)")
+        
+        let defaultGroupNames = ["General Alerts", "Emergency Alerts", "Community Events"]
+        
+        for groupName in defaultGroupNames {
+            do {
+                try await deleteOrganizationGroup(groupName, organizationId: organizationId)
+            } catch {
+                print("⚠️ Could not delete group '\(groupName)': \(error.localizedDescription)")
+                // Continue with other groups even if one fails
+            }
+        }
+        
+        print("✅ Finished deleting default groups")
     }
     
     func searchOrganizations(query: String) async throws -> [Organization] {
@@ -3611,6 +3742,7 @@ class APIService: ObservableObject {
                     let lowercased = logoURL.lowercased()
                     if lowercased.contains("example.com") || 
                        lowercased.contains("placeholder") ||
+                       lowercased.contains("via.placeholder.com") ||
                        lowercased.contains("dummy.com") ||
                        lowercased.contains("test.com") {
                         organizationsWithPlaceholderLogos += 1
@@ -3692,6 +3824,7 @@ class APIService: ObservableObject {
                     let lowercased = logoURL.lowercased()
                     if lowercased.contains("example.com") || 
                        lowercased.contains("placeholder") ||
+                       lowercased.contains("via.placeholder.com") ||
                        lowercased.contains("dummy.com") ||
                        lowercased.contains("test.com") ||
                        lowercased.contains("sample.com") ||

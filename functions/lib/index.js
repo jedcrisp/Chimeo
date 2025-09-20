@@ -170,12 +170,13 @@ async function filterFollowersByGroupPreferences(followerIds, groupId, orgId) {
                 const data = followerDoc.data();
                 const groupPreferences = (data === null || data === void 0 ? void 0 : data.groupPreferences) || {};
                 // Check if this is the user's first time with this group
-                // If no preference is set, we'll initialize it to false but allow the notification
-                // This ensures users get at least one notification to know they need to configure preferences
+                // If no preference is set, we'll allow the notification by default
+                // This ensures users get notifications until they explicitly disable them
                 if (groupPreferences[groupId] === undefined) {
-                    // First time seeing this group - allow notification and initialize preference
-                    console.log(`   🔄 Follower ${followerId}: first time with group, allowing notification and initializing preference`);
-                    // Initialize the preference to false for future notifications
+                    // First time seeing this group - allow notification by default
+                    console.log(`   🔄 Follower ${followerId}: first time with group, allowing notification (default: enabled)`);
+                    
+                    // Initialize the preference to true for future notifications (opt-out model)
                     try {
                         await admin.firestore()
                             .collection('users')
@@ -183,9 +184,9 @@ async function filterFollowersByGroupPreferences(followerIds, groupId, orgId) {
                             .collection('followedOrganizations')
                             .doc(orgId)
                             .update({
-                            [`groupPreferences.${groupId}`]: false
+                            [`groupPreferences.${groupId}`]: true
                         });
-                        console.log(`   ✅ Initialized group preference for ${followerId}: ${groupId} = false`);
+                        console.log(`   ✅ Initialized group preference for ${followerId}: ${groupId} = true (enabled by default)`);
                     }
                     catch (initError) {
                         console.log(`   ⚠️ Could not initialize preference for ${followerId}: ${initError}`);

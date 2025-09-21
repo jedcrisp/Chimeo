@@ -7,15 +7,37 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0DF0F0AD4D3240BCABC7FC3E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DF0F0AC4D3240BCABC7FC3D /* ContentView.swift */; };
+		309593EC63984B70BE8E5A81 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309593EB63984B70BE8E5A80 /* MainTabView.swift */; };
 		7949B39A2E50136900C37BEC /* IncidentModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7949B3992E50136900C37BEC /* IncidentModel.swift */; };
 		7966DE512E5013F000AB33F7 /* Chimeo/ChimeoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966DE4F2E5013F000AB33F7 /* Chimeo/ChimeoApp.swift */; };
-		7966DE522E5013F000AB33F7 /* Chimeo/ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966DE502E5013F000AB33F7 /* Chimeo/ContentView.swift */; };
 		7966DE562E5013F000AB33F7 /* MyAlertsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966DE532E5013F000AB33F7 /* MyAlertsView.swift */; };
-		7966DE592E5013F000AB33F7 /* MapView 2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966DE4A2E5013F000AB33F7 /* MapView 2.swift */; };
 		7966DE5A2E5013F000AB33F7 /* IncidentFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966DE4C2E5013F000AB33F7 /* IncidentFeedView.swift */; };
-		7966DE5B2E5013F000AB33F7 /* SettingsView 2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966DE4E2E5013F000AB33F7 /* SettingsView 2.swift */; };
 		7966DE5C2E5013F000AB33F7 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966DE412E5013C500AB33F7 /* APIService.swift */; };
 		7966DE5D2E5013F000AB33F7 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966DE3F2E5013C500AB33F7 /* LocationManager.swift */; };
+		7966DE5E2E5013F000AB33F7 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966DE402E5013C500AB33F7 /* NotificationManager.swift */; };
+		F44E3E892E803668002F41E2 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = F44E3E882E803668002F41E2 /* GoogleSignIn */; };
+		F44E3E8B2E803668002F41E2 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = F44E3E8A2E803668002F41E2 /* GoogleSignInSwift */; };
+		F44E3E8E2E8036A4002F41E2 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F44E3E8D2E8036A4002F41E2 /* FirebaseAuth */; };
+		F44E3E902E8036A4002F41E2 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = F44E3E8F2E8036A4002F41E2 /* FirebaseDatabase */; };
+		F44E3E922E8036A4002F41E2 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = F44E3E912E8036A4002F41E2 /* FirebaseFirestore */; };
+		F44E3E942E8036A4002F41E2 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = F44E3E932E8036A4002F41E2 /* FirebaseFunctions */; };
+		F44E3E962E8036A4002F41E2 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = F44E3E952E8036A4002F41E2 /* FirebaseMessaging */; };
+		F44E3E982E8036A4002F41E2 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = F44E3E972E8036A4002F41E2 /* FirebaseStorage */; };
+		F44E3EA82E8043EE002F41E2 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EA72E8043EE002F41E2 /* GoogleService-Info.plist */; };
+		F44E3EB72E8043FE002F41E2 /* AppIcon-20x20@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EAA2E8043FE002F41E2 /* AppIcon-20x20@3x.png */; };
+		F44E3EB82E8043FE002F41E2 /* AppIcon-29x29.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EAB2E8043FE002F41E2 /* AppIcon-29x29.png */; };
+		F44E3EB92E8043FE002F41E2 /* AppIcon-29x29@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EAC2E8043FE002F41E2 /* AppIcon-29x29@2x.png */; };
+		F44E3EBA2E8043FE002F41E2 /* AppIcon-40x40@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EAF2E8043FE002F41E2 /* AppIcon-40x40@3x.png */; };
+		F44E3EBB2E8043FE002F41E2 /* AppIcon-60x60@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EB22E8043FE002F41E2 /* AppIcon-60x60@2x.png */; };
+		F44E3EBC2E8043FE002F41E2 /* AppIcon-1024x1024.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EB42E8043FE002F41E2 /* AppIcon-1024x1024.png */; };
+		F44E3EBD2E8043FE002F41E2 /* AppIcon-40x40@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EAE2E8043FE002F41E2 /* AppIcon-40x40@2x.png */; };
+		F44E3EBE2E8043FE002F41E2 /* Contents.json in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EB52E8043FE002F41E2 /* Contents.json */; };
+		F44E3EBF2E8043FE002F41E2 /* AppIcon-57x57.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EB02E8043FE002F41E2 /* AppIcon-57x57.png */; };
+		F44E3EC02E8043FE002F41E2 /* AppIcon-20x20@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EA92E8043FE002F41E2 /* AppIcon-20x20@2x.png */; };
+		F44E3EC12E8043FE002F41E2 /* AppIcon-29x29@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EAD2E8043FE002F41E2 /* AppIcon-29x29@3x.png */; };
+		F44E3EC22E8043FE002F41E2 /* AppIcon-60x60@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EB32E8043FE002F41E2 /* AppIcon-60x60@3x.png */; };
+		F44E3EC32E8043FE002F41E2 /* AppIcon-57x57@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EB12E8043FE002F41E2 /* AppIcon-57x57@2x.png */; };
 		F4B2618D2E7CF7CE00592CFE /* AdminPlatformStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261672E7CF7CE00592CFE /* AdminPlatformStatsView.swift */; };
 		F4B2618E2E7CF7CE00592CFE /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B2616C2E7CF7CE00592CFE /* AuthView.swift */; };
 		F4B2618F2E7CF7CE00592CFE /* NotificationPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261772E7CF7CE00592CFE /* NotificationPreferencesView.swift */; };
@@ -76,6 +98,16 @@
 		F4B261D82E7CF7DF00592CFE /* GeocodingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261BB2E7CF7DF00592CFE /* GeocodingService.swift */; };
 		F4B261D92E7CF7DF00592CFE /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261C72E7CF7DF00592CFE /* WeatherService.swift */; };
 		F4B261DD2E7CF7ED00592CFE /* OrganizationRequestModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261DB2E7CF7ED00592CFE /* OrganizationRequestModel.swift */; };
+		F4B261DE2E7CF7ED00592CFE /* WeatherModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261DC2E7CF7ED00592CFE /* WeatherModels.swift */; };
+		F4B261E12E7CF7ED00592CFE /* ScheduledAlertExecutionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261DF2E7CF7ED00592CFE /* ScheduledAlertExecutionService.swift */; };
+		F4B261E22E7CF7ED00592CFE /* CalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261E02E7CF7ED00592CFE /* CalendarService.swift */; };
+		F4B261E42E7CF7ED00592CFE /* CalendarModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261E32E7CF7ED00592CFE /* CalendarModels.swift */; };
+		F4B261E62E7CF7ED00592CFE /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261E52E7CF7ED00592CFE /* CalendarView.swift */; };
+		F4B261EC2E7CF7ED00592CFE /* CreateEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261E72E7CF7ED00592CFE /* CreateEventView.swift */; };
+		F4B261ED2E7CF7ED00592CFE /* CreateScheduledAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261E82E7CF7ED00592CFE /* CreateScheduledAlertView.swift */; };
+		F4B261EE2E7CF7ED00592CFE /* CalendarFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261E92E7CF7ED00592CFE /* CalendarFilterView.swift */; };
+		F4B261EF2E7CF7ED00592CFE /* EventDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261EA2E7CF7ED00592CFE /* EventDetailView.swift */; };
+		F4B261F02E7CF7ED00592CFE /* ScheduledAlertDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261EB2E7CF7ED00592CFE /* ScheduledAlertDetailView.swift */; };
 		F4B261FA2E7CF8D400592CFE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F4B261F92E7CF8D400592CFE /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -97,22 +129,34 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0DF0F0AC4D3240BCABC7FC3D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		309593EB63984B70BE8E5A80 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		7949B36C2E500FD500C37BEC /* Chimeo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Chimeo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7949B3792E500FD700C37BEC /* ChimeoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChimeoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7949B3832E500FD700C37BEC /* ChimeoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChimeoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		7949B3992E50136900C37BEC /* IncidentModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IncidentModel.swift"; sourceTree = "<group>"; };
+		7949B3992E50136900C37BEC /* IncidentModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncidentModel.swift; sourceTree = "<group>"; };
 		7966DE3F2E5013C500AB33F7 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		7966DE402E5013C500AB33F7 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		7966DE412E5013C500AB33F7 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
-		7966DE492E5013F000AB33F7 /* AuthView 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AuthView 2.swift"; sourceTree = "<group>"; };
-		7966DE4A2E5013F000AB33F7 /* MapView 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MapView 2.swift"; sourceTree = "<group>"; };
-		7966DE4B2E5013F000AB33F7 /* IncidentDetailView 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IncidentDetailView 2.swift"; sourceTree = "<group>"; };
 		7966DE4C2E5013F000AB33F7 /* IncidentFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncidentFeedView.swift; sourceTree = "<group>"; };
-		7966DE4D2E5013F000AB33F7 /* ReportView 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ReportView 2.swift"; sourceTree = "<group>"; };
-		7966DE4E2E5013F000AB33F7 /* SettingsView 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView 2.swift"; sourceTree = "<group>"; };
 		7966DE4F2E5013F000AB33F7 /* Chimeo/ChimeoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chimeo/ChimeoApp.swift; sourceTree = "<group>"; };
-		7966DE502E5013F000AB33F7 /* Chimeo/ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chimeo/ContentView.swift; sourceTree = "<group>"; };
 		7966DE532E5013F000AB33F7 /* MyAlertsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyAlertsView.swift; sourceTree = "<group>"; };
+		F44E3EA62E80429C002F41E2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; name = Info.plist; path = Chimeo/Info.plist; sourceTree = "<group>"; };
+		F44E3EA72E8043EE002F41E2 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		F44E3EA92E8043FE002F41E2 /* AppIcon-20x20@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-20x20@2x.png"; sourceTree = "<group>"; };
+		F44E3EAA2E8043FE002F41E2 /* AppIcon-20x20@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-20x20@3x.png"; sourceTree = "<group>"; };
+		F44E3EAB2E8043FE002F41E2 /* AppIcon-29x29.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-29x29.png"; sourceTree = "<group>"; };
+		F44E3EAC2E8043FE002F41E2 /* AppIcon-29x29@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-29x29@2x.png"; sourceTree = "<group>"; };
+		F44E3EAD2E8043FE002F41E2 /* AppIcon-29x29@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-29x29@3x.png"; sourceTree = "<group>"; };
+		F44E3EAE2E8043FE002F41E2 /* AppIcon-40x40@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-40x40@2x.png"; sourceTree = "<group>"; };
+		F44E3EAF2E8043FE002F41E2 /* AppIcon-40x40@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-40x40@3x.png"; sourceTree = "<group>"; };
+		F44E3EB02E8043FE002F41E2 /* AppIcon-57x57.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-57x57.png"; sourceTree = "<group>"; };
+		F44E3EB12E8043FE002F41E2 /* AppIcon-57x57@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-57x57@2x.png"; sourceTree = "<group>"; };
+		F44E3EB22E8043FE002F41E2 /* AppIcon-60x60@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-60x60@2x.png"; sourceTree = "<group>"; };
+		F44E3EB32E8043FE002F41E2 /* AppIcon-60x60@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-60x60@3x.png"; sourceTree = "<group>"; };
+		F44E3EB42E8043FE002F41E2 /* AppIcon-1024x1024.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-1024x1024.png"; sourceTree = "<group>"; };
+		F44E3EB52E8043FE002F41E2 /* Contents.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Contents.json; sourceTree = "<group>"; };
+		F46AE5032E806376000211D5 /* Chimeo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = Chimeo.entitlements; path = Chimeo/Chimeo.entitlements; sourceTree = "<group>"; };
 		F4B261642E7CF7CE00592CFE /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		F4B261652E7CF7CE00592CFE /* AdminOrganizationManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminOrganizationManagementView.swift; sourceTree = "<group>"; };
 		F4B261662E7CF7CE00592CFE /* AdminOrganizationReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminOrganizationReviewView.swift; sourceTree = "<group>"; };
@@ -173,14 +217,40 @@
 		F4B261C62E7CF7DF00592CFE /* WeatherNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherNotificationManager.swift; sourceTree = "<group>"; };
 		F4B261C72E7CF7DF00592CFE /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
 		F4B261DB2E7CF7ED00592CFE /* OrganizationRequestModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizationRequestModel.swift; sourceTree = "<group>"; };
+		F4B261DC2E7CF7ED00592CFE /* WeatherModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherModels.swift; sourceTree = "<group>"; };
+		F4B261DF2E7CF7ED00592CFE /* ScheduledAlertExecutionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledAlertExecutionService.swift; sourceTree = "<group>"; };
+		F4B261E02E7CF7ED00592CFE /* CalendarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarService.swift; sourceTree = "<group>"; };
+		F4B261E32E7CF7ED00592CFE /* CalendarModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarModels.swift; sourceTree = "<group>"; };
+		F4B261E52E7CF7ED00592CFE /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
+		F4B261E72E7CF7ED00592CFE /* CreateEventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateEventView.swift; sourceTree = "<group>"; };
+		F4B261E82E7CF7ED00592CFE /* CreateScheduledAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateScheduledAlertView.swift; sourceTree = "<group>"; };
+		F4B261E92E7CF7ED00592CFE /* CalendarFilterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarFilterView.swift; sourceTree = "<group>"; };
+		F4B261EA2E7CF7ED00592CFE /* EventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDetailView.swift; sourceTree = "<group>"; };
+		F4B261EB2E7CF7ED00592CFE /* ScheduledAlertDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledAlertDetailView.swift; sourceTree = "<group>"; };
 		F4B261F92E7CF8D400592CFE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		F46AE4FE2E805AFF000211D5 /* App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = App;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		7949B3692E500FD500C37BEC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F44E3E892E803668002F41E2 /* GoogleSignIn in Frameworks */,
+				F44E3E8E2E8036A4002F41E2 /* FirebaseAuth in Frameworks */,
+				F44E3E962E8036A4002F41E2 /* FirebaseMessaging in Frameworks */,
+				F44E3E902E8036A4002F41E2 /* FirebaseDatabase in Frameworks */,
+				F44E3E942E8036A4002F41E2 /* FirebaseFunctions in Frameworks */,
+				F44E3E982E8036A4002F41E2 /* FirebaseStorage in Frameworks */,
+				F44E3E922E8036A4002F41E2 /* FirebaseFirestore in Frameworks */,
+				F44E3E8B2E803668002F41E2 /* GoogleSignInSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -204,12 +274,18 @@
 		7949B3632E500FD500C37BEC = {
 			isa = PBXGroup;
 			children = (
+				F46AE5032E806376000211D5 /* Chimeo.entitlements */,
+				F44E3EB62E8043FE002F41E2 /* AppIcon.appiconset */,
+				F44E3EA72E8043EE002F41E2 /* GoogleService-Info.plist */,
+				F44E3EA62E80429C002F41E2 /* Info.plist */,
 				F4B261F92E7CF8D400592CFE /* Assets.xcassets */,
+				F46AE4FE2E805AFF000211D5 /* App */,
 				7966DE422E5013CA00AB33F7 /* Views */,
 				7949B39B2E50138F00C37BEC /* Managers */,
 				7949B3982E50134D00C37BEC /* Models */,
+				0DF0F0AC4D3240BCABC7FC3D /* ContentView.swift */,
+				309593EB63984B70BE8E5A80 /* MainTabView.swift */,
 				7966DE4F2E5013F000AB33F7 /* Chimeo/ChimeoApp.swift */,
-				7966DE502E5013F000AB33F7 /* Chimeo/ContentView.swift */,
 				7949B36D2E500FD500C37BEC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -229,6 +305,8 @@
 			children = (
 				7949B3992E50136900C37BEC /* IncidentModel.swift */,
 				F4B261DB2E7CF7ED00592CFE /* OrganizationRequestModel.swift */,
+				F4B261DC2E7CF7ED00592CFE /* WeatherModels.swift */,
+				F4B261E32E7CF7ED00592CFE /* CalendarModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -254,6 +332,8 @@
 				F4B261C52E7CF7DF00592CFE /* UserProfileService.swift */,
 				F4B261C62E7CF7DF00592CFE /* WeatherNotificationManager.swift */,
 				F4B261C72E7CF7DF00592CFE /* WeatherService.swift */,
+				F4B261DF2E7CF7ED00592CFE /* ScheduledAlertExecutionService.swift */,
+				F4B261E02E7CF7ED00592CFE /* CalendarService.swift */,
 				7966DE3F2E5013C500AB33F7 /* LocationManager.swift */,
 				7966DE402E5013C500AB33F7 /* NotificationManager.swift */,
 				7966DE412E5013C500AB33F7 /* APIService.swift */,
@@ -305,15 +385,36 @@
 				F4B2618A2E7CF7CE00592CFE /* WeatherAlertView.swift */,
 				F4B2618B2E7CF7CE00592CFE /* WeatherSettingsView.swift */,
 				F4B2618C2E7CF7CE00592CFE /* WeatherWidgetView.swift */,
-				7966DE492E5013F000AB33F7 /* AuthView 2.swift */,
-				7966DE4A2E5013F000AB33F7 /* MapView 2.swift */,
-				7966DE4B2E5013F000AB33F7 /* IncidentDetailView 2.swift */,
+				F4B261E52E7CF7ED00592CFE /* CalendarView.swift */,
+				F4B261E72E7CF7ED00592CFE /* CreateEventView.swift */,
+				F4B261E82E7CF7ED00592CFE /* CreateScheduledAlertView.swift */,
+				F4B261E92E7CF7ED00592CFE /* CalendarFilterView.swift */,
+				F4B261EA2E7CF7ED00592CFE /* EventDetailView.swift */,
+				F4B261EB2E7CF7ED00592CFE /* ScheduledAlertDetailView.swift */,
 				7966DE4C2E5013F000AB33F7 /* IncidentFeedView.swift */,
-				7966DE4D2E5013F000AB33F7 /* ReportView 2.swift */,
-				7966DE4E2E5013F000AB33F7 /* SettingsView 2.swift */,
 				7966DE532E5013F000AB33F7 /* MyAlertsView.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		F44E3EB62E8043FE002F41E2 /* AppIcon.appiconset */ = {
+			isa = PBXGroup;
+			children = (
+				F44E3EA92E8043FE002F41E2 /* AppIcon-20x20@2x.png */,
+				F44E3EAA2E8043FE002F41E2 /* AppIcon-20x20@3x.png */,
+				F44E3EAB2E8043FE002F41E2 /* AppIcon-29x29.png */,
+				F44E3EAC2E8043FE002F41E2 /* AppIcon-29x29@2x.png */,
+				F44E3EAD2E8043FE002F41E2 /* AppIcon-29x29@3x.png */,
+				F44E3EAE2E8043FE002F41E2 /* AppIcon-40x40@2x.png */,
+				F44E3EAF2E8043FE002F41E2 /* AppIcon-40x40@3x.png */,
+				F44E3EB02E8043FE002F41E2 /* AppIcon-57x57.png */,
+				F44E3EB12E8043FE002F41E2 /* AppIcon-57x57@2x.png */,
+				F44E3EB22E8043FE002F41E2 /* AppIcon-60x60@2x.png */,
+				F44E3EB32E8043FE002F41E2 /* AppIcon-60x60@3x.png */,
+				F44E3EB42E8043FE002F41E2 /* AppIcon-1024x1024.png */,
+				F44E3EB52E8043FE002F41E2 /* Contents.json */,
+			);
+			path = AppIcon.appiconset;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -331,8 +432,19 @@
 			);
 			dependencies = (
 			);
+			fileSystemSynchronizedGroups = (
+				F46AE4FE2E805AFF000211D5 /* App */,
+			);
 			name = Chimeo;
 			packageProductDependencies = (
+				F44E3E882E803668002F41E2 /* GoogleSignIn */,
+				F44E3E8A2E803668002F41E2 /* GoogleSignInSwift */,
+				F44E3E8D2E8036A4002F41E2 /* FirebaseAuth */,
+				F44E3E8F2E8036A4002F41E2 /* FirebaseDatabase */,
+				F44E3E912E8036A4002F41E2 /* FirebaseFirestore */,
+				F44E3E932E8036A4002F41E2 /* FirebaseFunctions */,
+				F44E3E952E8036A4002F41E2 /* FirebaseMessaging */,
+				F44E3E972E8036A4002F41E2 /* FirebaseStorage */,
 			);
 			productName = Chimeo;
 			productReference = 7949B36C2E500FD500C37BEC /* Chimeo.app */;
@@ -410,6 +522,10 @@
 			);
 			mainGroup = 7949B3632E500FD500C37BEC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				F44E3E872E803668002F41E2 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				F44E3E8C2E8036A4002F41E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7949B36D2E500FD500C37BEC /* Products */;
 			projectDirPath = "";
@@ -428,6 +544,20 @@
 			buildActionMask = 2147483647;
 			files = (
 				F4B261FA2E7CF8D400592CFE /* Assets.xcassets in Resources */,
+				F44E3EA82E8043EE002F41E2 /* GoogleService-Info.plist in Resources */,
+				F44E3EB72E8043FE002F41E2 /* AppIcon-20x20@3x.png in Resources */,
+				F44E3EB82E8043FE002F41E2 /* AppIcon-29x29.png in Resources */,
+				F44E3EB92E8043FE002F41E2 /* AppIcon-29x29@2x.png in Resources */,
+				F44E3EBA2E8043FE002F41E2 /* AppIcon-40x40@3x.png in Resources */,
+				F44E3EBB2E8043FE002F41E2 /* AppIcon-60x60@2x.png in Resources */,
+				F44E3EBC2E8043FE002F41E2 /* AppIcon-1024x1024.png in Resources */,
+				F44E3EBD2E8043FE002F41E2 /* AppIcon-40x40@2x.png in Resources */,
+				F44E3EBE2E8043FE002F41E2 /* Contents.json in Resources */,
+				F44E3EBF2E8043FE002F41E2 /* AppIcon-57x57.png in Resources */,
+				F44E3EC02E8043FE002F41E2 /* AppIcon-20x20@2x.png in Resources */,
+				F44E3EC12E8043FE002F41E2 /* AppIcon-29x29@3x.png in Resources */,
+				F44E3EC22E8043FE002F41E2 /* AppIcon-60x60@3x.png in Resources */,
+				F44E3EC32E8043FE002F41E2 /* AppIcon-57x57@2x.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -453,11 +583,23 @@
 			buildActionMask = 2147483647;
 			files = (
 				7949B39A2E50136900C37BEC /* IncidentModel.swift in Sources */,
+				F4B261DE2E7CF7ED00592CFE /* WeatherModels.swift in Sources */,
+				F4B261E42E7CF7ED00592CFE /* CalendarModels.swift in Sources */,
+				F4B261E62E7CF7ED00592CFE /* CalendarView.swift in Sources */,
+				F4B261EC2E7CF7ED00592CFE /* CreateEventView.swift in Sources */,
+				F4B261ED2E7CF7ED00592CFE /* CreateScheduledAlertView.swift in Sources */,
+				F4B261EE2E7CF7ED00592CFE /* CalendarFilterView.swift in Sources */,
+				F4B261EF2E7CF7ED00592CFE /* EventDetailView.swift in Sources */,
+				F4B261F02E7CF7ED00592CFE /* ScheduledAlertDetailView.swift in Sources */,
+				0DF0F0AD4D3240BCABC7FC3E /* ContentView.swift in Sources */,
+				309593EC63984B70BE8E5A81 /* MainTabView.swift in Sources */,
 				7966DE512E5013F000AB33F7 /* Chimeo/ChimeoApp.swift in Sources */,
-				7966DE522E5013F000AB33F7 /* Chimeo/ContentView.swift in Sources */,
 				F4B2618D2E7CF7CE00592CFE /* AdminPlatformStatsView.swift in Sources */,
 				F4B2618E2E7CF7CE00592CFE /* AuthView.swift in Sources */,
 				F4B261DD2E7CF7ED00592CFE /* OrganizationRequestModel.swift in Sources */,
+				F4B261E12E7CF7ED00592CFE /* ScheduledAlertExecutionService.swift in Sources */,
+				F4B261E22E7CF7ED00592CFE /* CalendarService.swift in Sources */,
+				7966DE5E2E5013F000AB33F7 /* NotificationManager.swift in Sources */,
 				F4B2618F2E7CF7CE00592CFE /* NotificationPreferencesView.swift in Sources */,
 				F4B261902E7CF7CE00592CFE /* AdminUserManagementView.swift in Sources */,
 				F4B261912E7CF7CE00592CFE /* NotificationTestView.swift in Sources */,
@@ -516,9 +658,7 @@
 				F4B261D72E7CF7DF00592CFE /* BiometricAuthManager.swift in Sources */,
 				F4B261D82E7CF7DF00592CFE /* GeocodingService.swift in Sources */,
 				F4B261D92E7CF7DF00592CFE /* WeatherService.swift in Sources */,
-				7966DE592E5013F000AB33F7 /* MapView 2.swift in Sources */,
 				7966DE5A2E5013F000AB33F7 /* IncidentFeedView.swift in Sources */,
-				7966DE5B2E5013F000AB33F7 /* SettingsView 2.swift in Sources */,
 				7966DE5C2E5013F000AB33F7 /* APIService.swift in Sources */,
 				7966DE5D2E5013F000AB33F7 /* LocationManager.swift in Sources */,
 			);
@@ -680,11 +820,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Chimeo/Chimeo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = HN6CFCKN72;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Chimeo/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Chimeo needs access to your camera to take photos for incident reports.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Chimeo uses Face ID to provide secure and convenient authentication for accessing your account.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Chimeo needs access to your location to show you relevant alerts and incidents in your area, even when the app is in the background.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Chimeo needs access to your location to show you relevant alerts and incidents in your area.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Chimeo needs access to your microphone to record audio for incident reports.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Chimeo needs access to your photo library to select images for incident reports.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -708,11 +856,19 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Chimeo/Chimeo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = HN6CFCKN72;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Chimeo/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Chimeo needs access to your camera to take photos for incident reports.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Chimeo uses Face ID to provide secure and convenient authentication for accessing your account.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Chimeo needs access to your location to show you relevant alerts and incidents in your area, even when the app is in the background.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Chimeo needs access to your location to show you relevant alerts and incidents in your area.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Chimeo needs access to your microphone to record audio for incident reports.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Chimeo needs access to your photo library to select images for incident reports.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -843,6 +999,68 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F44E3E872E803668002F41E2 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
+			};
+		};
+		F44E3E8C2E8036A4002F41E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.3.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F44E3E882E803668002F41E2 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F44E3E872E803668002F41E2 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		F44E3E8A2E803668002F41E2 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F44E3E872E803668002F41E2 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+		F44E3E8D2E8036A4002F41E2 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F44E3E8C2E8036A4002F41E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		F44E3E8F2E8036A4002F41E2 /* FirebaseDatabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F44E3E8C2E8036A4002F41E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseDatabase;
+		};
+		F44E3E912E8036A4002F41E2 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F44E3E8C2E8036A4002F41E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		F44E3E932E8036A4002F41E2 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F44E3E8C2E8036A4002F41E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
+		};
+		F44E3E952E8036A4002F41E2 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F44E3E8C2E8036A4002F41E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		F44E3E972E8036A4002F41E2 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F44E3E8C2E8036A4002F41E2 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 7949B3642E500FD500C37BEC /* Project object */;
 }

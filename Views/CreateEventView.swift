@@ -168,14 +168,12 @@ struct CreateEventView: View {
             schoolLocation: nil,
             alertRadius: 10.0,
             preferences: UserPreferences(
-                notificationsEnabled: true,
-                criticalAlertsEnabled: true,
-                weatherAlertsEnabled: true,
+                incidentTypes: Array(IncidentType.allCases),
+                criticalAlertsOnly: false,
+                pushNotifications: true,
                 quietHoursEnabled: false,
-                quietHoursStart: Date(),
-                quietHoursEnd: Date(),
-                incidentTypes: Set(IncidentType.allCases),
-                alertRadius: 10.0
+                quietHoursStart: nil,
+                quietHoursEnd: nil
             ),
             createdAt: Date(),
             isAdmin: false

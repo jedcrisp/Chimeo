@@ -368,12 +368,16 @@ struct AuthView: View {
                 isSigningIn = false
                 print("🎉 Successfully signed in with Google: \(user.name ?? "Unknown")")
                 print("🔐 AuthView: Checking authentication state - isAuthenticated: \(apiService.isAuthenticated), currentUser: \(apiService.currentUser?.email ?? "nil")")
+                print("🔍 DEBUG: AuthView after Google sign-in - isAuthenticated: \(apiService.isAuthenticated)")
+                print("🔍 DEBUG: AuthView after Google sign-in - currentUser: \(apiService.currentUser?.id ?? "nil")")
             }
         } catch {
             await MainActor.run {
                 isSigningIn = false
                 signInError = "Google sign in failed: \(error.localizedDescription)"
                 print("❌ Google sign in error: \(error)")
+                print("🔍 DEBUG: AuthView Google sign-in error - isAuthenticated: \(apiService.isAuthenticated)")
+                print("🔍 DEBUG: AuthView Google sign-in error - currentUser: \(apiService.currentUser?.id ?? "nil")")
             }
         }
     }
@@ -401,12 +405,16 @@ struct AuthView: View {
             await MainActor.run {
                 isSigningIn = false
                 print("🎉 Successfully signed in with Email: \(user.name ?? "Unknown")")
+                print("🔍 DEBUG: AuthView after email sign-in - isAuthenticated: \(apiService.isAuthenticated)")
+                print("🔍 DEBUG: AuthView after email sign-in - currentUser: \(apiService.currentUser?.id ?? "nil")")
             }
         } catch {
             await MainActor.run {
                 isSigningIn = false
                 signInError = "Email sign in failed: \(error.localizedDescription)"
                 print("❌ Email sign in error: \(error)")
+                print("🔍 DEBUG: AuthView email sign-in error - isAuthenticated: \(apiService.isAuthenticated)")
+                print("🔍 DEBUG: AuthView email sign-in error - currentUser: \(apiService.currentUser?.id ?? "nil")")
             }
         }
     }

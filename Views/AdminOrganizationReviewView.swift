@@ -1,5 +1,6 @@
 import SwiftUI
 import FirebaseFirestore
+import FirebaseCore
 
 struct AdminOrganizationReviewView: View {
     @EnvironmentObject var apiService: APIService
@@ -224,6 +225,134 @@ struct AdminOrganizationReviewView: View {
         setupRealtimeListener()
     }
     
+    // MARK: - Real-time Listener Methods
+    private func setupRealtimeListener() {
+        print("🔄 Setting up real-time listener for organization requests...")
+        
+        let db = Firestore.firestore()
+        var query: Query = db.collection("organizationRequests")
+        
+        // Apply status filter if selected
+        if let status = selectedStatus {
+            query = query.whereField("status", isEqualTo: status.rawValue)
+        }
+        
+        // Set up real-time listener
+        listener = query.addSnapshotListener { [self] snapshot, error in
+            if let error = error {
+                print("❌ Error listening to organization requests: \(error)")
+                return
+            }
+            
+            guard let snapshot = snapshot else {
+                print("⚠️ No snapshot received from organization requests listener")
+                return
+            }
+            
+            print("📡 Received \(snapshot.documentChanges.count) changes for organization requests")
+            
+            var requests: [OrganizationRequest] = []
+            
+            for document in snapshot.documents {
+                do {
+                    let data = document.data()
+                    print("📄 Processing real-time request: \(document.documentID)")
+                    print("   - Status: \(data["status"] as? String ?? "nil")")
+                    print("   - Name: \(data["name"] as? String ?? "nil")")
+                    
+                    let request = try parseOrganizationRequestFromFirestore(document: document, data: data)
+                    requests.append(request)
+                    print("✅ Successfully parsed real-time request: \(request.name)")
+                } catch {
+                    print("⚠️ Error parsing real-time organization request \(document.documentID): \(error)")
+                    continue
+                }
+            }
+            
+            // Sort by submission date (newest first)
+            requests.sort { request1, request2 in
+                request1.submittedAt > request2.submittedAt
+            }
+            
+            DispatchQueue.main.async {
+                self.organizationRequests = requests
+                self.isLoading = false
+                print("✅ Updated organization requests list with \(requests.count) requests")
+            }
+        }
+        
+        print("✅ Real-time listener set up successfully")
+    }
+    
+    private func removeRealtimeListener() {
+        print("🔄 Removing real-time listener for organization requests...")
+        listener?.remove()
+        listener = nil
+        print("✅ Real-time listener removed")
+    }
+    
+    private func parseOrganizationRequestFromFirestore(document: QueryDocumentSnapshot, data: [String: Any]) throws -> OrganizationRequest {
+        print("🔍 Parsing organization request document: \(document.documentID)")
+        print("   - Available fields: \(data.keys.sorted())")
+        
+        let id = data["id"] as? String ?? document.documentID
+        let name = data["name"] as? String ?? data["organizationName"] as? String ?? "Unknown Organization"
+        print("   - Parsed name: \(name)")
+        let typeString = data["type"] as? String ?? data["organizationType"] as? String ?? "other"
+        let organizationType = OrganizationType(rawValue: typeString) ?? .other
+        let description = data["description"] as? String ?? ""
+        let website = data["website"] as? String
+        let phone = data["phone"] as? String
+        let email = data["email"] as? String ?? data["officeEmail"] as? String ?? ""
+        
+        // Parse location
+        let locationData = data["location"] as? [String: Any] ?? [:]
+        let location = Location(
+            latitude: locationData["latitude"] as? Double ?? 0.0,
+            longitude: locationData["longitude"] as? Double ?? 0.0,
+            address: locationData["address"] as? String ?? data["address"] as? String ?? "",
+            city: locationData["city"] as? String ?? data["city"] as? String ?? "",
+            state: locationData["state"] as? String ?? data["state"] as? String ?? "",
+            zipCode: locationData["zipCode"] as? String ?? data["zipCode"] as? String ?? ""
+        )
+        
+        // Parse timestamps
+        let submittedAt = (data["submittedAt"] as? Timestamp)?.dateValue() ?? Date()
+        let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
+        
+        // Parse status
+        let statusString = data["status"] as? String ?? "pending"
+        let status = RequestStatus(rawValue: statusString) ?? .pending
+        
+        // Parse admin info - handle both web form field names and app field names
+        let adminFirstName = data["adminFirstName"] as? String ?? ""
+        let adminLastName = data["adminLastName"] as? String ?? ""
+        let adminEmail = data["adminEmail"] as? String ?? ""
+        
+        // Build contact person name from admin fields if contact fields are empty
+        let contactPersonName = data["contactPersonName"] as? String ?? 
+            (adminFirstName.isEmpty && adminLastName.isEmpty ? "" : "\(adminFirstName) \(adminLastName)".trimmingCharacters(in: .whitespaces))
+        
+        return OrganizationRequest(
+            name: name,
+            type: organizationType,
+            description: description,
+            website: website,
+            phone: phone,
+            email: email,
+            address: location.address ?? "",
+            city: location.city ?? "",
+            state: location.state ?? "",
+            zipCode: location.zipCode ?? "",
+            contactPersonName: contactPersonName,
+            contactPersonTitle: data["contactPersonTitle"] as? String ?? "",
+            contactPersonPhone: data["contactPersonPhone"] as? String ?? data["phone"] as? String ?? "",
+            contactPersonEmail: data["contactPersonEmail"] as? String ?? data["contactEmail"] as? String ?? adminEmail,
+            adminPassword: data["adminPassword"] as? String ?? "",
+            status: status
+        )
+    }
+    
     private func submitReview() {
         guard let request = selectedRequest else { return }
         
@@ -418,8 +547,6 @@ struct OrganizationRequestDetailView: View {
                     // Submission Info Card
                     submissionCard
                     
-                    // Review Action Buttons
-                    reviewButtons
                 }
                 .padding()
             }
@@ -683,66 +810,6 @@ struct OrganizationRequestDetailView: View {
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
     
-    private var reviewButtons: some View {
-        VStack(spacing: 12) {
-            // Approve
-            Button(action: {
-                onReview(.approved)
-                dismiss()
-            }) {
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                    Text("Approve")
-                }
-                .font(.title3)
-                .fontWeight(.semibold)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.green)
-                .cornerRadius(12)
-            }
-            
-            HStack(spacing: 12) {
-                // Request More Info
-                Button(action: {
-                    onReview(.requiresMoreInfo)
-                    dismiss()
-                }) {
-                    HStack {
-                        Image(systemName: "questionmark.circle.fill")
-                        Text("Request More Info")
-                    }
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.orange)
-                    .cornerRadius(10)
-                }
-                
-                // Reject
-                Button(action: {
-                    onReview(.rejected)
-                    dismiss()
-                }) {
-                    HStack {
-                        Image(systemName: "xmark.circle.fill")
-                        Text("Reject")
-                    }
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.red)
-                    .cornerRadius(10)
-                }
-            }
-        }
-        .padding(.top, 8)
-    }
     
     // MARK: - Helper Properties
     
@@ -772,123 +839,6 @@ struct OrganizationRequestDetailView: View {
         }
     }
     
-    // MARK: - Real-time Listener Methods
-    private func setupRealtimeListener() {
-        print("🔄 Setting up real-time listener for organization requests...")
-        
-        let db = Firestore.firestore()
-        var query: Query = db.collection("organizationRequests")
-        
-        // Apply status filter if selected
-        if let status = selectedStatus {
-            query = query.whereField("status", isEqualTo: status.rawValue)
-        }
-        
-        // Set up real-time listener
-        listener = query.addSnapshotListener { [self] snapshot, error in
-            if let error = error {
-                print("❌ Error listening to organization requests: \(error)")
-                return
-            }
-            
-            guard let snapshot = snapshot else {
-                print("⚠️ No snapshot received from organization requests listener")
-                return
-            }
-            
-            print("📡 Received \(snapshot.documentChanges.count) changes for organization requests")
-            
-            var requests: [OrganizationRequest] = []
-            
-            for document in snapshot.documents {
-                do {
-                    let data = document.data()
-                    print("📄 Processing real-time request: \(document.documentID)")
-                    print("   - Status: \(data["status"] as? String ?? "nil")")
-                    print("   - Name: \(data["name"] as? String ?? "nil")")
-                    
-                    let request = try parseOrganizationRequestFromFirestore(document: document, data: data)
-                    requests.append(request)
-                    print("✅ Successfully parsed real-time request: \(request.name)")
-                } catch {
-                    print("⚠️ Error parsing real-time organization request \(document.documentID): \(error)")
-                    continue
-                }
-            }
-            
-            // Sort by submission date (newest first)
-            requests.sort { request1, request2 in
-                request1.submittedAt > request2.submittedAt
-            }
-            
-            DispatchQueue.main.async {
-                self.organizationRequests = requests
-                self.isLoading = false
-                print("✅ Updated organization requests list with \(requests.count) requests")
-            }
-        }
-        
-        print("✅ Real-time listener set up successfully")
-    }
-    
-    private func removeRealtimeListener() {
-        print("🔄 Removing real-time listener for organization requests...")
-        listener?.remove()
-        listener = nil
-        print("✅ Real-time listener removed")
-    }
-    
-    private func parseOrganizationRequestFromFirestore(document: QueryDocumentSnapshot, data: [String: Any]) throws -> OrganizationRequest {
-        let id = data["id"] as? String ?? document.documentID
-        let name = data["name"] as? String ?? data["organizationName"] as? String ?? "Unknown Organization"
-        let typeString = data["type"] as? String ?? data["organizationType"] as? String ?? "other"
-        let organizationType = OrganizationType(rawValue: typeString) ?? .other
-        let description = data["description"] as? String ?? ""
-        let website = data["website"] as? String
-        let phone = data["phone"] as? String
-        let email = data["email"] as? String ?? data["officeEmail"] as? String ?? ""
-        
-        // Parse location
-        let locationData = data["location"] as? [String: Any] ?? [:]
-        let location = OrganizationLocation(
-            latitude: locationData["latitude"] as? Double ?? 0.0,
-            longitude: locationData["longitude"] as? Double ?? 0.0,
-            address: locationData["address"] as? String ?? data["address"] as? String ?? "",
-            city: locationData["city"] as? String ?? data["city"] as? String ?? "",
-            state: locationData["state"] as? String ?? data["state"] as? String ?? "",
-            zipCode: locationData["zipCode"] as? String ?? data["zipCode"] as? String ?? ""
-        )
-        
-        // Parse timestamps
-        let submittedAt = (data["submittedAt"] as? Timestamp)?.dateValue() ?? Date()
-        let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
-        
-        // Parse status
-        let statusString = data["status"] as? String ?? "pending"
-        let status = RequestStatus(rawValue: statusString) ?? .pending
-        
-        // Parse admin info
-        let adminFirstName = data["adminFirstName"] as? String ?? ""
-        let adminLastName = data["adminLastName"] as? String ?? ""
-        let adminEmail = data["adminEmail"] as? String ?? ""
-        
-        return OrganizationRequest(
-            id: id,
-            name: name,
-            type: organizationType,
-            description: description,
-            website: website,
-            phone: phone,
-            email: email,
-            location: location,
-            submittedAt: submittedAt,
-            updatedAt: updatedAt,
-            status: status,
-            adminFirstName: adminFirstName,
-            adminLastName: adminLastName,
-            adminEmail: adminEmail
-        )
-    }
 }
 
 

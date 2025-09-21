@@ -3,6 +3,7 @@ import SwiftUI
 import Combine
 import FirebaseAuth
 import FirebaseFirestore
+import FirebaseCore
 
 // MARK: - Follow Status Manager
 // Using the dedicated FollowStatusManager from its own file
@@ -34,18 +35,38 @@ class ServiceCoordinator: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     init() {
-        // Initialize services
-        self.userService = UserManagementService()
-        self.authService = AuthenticationService(userService: userService)
-        self.organizationService = OrganizationService(userService: userService)
-        self.groupService = OrganizationGroupService()
-        self.notificationService = iOSNotificationService()
-        self.alertService = OrganizationAlertService(notificationService: notificationService)
-        self.fileService = FileUploadService()
-        self.incidentService = IncidentService()
-        self.userProfileService = UserProfileService()
-        self.followingService = OrganizationFollowingService()
-        self.developmentService = DevelopmentService()
+        // Check if Firebase is available before initializing Firebase-dependent services
+        let isFirebaseAvailable = FirebaseApp.app() != nil
+        
+        if isFirebaseAvailable {
+            print("✅ Firebase available - initializing all services")
+            // Initialize services
+            self.userService = UserManagementService()
+            self.authService = AuthenticationService(userService: userService)
+            self.organizationService = OrganizationService(userService: userService)
+            self.groupService = OrganizationGroupService()
+            self.notificationService = iOSNotificationService()
+            self.alertService = OrganizationAlertService(notificationService: notificationService)
+            self.fileService = FileUploadService()
+            self.incidentService = IncidentService()
+            self.userProfileService = UserProfileService()
+            self.followingService = OrganizationFollowingService()
+            self.developmentService = DevelopmentService()
+        } else {
+            print("❌ Firebase not available - initializing limited services")
+            // Initialize only non-Firebase services
+            self.userService = UserManagementService()
+            self.authService = AuthenticationService(userService: userService)
+            self.organizationService = OrganizationService(userService: userService)
+            self.groupService = OrganizationGroupService()
+            self.notificationService = iOSNotificationService()
+            self.alertService = OrganizationAlertService(notificationService: notificationService)
+            self.fileService = FileUploadService()
+            self.incidentService = IncidentService()
+            self.userProfileService = UserProfileService()
+            self.followingService = OrganizationFollowingService()
+            self.developmentService = DevelopmentService()
+        }
         
         print("🔍 ServiceCoordinator initialized")
         print("   AuthService: \(authService)")
@@ -70,8 +91,8 @@ class ServiceCoordinator: ObservableObject {
         
         print("✅ ServiceCoordinator setup complete")
         
-        // Check and restore authentication state on initialization
-        checkAndRestoreAuthenticationState()
+        // Don't automatically restore authentication - force login
+        print("🔐 ServiceCoordinator: Forcing login - not restoring authentication state")
     }
     
     // MARK: - Authentication Methods (delegate to AuthenticationService)

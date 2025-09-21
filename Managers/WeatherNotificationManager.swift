@@ -7,14 +7,15 @@ import CoreLocation
 
 
 
-class WeatherNotificationManager: ObservableObject {
+class WeatherNotificationManager: NSObject, ObservableObject {
     @Published var hasPermission = false
     @Published var criticalAlertsEnabled = true
     @Published var weatherAlertsEnabled = true
     
     private let notificationCenter = UNUserNotificationCenter.current()
     
-    init() {
+    override init() {
+        super.init()
         checkPermissionStatus()
         loadSettings()
     }

@@ -51,43 +51,49 @@ class LocationManager: NSObject, ObservableObject, @unchecked Sendable {
     func requestLocationPermission() {
         print("📍 Requesting location permission...")
         
-        do {
-            switch locationManager.authorizationStatus {
-            case .notDetermined:
-                print("📍 Location permission not determined, requesting...")
-                locationManager.requestWhenInUseAuthorization()
-            case .restricted, .denied:
-                print("📍 Location permission denied or restricted")
+        // Check current authorization status first
+        let currentStatus = locationManager.authorizationStatus
+        
+        switch currentStatus {
+        case .notDetermined:
+            print("📍 Location permission not determined, requesting...")
+            locationManager.requestWhenInUseAuthorization()
+        case .restricted, .denied:
+            print("📍 Location permission denied or restricted")
+            DispatchQueue.main.async {
                 self.hasError = true
                 self.errorMessage = "Location services are disabled"
-            case .authorizedWhenInUse, .authorizedAlways:
-                print("📍 Location permission already granted")
-                startLocationUpdates()
-            @unknown default:
-                print("📍 Unknown location authorization status")
+                self.isLocationEnabled = false
+            }
+        case .authorizedWhenInUse, .authorizedAlways:
+            print("📍 Location permission already granted")
+            // Update the published property
+            DispatchQueue.main.async {
+                self.authorizationStatus = currentStatus
+                self.isLocationEnabled = true
+            }
+            // Start location updates without calling requestLocationPermission again
+            startLocationUpdates()
+        @unknown default:
+            print("📍 Unknown location authorization status")
+            DispatchQueue.main.async {
                 self.hasError = true
                 self.errorMessage = "Unknown location authorization status"
+                self.isLocationEnabled = false
             }
-        } catch {
-            print("❌ Error requesting location permission: \(error)")
-            self.hasError = true
-            self.errorMessage = "Error requesting location permission"
         }
     }
     
     func startLocationUpdates() {
         print("📍 startLocationUpdates() called")
         
-        // Request location permission if not already granted
-        if authorizationStatus == .notDetermined {
-            print("📍 No permission yet, requesting...")
-            requestLocationPermission()
-            return
-        }
+        // Check current authorization status directly from locationManager
+        let currentStatus = locationManager.authorizationStatus
         
-        // Check if we have permission
-        guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
-            print("❌ No location permission, cannot start updates")
+        // If permission is not determined, we should not start updates
+        // The authorization change delegate will handle starting updates
+        guard currentStatus == .authorizedWhenInUse || currentStatus == .authorizedAlways else {
+            print("❌ No location permission (status: \(currentStatus.rawValue)), cannot start updates")
             return
         }
         
@@ -232,7 +238,10 @@ extension LocationManager: CLLocationManagerDelegate {
             
             if self.isLocationEnabled {
                 print("✅ Location permission granted, starting updates...")
-                self.startLocationUpdates()
+                // Only start updates if we don't already have a timer running
+                if self.locationUpdateTimer == nil {
+                    self.startLocationUpdates()
+                }
             } else {
                 print("❌ Location permission not granted, stopping updates...")
                 self.stopLocationUpdates()

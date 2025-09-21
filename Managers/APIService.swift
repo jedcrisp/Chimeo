@@ -27,21 +27,36 @@ class APIService: ObservableObject {
     @Published var pendingRequests: [OrganizationRequest] = []
     
     init() {
-        // Check for stored auth token
-        if let token = UserDefaults.standard.string(forKey: "authToken") {
-            self.authToken = token
-            self.isAuthenticated = true
-            
-            // Load user profile data from defaults
-            loadUserProfileFromDefaults()
-        }
+        print("🚀 APIService: Initializing...")
+        
+        // Initialize with default values
+        self.isAuthenticated = false
+        self.authToken = nil
+        self.currentUser = nil
+        
+        print("🔐 APIService: Set initial state - isAuthenticated: \(self.isAuthenticated)")
+        
+        // Try to restore authentication state from stored data
+        restoreAuthenticationState()
+        
+        print("🔐 APIService: Forcing login screen - isAuthenticated: \(self.isAuthenticated)")
+        print("🔍 DEBUG: APIService initialized - isAuthenticated: \(self.isAuthenticated)")
+        print("🔍 DEBUG: APIService currentUser: \(self.currentUser?.id ?? "nil")")
         
         // Set up Firebase Auth state listener
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
             DispatchQueue.main.async {
                 if let user = user {
                     print("🔥 Firebase Auth: User signed in - \(user.email ?? "unknown")")
-                    // Don't automatically set isAuthenticated here - let the sign-in methods handle it
+                    print("🔐 APIService: Current isAuthenticated = \(self?.isAuthenticated ?? false)")
+                    
+                    // If we have a Firebase user but not authenticated, try to restore authentication
+                    if let strongSelf = self, !strongSelf.isAuthenticated {
+                        print("🔄 Firebase user exists but APIService not authenticated - attempting to restore...")
+                        Task {
+                            await strongSelf.restoreAuthenticationState()
+                        }
+                    }
                     
                     // If we have a signed-in user but no organizations loaded, load them
                     if let strongSelf = self, strongSelf.isAuthenticated && strongSelf.organizations.isEmpty {
@@ -51,9 +66,19 @@ class APIService: ObservableObject {
                     }
                 } else {
                     print("🔥 Firebase Auth: User signed out")
-                    self?.isAuthenticated = false
-                    self?.currentUser = nil
-                    self?.organizations = [] // Clear organizations on sign out
+                    // Only clear authentication state if we were previously authenticated
+                    // This prevents clearing state on initial app launch when no user was signed in
+                    if let strongSelf = self, strongSelf.isAuthenticated {
+                        print("🔐 Clearing authentication state after sign out")
+                        strongSelf.isAuthenticated = false
+                        strongSelf.currentUser = nil
+                        strongSelf.organizations = [] // Clear organizations on sign out
+                        strongSelf.authToken = nil
+                        UserDefaults.standard.removeObject(forKey: "authToken")
+                    } else {
+                        print("🔐 No previous authentication state to clear")
+                    }
+                    UserDefaults.standard.removeObject(forKey: "currentUser")
                 }
             }
         }
@@ -70,6 +95,57 @@ class APIService: ObservableObject {
         #endif
         
 
+    }
+    
+    // MARK: - Authentication State Restoration
+    private func restoreAuthenticationState() {
+        print("🔄 Attempting to restore authentication state...")
+        
+        // Check if we have a stored auth token
+        if let storedToken = UserDefaults.standard.string(forKey: "authToken") {
+            print("🔑 Found stored auth token")
+            self.authToken = storedToken
+        }
+        
+        // Check if we have a stored user
+        if let userData = UserDefaults.standard.data(forKey: "currentUser"),
+           let storedUser = try? JSONDecoder().decode(User.self, from: userData) {
+            print("👤 Found stored user: \(storedUser.name ?? "Unknown")")
+            self.currentUser = storedUser
+            
+            // Store user ID in UserDefaults for FCM token registration
+            UserDefaults.standard.set(storedUser.id, forKey: "currentUserId")
+            print("✅ User ID stored in UserDefaults: \(storedUser.id)")
+        }
+        
+        // Check if Firebase Auth has a current user
+        if let firebaseUser = Auth.auth().currentUser {
+            print("🔥 Firebase Auth has current user: \(firebaseUser.email ?? "unknown")")
+            
+            // If we have both stored user and Firebase user, restore authentication
+            if currentUser != nil {
+                print("✅ Restoring authentication state...")
+                self.isAuthenticated = true
+                
+                // Load organizations for the restored user
+                Task {
+                    await loadOrganizations()
+                }
+            } else {
+                print("⚠️ Firebase user exists but no stored user data - signing out")
+                do {
+                    try Auth.auth().signOut()
+                } catch {
+                    print("❌ Error signing out: \(error)")
+                }
+            }
+        } else {
+            print("🔐 No Firebase Auth user - staying unauthenticated")
+        }
+        
+        print("🔐 Authentication state restored - isAuthenticated: \(self.isAuthenticated)")
+        print("🔍 DEBUG: APIService currentUser: \(self.currentUser?.id ?? "nil")")
+        print("🔍 DEBUG: APIService isAuthenticated: \(self.isAuthenticated)")
     }
     
     // MARK: - Development Helper
@@ -301,8 +377,15 @@ class APIService: ObservableObject {
         
         print("👤 User object created: \(newUser.id), email: \(newUser.email ?? "nil"), name: \(newUser.name ?? "nil")")
         
-        // Save user profile
+        // Save user profile and auth token
         await saveUserProfileToDefaults(newUser)
+        
+        // Save auth token for session persistence
+        if let idToken = result.user.idToken?.tokenString {
+            self.authToken = idToken
+            UserDefaults.standard.set(idToken, forKey: "authToken")
+            print("🔐 Auth token saved for session persistence")
+        }
         
         // Update the service state
         print("🔄 About to update APIService state on MainActor...")
@@ -405,11 +488,34 @@ class APIService: ObservableObject {
                 isAdmin: existingUser.isAdmin
             )
             
+            // Save auth token for session persistence
+            do {
+                let idToken = try await authResult.user.getIDToken()
+                self.authToken = idToken
+                UserDefaults.standard.set(idToken, forKey: "authToken")
+                print("🔐 Auth token saved for session persistence")
+            } catch {
+                print("❌ Failed to get ID token: \(error)")
+            }
+            
             // Update the service state
             await MainActor.run {
                 self.currentUser = userToUse
                 self.isAuthenticated = true
+                print("🔐 APIService: Authentication state updated - isAuthenticated: \(self.isAuthenticated)")
+                print("🔐 APIService: Current user set - \(self.currentUser?.id ?? "nil")")
+                print("🔍 DEBUG: APIService after MainActor.run - isAuthenticated: \(self.isAuthenticated)")
+                print("🔍 DEBUG: APIService after MainActor.run - currentUser: \(self.currentUser?.id ?? "nil")")
             }
+            
+            // Store user ID in UserDefaults for FCM token registration
+            UserDefaults.standard.set(userToUse.id, forKey: "currentUserId")
+            print("✅ User ID stored in UserDefaults: \(userToUse.id)")
+            
+            // Debug: Verify the user ID was actually stored
+            let storedUserId = UserDefaults.standard.string(forKey: "currentUserId")
+            print("🔍 DEBUG: Verification - stored user ID: \(storedUserId ?? "nil")")
+            print("🔍 DEBUG: User ID matches: \(storedUserId == userToUse.id)")
             
             // Migrate user document to use Firebase Auth UID if needed
             if existingUser.id != authResult.user.uid {
@@ -424,6 +530,8 @@ class APIService: ObservableObject {
             NotificationCenter.default.post(name: NSNotification.Name("UserLoggedIn"), object: userToUse)
             
             print("✅ Using existing Firestore user: \(userToUse.id)")
+            print("🔍 DEBUG: APIService.signInWithEmail returning user - isAuthenticated: \(self.isAuthenticated)")
+            print("🔍 DEBUG: APIService.signInWithEmail returning user - currentUser: \(self.currentUser?.id ?? "nil")")
             return userToUse
             
         } else {
@@ -459,11 +567,34 @@ class APIService: ObservableObject {
             isAdmin: false
         )
         
+        // Save auth token for session persistence
+        do {
+            let idToken = try await authResult.user.getIDToken()
+            self.authToken = idToken
+            UserDefaults.standard.set(idToken, forKey: "authToken")
+            print("🔐 Auth token saved for session persistence")
+        } catch {
+            print("❌ Failed to get ID token: \(error)")
+        }
+        
         // Update the service state
         await MainActor.run {
             self.currentUser = newUser
             self.isAuthenticated = true
+            print("🔐 APIService: Authentication state updated - isAuthenticated: \(self.isAuthenticated)")
+            print("🔐 APIService: Current user set - \(self.currentUser?.id ?? "nil")")
+            print("🔍 DEBUG: APIService after MainActor.run - isAuthenticated: \(self.isAuthenticated)")
+            print("🔍 DEBUG: APIService after MainActor.run - currentUser: \(self.currentUser?.id ?? "nil")")
         }
+        
+        // Store user ID in UserDefaults for FCM token registration
+        UserDefaults.standard.set(newUser.id, forKey: "currentUserId")
+        print("✅ User ID stored in UserDefaults: \(newUser.id)")
+        
+        // Debug: Verify the user ID was actually stored
+        let storedUserId = UserDefaults.standard.string(forKey: "currentUserId")
+        print("🔍 DEBUG: Verification - stored user ID: \(storedUserId ?? "nil")")
+        print("🔍 DEBUG: User ID matches: \(storedUserId == newUser.id)")
         
         // Save user profile
         await saveUserProfileToDefaults(newUser)
@@ -475,15 +606,39 @@ class APIService: ObservableObject {
         NotificationCenter.default.post(name: NSNotification.Name("UserLoggedIn"), object: newUser)
         
         print("✅ Created new user with Firebase UID: \(newUser.id)")
+        print("🔍 DEBUG: APIService.signInWithEmail returning new user - isAuthenticated: \(self.isAuthenticated)")
+        print("🔍 DEBUG: APIService.signInWithEmail returning new user - currentUser: \(self.currentUser?.id ?? "nil")")
         return newUser
         }
     }
     
     func signOut() {
+        print("🔐 APIService: Starting sign out process...")
+        
+        // Clear local state first
         self.authToken = nil
         self.currentUser = nil
         self.isAuthenticated = false
+        self.organizations = []
+        self.pendingRequests = []
         UserDefaults.standard.removeObject(forKey: "authToken")
+        UserDefaults.standard.removeObject(forKey: "currentUser")
+        UserDefaults.standard.removeObject(forKey: "currentUserId")
+        
+        // Sign out from Firebase Auth
+        do {
+            try Auth.auth().signOut()
+            print("✅ Successfully signed out from Firebase Auth")
+        } catch {
+            print("❌ Error signing out from Firebase Auth: \(error)")
+        }
+        
+        // Force UI update on main thread
+        DispatchQueue.main.async {
+            print("✅ APIService sign out completed - UI should update")
+            // Force a UI refresh by triggering objectWillChange
+            self.objectWillChange.send()
+        }
     }
     
     // MARK: - Incidents
@@ -2377,25 +2532,34 @@ class APIService: ObservableObject {
     }
     
     private func parseOrganizationRequestFromFirestore(document: QueryDocumentSnapshot, data: [String: Any]) throws -> OrganizationRequest {
-        guard let id = data["id"] as? String,
-              let name = data["name"] as? String,
-              let typeRawValue = data["type"] as? String,
-              let type = OrganizationType(rawValue: typeRawValue),
-              let description = data["description"] as? String,
-              let email = data["email"] as? String,
-              let address = data["address"] as? String,
-              let city = data["city"] as? String,
-              let state = data["state"] as? String,
-              let zipCode = data["zipCode"] as? String,
-              let contactPersonName = data["contactPersonName"] as? String,
-              let contactPersonTitle = data["contactPersonTitle"] as? String,
-              let contactPersonPhone = data["contactPersonPhone"] as? String,
-              let contactPersonEmail = data["contactPersonEmail"] as? String,
-              let adminPassword = data["adminPassword"] as? String,
-              let statusRawValue = data["status"] as? String,
-              let status = RequestStatus(rawValue: statusRawValue) else {
-            throw NSError(domain: "ParseError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Missing required fields in organization request document"])
-        }
+        // Parse with fallbacks for web form field names
+        let id = data["id"] as? String ?? document.documentID
+        let name = data["name"] as? String ?? data["organizationName"] as? String ?? "Unknown Organization"
+        let typeRawValue = data["type"] as? String ?? data["organizationType"] as? String ?? "other"
+        let type = OrganizationType(rawValue: typeRawValue) ?? .other
+        let description = data["description"] as? String ?? ""
+        let email = data["email"] as? String ?? data["officeEmail"] as? String ?? data["organizationEmail"] as? String ?? ""
+        let address = data["address"] as? String ?? ""
+        let city = data["city"] as? String ?? ""
+        let state = data["state"] as? String ?? ""
+        let zipCode = data["zipCode"] as? String ?? ""
+        
+        // Parse admin info - handle both web form field names and app field names
+        let adminFirstName = data["adminFirstName"] as? String ?? ""
+        let adminLastName = data["adminLastName"] as? String ?? ""
+        let adminEmail = data["adminEmail"] as? String ?? ""
+        
+        // Build contact person name from admin fields if contact fields are empty
+        let contactPersonName = data["contactPersonName"] as? String ?? 
+            (adminFirstName.isEmpty && adminLastName.isEmpty ? "" : "\(adminFirstName) \(adminLastName)".trimmingCharacters(in: .whitespaces))
+        
+        let contactPersonTitle = data["contactPersonTitle"] as? String ?? ""
+        let contactPersonPhone = data["contactPersonPhone"] as? String ?? data["phone"] as? String ?? ""
+        let contactPersonEmail = data["contactPersonEmail"] as? String ?? data["contactEmail"] as? String ?? adminEmail
+        let adminPassword = data["adminPassword"] as? String ?? ""
+        
+        let statusRawValue = data["status"] as? String ?? "pending"
+        let status = RequestStatus(rawValue: statusRawValue) ?? .pending
         
         let website = data["website"] as? String
         let phone = data["phone"] as? String
@@ -3305,6 +3469,14 @@ class APIService: ObservableObject {
         // Store user preferences in UserDefaults
         UserDefaults.standard.set(user.alertRadius, forKey: "user_alert_radius")
         UserDefaults.standard.set(user.preferences.pushNotifications, forKey: "user_push_notifications")
+        
+        // Save the complete user profile
+        if let encoded = try? JSONEncoder().encode(user) {
+            UserDefaults.standard.set(encoded, forKey: "currentUser")
+            print("💾 User profile saved to UserDefaults")
+        } else {
+            print("❌ Failed to encode user profile for UserDefaults")
+        }
     }
     
     func hasCompletedOnboarding() -> Bool {

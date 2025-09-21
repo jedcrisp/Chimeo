@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import FirebaseFirestore
+import FirebaseAuth
 
 struct OrganizationProfileView: View {
     let organization: Organization
@@ -237,6 +238,12 @@ struct OrganizationProfileView: View {
                         .foregroundColor(.blue)
                     }
                     .help("Debug admin access details")
+                    
+                    // Show current admin status
+                    Text("Admin Status: \(isOrganizationAdmin ? "YES" : "NO")")
+                        .font(.caption)
+                        .foregroundColor(isOrganizationAdmin ? .green : .red)
+                        .padding(.top, 4)
                 }
             }
         }
@@ -884,19 +891,40 @@ struct OrganizationProfileView: View {
         print("   Organization ID: \(organization.id)")
         print("   Current user ID: \(apiService.currentUser?.id ?? "nil")")
         
-        guard let currentUserId = apiService.currentUser?.id else {
-            print("❌ No current user ID found")
+        // Try to get user ID from multiple sources
+        var currentUserId: String?
+        
+        // First try APIService
+        if let apiUserId = apiService.currentUser?.id {
+            currentUserId = apiUserId
+            print("✅ Found user ID from APIService: \(apiUserId)")
+        }
+        // Then try UserDefaults
+        else if let defaultsUserId = UserDefaults.standard.string(forKey: "currentUserId"), !defaultsUserId.isEmpty {
+            currentUserId = defaultsUserId
+            print("✅ Found user ID from UserDefaults: \(defaultsUserId)")
+        }
+        // Finally try Firebase Auth
+        else if let firebaseUserId = Auth.auth().currentUser?.uid {
+            currentUserId = firebaseUserId
+            print("✅ Found user ID from Firebase Auth: \(firebaseUserId)")
+        }
+        
+        guard let userId = currentUserId else {
+            print("❌ No current user ID found from any source")
             await MainActor.run {
                 self.isOrganizationAdmin = false
             }
             return
         }
         
+        print("✅ Using user ID for admin check: \(userId)")
+        
         do {
             let db = Firestore.firestore()
             
             // First, check if the user document exists and has admin flags
-            let userRef = db.collection("users").document(currentUserId)
+            let userRef = db.collection("users").document(userId)
             let userDoc = try await userRef.getDocument()
             
             if userDoc.exists {
@@ -905,7 +933,7 @@ struct OrganizationProfileView: View {
                 let isUserOrgAdmin = userData["isOrganizationAdmin"] as? Bool ?? false
                 
                 print("   📋 User document found:")
-                print("      - Document ID: \(currentUserId)")
+                print("      - Document ID: \(userId)")
                 print("      - Email in document: \(userData["email"] as? String ?? "nil")")
                 print("      - Name in document: \(userData["name"] as? String ?? "nil")")
                 print("      - isAdmin: \(isUserAdmin)")
@@ -930,7 +958,7 @@ struct OrganizationProfileView: View {
                     print("      - created by: \(orgCreatedBy)")
                     
                     // Check if current user is already in adminIds
-                    let isInAdminIds = adminIds[currentUserId] == true
+                    let isInAdminIds = adminIds[userId] == true
                     print("      - Current user in adminIds: \(isInAdminIds)")
                     
                     // SIMPLE: User is ONLY admin if they are explicitly in adminIds

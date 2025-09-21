@@ -52,8 +52,9 @@ class NotificationManager: NSObject, ObservableObject {
         updateAppBadge()
         
         // Get current FCM token if available
-        if let token = UserDefaults.standard.string(forKey: "fcm_token") {
+        if let token = UserDefaults.standard.string(forKey: "fcm_token"), !token.isEmpty {
             self.fcmToken = token
+            print("📱 Loaded stored FCM token: \(token.prefix(20))...")
         }
     }
     
@@ -63,6 +64,14 @@ class NotificationManager: NSObject, ObservableObject {
             DispatchQueue.main.async {
                 self.fcmToken = token
                 print("📱 FCM token updated in NotificationManager: \(token)")
+                
+                // Store the token in UserDefaults
+                UserDefaults.standard.set(token, forKey: "fcm_token")
+                
+                // Automatically register the token with the user profile
+                Task {
+                    await self.registerFCMTokenWithUser(token)
+                }
             }
         }
     }
@@ -164,6 +173,8 @@ class NotificationManager: NSObject, ObservableObject {
     
     // MARK: - Centralized User ID Resolution
     private func getCurrentUserId() -> String? {
+        print("🔍 DEBUG: Checking for user ID...")
+        
         // First try Firebase Auth
         if let firebaseUser = Auth.auth().currentUser {
             print("✅ Found Firebase Auth user: \(firebaseUser.uid)")
@@ -177,21 +188,24 @@ class NotificationManager: NSObject, ObservableObject {
             return user.id
         }
         
-        // Finally try APIService currentUser
-        if let apiService = getAPIService(),
-           let currentUser = apiService.currentUser {
-            print("✅ Found APIService user: \(currentUser.id)")
-            return currentUser.id
+        // Try to get user ID from UserDefaults directly
+        if let userId = UserDefaults.standard.string(forKey: "currentUserId"), !userId.isEmpty {
+            print("✅ Found UserDefaults user ID: \(userId)")
+            return userId
         }
+        
+        // Debug: Check what's actually in UserDefaults
+        let allKeys = UserDefaults.standard.dictionaryRepresentation().keys
+        let userKeys = allKeys.filter { $0.contains("user") || $0.contains("User") || $0.contains("current") }
+        print("🔍 DEBUG: User-related keys in UserDefaults: \(userKeys)")
+        
+        // Check specific keys
+        print("🔍 DEBUG: currentUserId = \(UserDefaults.standard.string(forKey: "currentUserId") ?? "nil")")
+        print("🔍 DEBUG: currentUser data exists = \(UserDefaults.standard.data(forKey: "currentUser") != nil)")
+        print("🔍 DEBUG: Firebase Auth current user = \(Auth.auth().currentUser?.uid ?? "nil")")
         
         print("❌ No user ID found from any source")
         return nil
-    }
-    
-    private func getAPIService() -> APIService? {
-        // Try to get APIService from the environment or a shared instance
-        // This is a workaround since we can't easily access the environment object here
-        return nil // Will be implemented with proper dependency injection
     }
     
     // MARK: - Retry FCM Token Registration
@@ -210,8 +224,153 @@ class NotificationManager: NSObject, ObservableObject {
                 await registerFCMTokenWithUser(currentToken)
             }
         } else {
-            print("📱 No FCM token available, requesting new one...")
-            requestFCMToken()
+            print("📱 No FCM token available, checking for stored token...")
+            
+            // Debug: Check what's actually in UserDefaults
+            let allKeys = UserDefaults.standard.dictionaryRepresentation().keys
+            let fcmKeys = allKeys.filter { $0.contains("fcm") }
+            print("🔍 Debug - FCM related keys in UserDefaults: \(fcmKeys)")
+            
+            // Check if we have a stored FCM token in UserDefaults
+            if let storedToken = UserDefaults.standard.string(forKey: "fcm_token"), !storedToken.isEmpty {
+                print("📱 Found stored FCM token, using it...")
+                self.fcmToken = storedToken
+                Task {
+                    await registerFCMTokenWithUser(storedToken)
+                }
+            } else {
+                print("📱 No stored FCM token found in UserDefaults")
+                
+                // Check if APNS token is set before attempting FCM token retrieval
+                if Messaging.messaging().apnsToken == nil {
+                    print("⏳ APNS token not set yet, storing request for later...")
+                    UserDefaults.standard.set(true, forKey: "pending_fcm_request")
+                    return
+                }
+                
+                // Try to get FCM token directly from Firebase Messaging
+                print("🔄 Attempting to get FCM token directly from Firebase...")
+                Messaging.messaging().token { [weak self] token, error in
+                    if let error = error {
+                        print("❌ Error getting FCM token directly: \(error)")
+                    } else if let token = token, !token.isEmpty {
+                        print("✅ Got FCM token directly from Firebase: \(token.prefix(20))...")
+                        self?.updateFCMToken(token)
+                        Task {
+                            await self?.registerFCMTokenWithUser(token)
+                        }
+                    } else {
+                        print("❌ No FCM token available from Firebase")
+                        
+                        // Check if APNS token is set before requesting FCM token
+                        if Messaging.messaging().apnsToken != nil {
+                            print("✅ APNS token is set, requesting FCM token...")
+                            self?.requestFCMToken()
+                        } else {
+                            print("⏳ APNS token not set yet, storing request for later...")
+                            // Store a flag that we need to request FCM token once APNS is ready
+                            UserDefaults.standard.set(true, forKey: "pending_fcm_request")
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Force FCM Token Registration
+    func forceFCMTokenRegistration() {
+        print("🔄 Force FCM token registration...")
+        
+        // Check if APNS token is set first
+        if Messaging.messaging().apnsToken == nil {
+            print("⏳ APNS token not set yet, waiting...")
+            // Store request for later
+            UserDefaults.standard.set(true, forKey: "pending_fcm_request")
+            return
+        }
+        
+        print("✅ APNS token is set, requesting FCM token...")
+        
+        // First try to get token directly from Firebase
+        Messaging.messaging().token { [weak self] token, error in
+            if let error = error {
+                print("❌ Error getting FCM token: \(error)")
+            } else if let token = token, !token.isEmpty {
+                print("✅ FCM token received: \(token.prefix(20))...")
+                self?.updateFCMToken(token)
+                Task {
+                    await self?.registerFCMTokenWithUser(token)
+                }
+            } else {
+                print("❌ No FCM token available from Firebase")
+            }
+        }
+    }
+    
+    // MARK: - Wait for APNS Token
+    func waitForAPNSTokenAndRegisterFCM() {
+        print("⏳ Waiting for APNS token to be available...")
+        
+        // First, try to manually trigger APNS registration
+        print("🔄 Attempting to manually trigger APNS registration...")
+        DispatchQueue.main.async {
+            UIApplication.shared.registerForRemoteNotifications()
+        }
+        
+        // Check every 500ms for APNS token
+        var attempts = 0
+        let maxAttempts = 20 // 10 seconds total
+        
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { timer in
+            attempts += 1
+            
+            if Messaging.messaging().apnsToken != nil {
+                print("✅ APNS token is now available, registering FCM token...")
+                timer.invalidate()
+                self.forceFCMTokenRegistration()
+            } else if attempts >= maxAttempts {
+                print("❌ Timeout waiting for APNS token")
+                timer.invalidate()
+                
+                // Try one more time to register for remote notifications
+                print("🔄 Final attempt to register for remote notifications...")
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            } else {
+                print("⏳ Still waiting for APNS token... (attempt \(attempts)/\(maxAttempts))")
+            }
+        }
+    }
+    
+    // MARK: - Force APNS Registration
+    func forceAPNSRegistration() {
+        print("🔄 Force APNS registration...")
+        
+        // Check current notification authorization status
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            print("🔔 Current notification settings: \(settings.authorizationStatus.rawValue)")
+            
+            if settings.authorizationStatus == .authorized {
+                print("✅ Notifications authorized, registering for remote notifications...")
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            } else {
+                print("❌ Notifications not authorized, requesting permissions...")
+                DispatchQueue.main.async {
+                    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+                        if granted {
+                            print("✅ Notification permissions granted, registering for remote notifications...")
+                            DispatchQueue.main.async {
+                                UIApplication.shared.registerForRemoteNotifications()
+                            }
+                        } else {
+                            print("❌ Notification permissions denied: \(error?.localizedDescription ?? "Unknown error")")
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -220,6 +379,7 @@ class NotificationManager: NSObject, ObservableObject {
         print("🔍 FCM Token Debug Status:")
         print("   - Current FCM Token: \(fcmToken ?? "nil")")
         print("   - Pending Token: \(UserDefaults.standard.string(forKey: "pending_fcm_token") ?? "nil")")
+        print("   - Stored Token: \(UserDefaults.standard.string(forKey: "fcm_token") ?? "nil")")
         print("   - Current User ID: \(getCurrentUserId() ?? "nil")")
         print("   - Is Authorized: \(isAuthorized)")
         print("   - Authorization Status: \(authorizationStatus.rawValue)")
@@ -243,6 +403,149 @@ class NotificationManager: NSObject, ObservableObject {
                 }
             }
         }
+    }
+    
+    // MARK: - Comprehensive Push Notification Debug
+    func debugPushNotificationSystem() {
+        print("🔍 ===== PUSH NOTIFICATION SYSTEM DEBUG =====")
+        
+        // 1. Check FCM Token Status
+        print("📱 1. FCM Token Status:")
+        print("   - Current FCM Token: \(fcmToken ?? "nil")")
+        print("   - Stored Token: \(UserDefaults.standard.string(forKey: "fcm_token") ?? "nil")")
+        print("   - Pending Token: \(UserDefaults.standard.string(forKey: "pending_fcm_token") ?? "nil")")
+        print("   - Pending Request: \(UserDefaults.standard.bool(forKey: "pending_fcm_request"))")
+        
+        // 2. Check APNS Status
+        print("📱 2. APNS Status:")
+        print("   - APNS Token: \(Messaging.messaging().apnsToken != nil ? "SET" : "NOT SET")")
+        print("   - Authorization Status: \(authorizationStatus.rawValue)")
+        print("   - Is Authorized: \(isAuthorized)")
+        
+        // 3. Check User Authentication
+        print("👤 3. User Authentication:")
+        if let userId = getCurrentUserId() {
+            print("   - User ID: \(userId)")
+            
+            // Check Firestore for user's FCM token
+            Task {
+                do {
+                    let db = Firestore.firestore()
+                    let userDoc = try await db.collection("users").document(userId).getDocument()
+                    if userDoc.exists {
+                        let userData = userDoc.data() ?? [:]
+                        let storedToken = userData["fcmToken"] as? String ?? "nil"
+                        let platform = userData["platform"] as? String ?? "unknown"
+                        let tokenStatus = userData["tokenStatus"] as? String ?? "unknown"
+                        let lastUpdate = userData["lastTokenUpdate"] as? Timestamp
+                        
+                        print("   - Stored FCM Token in Firestore: \(storedToken)")
+                        print("   - Platform: \(platform)")
+                        print("   - Token Status: \(tokenStatus)")
+                        print("   - Last Update: \(lastUpdate?.dateValue() ?? Date.distantPast)")
+                        print("   - Token matches current: \(storedToken == fcmToken)")
+                        
+                        // Check if user is following any organizations
+                        let followingQuery = try await db.collection("users").document(userId).collection("following").getDocuments()
+                        print("   - Following \(followingQuery.documents.count) organizations")
+                        
+                        if followingQuery.documents.count > 0 {
+                            print("   - Following organizations:")
+                            for doc in followingQuery.documents {
+                                let orgData = doc.data()
+                                let orgName = orgData["name"] as? String ?? "Unknown"
+                                print("     • \(orgName) (ID: \(doc.documentID))")
+                            }
+                        }
+                        
+                    } else {
+                        print("   - User document not found in Firestore")
+                    }
+                } catch {
+                    print("   - Error checking Firestore: \(error)")
+                }
+            }
+        } else {
+            print("   - No current user ID found")
+        }
+        
+        // 4. Check Notification Settings
+        print("🔔 4. Notification Settings:")
+        print("   - Push Notifications Enabled: \(UserDefaults.standard.bool(forKey: "pushNotificationsEnabled"))")
+        print("   - Critical Alerts Enabled: \(UserDefaults.standard.bool(forKey: "criticalAlertsEnabled"))")
+        
+        // 5. Check Recent Notifications
+        print("📬 5. Recent Notifications:")
+        print("   - Unread Count: \(unreadNotificationCount)")
+        print("   - Is Authorized: \(isAuthorized)")
+        print("   - Authorization Status: \(authorizationStatus.rawValue)")
+        
+        print("🔍 ===== END DEBUG =====")
+    }
+    
+    // MARK: - Check Following Status
+    func checkFollowingStatus() async {
+        print("🔍 ===== FOLLOWING STATUS CHECK =====")
+        
+        guard let userId = getCurrentUserId() else {
+            print("❌ No current user ID found")
+            return
+        }
+        
+        do {
+            let db = Firestore.firestore()
+            
+            // Check all organizations and see which ones the user follows
+            let orgsSnapshot = try await db.collection("organizations").getDocuments()
+            print("📊 Total organizations in database: \(orgsSnapshot.documents.count)")
+            
+            var followingCount = 0
+            var followedOrganizations: [String] = []
+            
+            for orgDoc in orgsSnapshot.documents {
+                let orgId = orgDoc.documentID
+                let orgData = orgDoc.data()
+                let orgName = orgData["name"] as? String ?? "Unknown"
+                
+                // Check if user follows this organization
+                let followerDoc = try await db.collection("organizations").document(orgId).collection("followers").document(userId).getDocument()
+                
+                if followerDoc.exists {
+                    followingCount += 1
+                    followedOrganizations.append("\(orgName) (ID: \(orgId))")
+                    print("✅ Following: \(orgName) (ID: \(orgId))")
+                    
+                    // Check follower preferences
+                    let followerData = followerDoc.data() ?? [:]
+                    let alertsEnabled = followerData["alertsEnabled"] as? Bool ?? true
+                    print("   - Alerts enabled: \(alertsEnabled)")
+                    
+                    // Check group preferences
+                    if let groups = followerData["groups"] as? [String: Bool] {
+                        print("   - Group preferences: \(groups)")
+                    } else {
+                        print("   - No group preferences set")
+                    }
+                } else {
+                    print("❌ Not following: \(orgName) (ID: \(orgId))")
+                }
+            }
+            
+            print("📊 Summary:")
+            print("   - Following \(followingCount) organizations")
+            print("   - Followed organizations: \(followedOrganizations)")
+            
+            if followingCount == 0 {
+                print("⚠️ WARNING: You are not following any organizations!")
+                print("   This means you won't receive any push notifications.")
+                print("   Go to the Map view and follow some organizations.")
+            }
+            
+        } catch {
+            print("❌ Error checking following status: \(error)")
+        }
+        
+        print("🔍 ===== END FOLLOWING CHECK =====")
     }
     
     // MARK: - Test FCM Token Registration

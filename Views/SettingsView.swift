@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseFirestore
 
 struct SettingsView: View {
     @EnvironmentObject var apiService: APIService
@@ -24,6 +25,18 @@ struct SettingsView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 0) {
+                    // Custom Settings Title
+                    HStack {
+                        Text("Settings")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+                    .padding(.bottom, 2)
+                    
                     profileSection
                     biometricSection
                     notificationsSection
@@ -43,23 +56,19 @@ struct SettingsView: View {
                         developmentSection
                     }
                     
+                    // Debug section for push notifications
+                    debugSection
+                    
                     signOutSection
                 }
-                .padding(.vertical, 16)
+                .padding(.vertical, 2)
             }
             .onAppear {
                 biometricAuthManager.loadBiometricEnabled()
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .alert("Sign Out", isPresented: $showingSignOutAlert) {
                 Button("Cancel", role: .cancel) { }
                 Button("Sign Out", role: .destructive) {
@@ -393,6 +402,15 @@ struct SettingsView: View {
             iconColor: .purple
         ) {
             if apiService.hasOrganizationAdminAccess() {
+                NavigationLink(destination: AdminOrganizationReviewView()) {
+                    SettingsRow(
+                        icon: "doc.text.magnifyingglass",
+                        title: "Review Organization Requests",
+                        subtitle: "Approve or deny organization verification requests",
+                        iconColor: .orange
+                    )
+                }
+                
                 NavigationLink(destination: OrganizationAdminManagementView()) {
                     SettingsRow(
                         icon: "person.badge.plus",
@@ -1019,7 +1037,11 @@ struct SettingsView: View {
                 
                 Button(action: {
                     Task {
-                        await forceRefreshFCMToken()
+                        do {
+                            try await apiService.forceRefreshFCMToken()
+                        } catch {
+                            print("❌ Failed to refresh FCM token: \(error)")
+                        }
                     }
                 }) {
                     HStack {
@@ -1271,6 +1293,66 @@ struct SettingsView: View {
                         }
                 
 
+            }
+        }
+    }
+    
+    private var debugSection: some View {
+        SettingsSection(
+            title: "Debug",
+            icon: "wrench.and.screwdriver.fill",
+            iconColor: .gray
+        ) {
+            Button(action: {
+                notificationManager.debugPushNotificationSystem()
+            }) {
+                SettingsRow(
+                    icon: "magnifyingglass",
+                    title: "Debug Push Notifications",
+                    subtitle: "Check FCM token and notification status",
+                    iconColor: .blue
+                )
+            }
+            
+            Button(action: {
+                Task {
+                    do {
+                        try await apiService.forceRefreshFCMToken()
+                    } catch {
+                        print("❌ Failed to refresh FCM token: \(error)")
+                    }
+                }
+            }) {
+                SettingsRow(
+                    icon: "arrow.clockwise",
+                    title: "Refresh FCM Token",
+                    subtitle: "Force refresh Firebase Cloud Messaging token",
+                    iconColor: .orange
+                )
+            }
+            
+            Button(action: {
+                Task {
+                    await notificationManager.checkFollowingStatus()
+                }
+            }) {
+                SettingsRow(
+                    icon: "person.2.fill",
+                    title: "Check Following Status",
+                    subtitle: "See which organizations you follow",
+                    iconColor: .purple
+                )
+            }
+            
+            Button(action: {
+                notificationManager.testNotification()
+            }) {
+                SettingsRow(
+                    icon: "bell.badge",
+                    title: "Test Notification",
+                    subtitle: "Send a test push notification",
+                    iconColor: .green
+                )
             }
         }
     }
@@ -1989,7 +2071,7 @@ struct SettingsSection<Content: View>: View {
                 Spacer()
             }
             .padding(.horizontal, 20)
-            .padding(.top, 24)
+            .padding(.top, 2)
             
             // Section Content
             VStack(spacing: 0) {

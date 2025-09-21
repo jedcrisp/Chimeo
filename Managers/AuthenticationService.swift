@@ -43,12 +43,18 @@ class AuthenticationService: ObservableObject {
     init(userService: UserManagementService) {
         self.userService = userService
         
-        // Check for stored auth token
-        if UserDefaults.standard.string(forKey: "authToken") != nil {
-            print("📱 Found saved auth token, restoring session...")
-            self.isAuthenticated = true
-            loadCurrentUserFromDefaults()
-        }
+        // Always start with authentication disabled to force login
+        self.isAuthenticated = false
+        self.currentUser = nil
+        
+        // Clear any stored auth data to ensure clean state
+        UserDefaults.standard.removeObject(forKey: "authToken")
+        UserDefaults.standard.removeObject(forKey: "currentUser")
+        UserDefaults.standard.removeObject(forKey: "currentUserId")
+        
+        print("🔐 AuthenticationService: Forcing login - isAuthenticated: false")
+        print("🔍 DEBUG: AuthenticationService initialized - isAuthenticated: \(self.isAuthenticated)")
+        print("🔍 DEBUG: AuthenticationService currentUser: \(self.currentUser?.id ?? "nil")")
     }
     
     // MARK: - User Profile Management
@@ -149,6 +155,8 @@ class AuthenticationService: ObservableObject {
             self.currentUser = newUser
             self.isAuthenticated = true
             print("✅ Service state updated")
+            print("🔍 DEBUG: AuthenticationService.isAuthenticated = \(self.isAuthenticated)")
+            print("🔍 DEBUG: AuthenticationService.currentUser = \(self.currentUser?.id ?? "nil")")
         }
         
         // Save user profile
@@ -156,10 +164,22 @@ class AuthenticationService: ObservableObject {
         saveUserProfileToDefaults(newUser)
         print("✅ User profile saved to defaults")
         
+        // Store user ID in UserDefaults for FCM token registration
+        UserDefaults.standard.set(newUser.id, forKey: "currentUserId")
+        print("✅ User ID stored in UserDefaults: \(newUser.id)")
+        
+        // Debug: Verify the user ID was actually stored
+        let storedUserId = UserDefaults.standard.string(forKey: "currentUserId")
+        print("🔍 DEBUG: Verification - stored user ID: \(storedUserId ?? "nil")")
+        print("🔍 DEBUG: User ID matches: \(storedUserId == newUser.id)")
+        
         // Post notification that user has been saved (for FCM token registration)
         print("📢 Posting userProfileSaved notification...")
         NotificationCenter.default.post(name: .userProfileSaved, object: newUser)
         print("✅ Notification posted")
+        
+        // Also post a user logged in notification for FCM token retry
+        NotificationCenter.default.post(name: NSNotification.Name("UserLoggedIn"), object: newUser)
         
         // BULLETPROOF: Create user document on EVERY authentication
         print("🔥 BULLETPROOF: Creating user document for every authentication...")
@@ -190,7 +210,7 @@ class AuthenticationService: ObservableObject {
         // Get FCM token (or empty string if not available)
         let fcmToken = UserDefaults.standard.string(forKey: "fcm_token") ?? ""
         print("   FCM Token available: \(fcmToken.isEmpty ? "NO" : "YES")")
-        print("   FCM Token value: \(fcmToken)")
+        print("   FCM Token value: \(fcmToken.isEmpty ? "Not available yet" : fcmToken.prefix(20) + "...")")
         
         // Create user document with all necessary fields
         let userData: [String: Any] = [
@@ -305,8 +325,20 @@ class AuthenticationService: ObservableObject {
             // Save user profile
             saveUserProfileToDefaults(linkedUser)
             
+            // Store user ID in UserDefaults for FCM token registration
+            UserDefaults.standard.set(linkedUser.id, forKey: "currentUserId")
+            print("✅ User ID stored in UserDefaults: \(linkedUser.id)")
+            
+            // Debug: Verify the user ID was actually stored
+            let storedUserId = UserDefaults.standard.string(forKey: "currentUserId")
+            print("🔍 DEBUG: Verification - stored user ID: \(storedUserId ?? "nil")")
+            print("🔍 DEBUG: User ID matches: \(storedUserId == linkedUser.id)")
+            
             // Post notification that user has been saved (for FCM token registration)
             NotificationCenter.default.post(name: .userProfileSaved, object: linkedUser)
+            
+            // Also post a user logged in notification for FCM token retry
+            NotificationCenter.default.post(name: NSNotification.Name("UserLoggedIn"), object: linkedUser)
             
             // Update FCM token for linked user
             do {
@@ -362,6 +394,10 @@ class AuthenticationService: ObservableObject {
 
             // Save user profile
             saveUserProfileToDefaults(newUser)
+            
+            // Store user ID in UserDefaults for FCM token registration
+            UserDefaults.standard.set(newUser.id, forKey: "currentUserId")
+            print("✅ User ID stored in UserDefaults: \(newUser.id)")
             
             // Post notification that user has been saved (for FCM token registration)
             NotificationCenter.default.post(name: .userProfileSaved, object: newUser)
@@ -447,8 +483,20 @@ class AuthenticationService: ObservableObject {
             // Save user profile
             saveUserProfileToDefaults(existingUser)
             
+            // Store user ID in UserDefaults for FCM token registration
+            UserDefaults.standard.set(existingUser.id, forKey: "currentUserId")
+            print("✅ User ID stored in UserDefaults: \(existingUser.id)")
+            
+            // Debug: Verify the user ID was actually stored
+            let storedUserId = UserDefaults.standard.string(forKey: "currentUserId")
+            print("🔍 DEBUG: Verification - stored user ID: \(storedUserId ?? "nil")")
+            print("🔍 DEBUG: User ID matches: \(storedUserId == existingUser.id)")
+            
             // Post notification that user has been saved (for FCM token registration)
             NotificationCenter.default.post(name: .userProfileSaved, object: existingUser)
+            
+            // Also post a user logged in notification for FCM token retry
+            NotificationCenter.default.post(name: NSNotification.Name("UserLoggedIn"), object: existingUser)
             
             // Update FCM token for existing user
             do {
@@ -508,8 +556,20 @@ class AuthenticationService: ObservableObject {
             // Save user profile
             saveUserProfileToDefaults(newUser)
             
+            // Store user ID in UserDefaults for FCM token registration
+            UserDefaults.standard.set(newUser.id, forKey: "currentUserId")
+            print("✅ User ID stored in UserDefaults: \(newUser.id)")
+            
+            // Debug: Verify the user ID was actually stored
+            let storedUserId = UserDefaults.standard.string(forKey: "currentUserId")
+            print("🔍 DEBUG: Verification - stored user ID: \(storedUserId ?? "nil")")
+            print("🔍 DEBUG: User ID matches: \(storedUserId == newUser.id)")
+            
             // Post notification that user has been saved (for FCM token registration)
             NotificationCenter.default.post(name: .userProfileSaved, object: newUser)
+            
+            // Also post a user logged in notification for FCM token retry
+            NotificationCenter.default.post(name: NSNotification.Name("UserLoggedIn"), object: newUser)
             
             // Ensure user document exists in Firestore
             do {
@@ -578,6 +638,7 @@ class AuthenticationService: ObservableObject {
         self.currentUser = nil
         UserDefaults.standard.removeObject(forKey: "authToken")
         UserDefaults.standard.removeObject(forKey: "currentUser")
+        UserDefaults.standard.removeObject(forKey: "currentUserId")
         
         do {
             try Auth.auth().signOut()

@@ -14,6 +14,7 @@ enum IncidentType: String, CaseIterable, Codable {
     case fire = "fire"
     case police = "police"
     case medical = "medical"
+    case emergency = "emergency"
     case other = "other"
     
     var displayName: String {
@@ -23,6 +24,7 @@ enum IncidentType: String, CaseIterable, Codable {
         case .fire: return "Fire"
         case .police: return "Police"
         case .medical: return "Medical"
+        case .emergency: return "Emergency"
         case .other: return "Other"
         }
     }
@@ -34,6 +36,7 @@ enum IncidentType: String, CaseIterable, Codable {
         case .fire: return .red
         case .police: return .purple
         case .medical: return .green
+        case .emergency: return .red
         case .other: return .gray
         }
     }
@@ -45,6 +48,7 @@ enum IncidentType: String, CaseIterable, Codable {
         case .fire: return "flame"
         case .police: return "shield"
         case .medical: return "cross"
+        case .emergency: return "exclamationmark.triangle.fill"
         case .other: return "exclamationmark.triangle"
         }
     }
@@ -175,7 +179,7 @@ struct Location: Codable, Identifiable {
 }
 
 // MARK: - Organization
-struct Organization: Identifiable, Codable {
+struct Organization: Identifiable, Codable, Hashable {
     let id: String
     let name: String
     let type: String
@@ -349,6 +353,15 @@ struct Organization: Identifiable, Codable {
         result = result.trimmingCharacters(in: CharacterSet(charactersIn: "_"))
         
         return result
+    }
+    
+    // MARK: - Hashable & Equatable
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: Organization, rhs: Organization) -> Bool {
+        return lhs.id == rhs.id
     }
 }
 

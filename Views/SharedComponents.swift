@@ -98,6 +98,38 @@ struct ContactRow: View {
     }
 }
 
+// MARK: - Info Row
+struct InfoRow: View {
+    let label: String
+    let value: String
+    
+    init(label: String, value: String, format: Format = .none) {
+        self.label = label
+        self.value = value
+    }
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+                .frame(width: 100, alignment: .leading)
+            
+            Text(value)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Spacer()
+        }
+    }
+    
+    enum Format {
+        case none
+        case dateTime
+    }
+}
+
 // MARK: - Detail Row
 struct DetailRow: View {
     let icon: String

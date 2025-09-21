@@ -8,37 +8,14 @@ import SwiftUI
 
 
 // MARK: - Weather Data Models
-struct WeatherData: Codable, Identifiable {
-    let id = UUID()
-    let temperature: Double
-    let feelsLike: Double
-    let humidity: Int
-    let windSpeed: Double
-    let windDirection: String
-    let pressure: Double
-    let visibility: Double
-    let uvIndex: Int
-    let condition: String
-    let conditionIcon: String
-    let sunrise: Date
-    let sunset: Date
-    let timestamp: Date
-    
-    var temperatureFormatted: String {
-        "\(Int(round(temperature)))°F"
-    }
-    
-    var feelsLikeFormatted: String {
-        "\(Int(round(feelsLike)))°F"
-    }
-}
+// WeatherData is now defined in WeatherModels.swift
 
 
 
 // MARK: - Weather Service
 class WeatherService: ObservableObject {
     @Published var currentWeather: WeatherData?
-    @Published var weatherAlerts: [String] = [] // Temporarily simplified
+    @Published var weatherAlerts: [WeatherAlert] = []
     @Published var isLoading = false
     @Published var lastUpdated: Date?
     
@@ -204,12 +181,43 @@ class WeatherService: ObservableObject {
         }
     }
     
-    func getActiveAlerts() -> [String] {
-        return weatherAlerts // Temporarily simplified
+    func getActiveAlerts() -> [WeatherAlert] {
+        return weatherAlerts.filter { $0.isActive }
     }
     
-    func getCriticalAlerts() -> [String] {
-        return weatherAlerts // Temporarily simplified
+    func getCriticalAlerts() -> [WeatherAlert] {
+        return weatherAlerts.filter { $0.isActive && $0.severity == .critical }
+    }
+    
+    // MARK: - Mock Data for Development
+    func addMockAlert() {
+        let mockAlert = WeatherAlert(
+            id: UUID().uuidString,
+            type: .severeThunderstorm,
+            title: "Test Weather Alert",
+            description: "This is a test weather alert for development purposes",
+            severity: .high,
+            location: Location(
+                latitude: 33.2148,
+                longitude: -97.1331,
+                address: "123 Test St, Test City, TC 12345",
+                city: "Test City",
+                state: "TC",
+                zipCode: "76201"
+            ),
+            effectiveTime: Date(),
+            expirationTime: Date().addingTimeInterval(3600),
+            instructions: "Stay indoors and avoid windows",
+            source: "Test Source",
+            polygon: nil,
+            distance: nil
+        )
+        
+        weatherAlerts.append(mockAlert)
+    }
+    
+    func clearMockAlerts() {
+        weatherAlerts.removeAll()
     }
     
     deinit {

@@ -1,6 +1,7 @@
 import SwiftUI
 import MapKit
 import Contacts
+import FirebaseAuth
 
 // MARK: - Notification Names
 extension Notification.Name {
@@ -23,20 +24,21 @@ struct ContentView: View {
                         BiometricReEnrollmentView()
                     }
                     .onAppear {
-                        print("🔐 ContentView: User is authenticated, showing MainTabView")
                         // Check if biometric setup or re-enrollment is needed after successful login
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                                                    if biometricAuthManager.shouldReEnroll || biometricAuthManager.shouldOfferBiometricSetup {
-                            showingBiometricReEnrollment = true
-                        }
+                            if biometricAuthManager.shouldReEnroll || biometricAuthManager.shouldOfferBiometricSetup {
+                                showingBiometricReEnrollment = true
+                            }
                         }
                     }
             } else {
                 AuthView()
-                    .onAppear {
-                        print("🔐 ContentView: User is NOT authenticated, showing AuthView")
-                    }
             }
+        }
+        .onAppear {
+            print("🔍 ContentView: User is authenticated: \(apiService.isAuthenticated)")
+            print("🔍 ContentView: Current user: \(apiService.currentUser?.id ?? "nil")")
+            print("🔍 ContentView: Firebase Auth current user: \(Auth.auth().currentUser?.uid ?? "none")")
         }
         .onAppear {
             // Add safety delay and error handling
@@ -56,153 +58,6 @@ struct ContentView: View {
             Button("OK") { }
         } message: {
             Text(errorMessage)
-        }
-    }
-}
-
-struct MainTabView: View {
-    @State private var selectedTab = 1  // Start with Feed tab (tag 1)
-    @State private var showingPasswordSetup = false
-    @State private var showingPasswordChange = false
-    @EnvironmentObject var apiService: APIService
-    
-    private var isCreatorAccount: Bool {
-        apiService.currentUser?.email == "jed@onetrack-consulting.com"
-    }
-    
-    private var tabs: some View {
-        Group {
-            MapView()
-                .tabItem {
-                    Image(systemName: "map")
-                    Text("Map")
-                }
-                .tag(0)
-
-            IncidentFeedView()
-                .tabItem {
-                    Image(systemName: "list.bullet")
-                    Text("Feed")
-                }
-                .tag(1)
-
-            MyAlertsView()
-                .tabItem {
-                    Image(systemName: "bell.badge")
-                    Text("My Alerts")
-                }
-                .tag(2)
-        }
-    }
-    
-    private var creatorTabs: some View {
-        Group {
-            DiscoverOrganizationsView()
-                .tabItem {
-                    Image(systemName: "building.2")
-                    Text("Discover")
-                }
-                .tag(3)
-            
-            CreatorRequestsView()
-                .tabItem {
-                    Image(systemName: "doc.text.magnifyingglass")
-                    Text("Requests")
-                }
-                .tag(4)
-            
-            SettingsTabView()
-                .tabItem {
-                    Image(systemName: "gear")
-                    Text("Settings")
-                }
-                .tag(5)
-        }
-    }
-    
-    private var regularTabs: some View {
-        Group {
-            DiscoverOrganizationsView()
-                .tabItem {
-                    Image(systemName: "building.2")
-                    Text("Discover")
-                }
-                .tag(3)
-            
-            SettingsTabView()
-                .tabItem {
-                    Image(systemName: "gear")
-                    Text("Settings")
-                }
-                .tag(4)
-        }
-    }
-
-    var body: some View {
-        TabView(selection: $selectedTab) {
-            tabs
-            
-            if isCreatorAccount {
-                creatorTabs
-            } else {
-                regularTabs
-            }
-        }
-        .onChange(of: selectedTab) { oldValue, newValue in
-            // Reset Settings navigation when Settings tab is tapped
-            if (newValue == 5 && isCreatorAccount) || (newValue == 4 && !isCreatorAccount) {
-                // This is the Settings tab
-                NotificationCenter.default.post(name: .resetSettingsNavigation, object: nil)
-            }
-        }
-        .accentColor(.blue)
-        .background(Color(.systemBackground))
-        .onAppear {
-            // Customize the tab bar appearance
-            let appearance = UITabBarAppearance()
-            appearance.configureWithOpaqueBackground()
-            appearance.backgroundColor = UIColor.systemBackground
-            
-            // Customize the tab bar item appearance
-            let itemAppearance = UITabBarItemAppearance()
-            itemAppearance.normal.iconColor = UIColor.systemGray
-            itemAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.systemGray]
-            itemAppearance.selected.iconColor = UIColor.systemBlue
-            itemAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.systemBlue]
-            
-            appearance.stackedLayoutAppearance = itemAppearance
-            appearance.inlineLayoutAppearance = itemAppearance
-            appearance.compactInlineLayoutAppearance = itemAppearance
-            
-            UITabBar.appearance().standardAppearance = appearance
-            UITabBar.appearance().scrollEdgeAppearance = appearance
-            
-            // Check if organization admin needs password setup
-            if let currentUser = apiService.currentUser,
-               currentUser.needsPasswordSetup == true {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    showingPasswordSetup = true
-                }
-            }
-            
-            // Check if user needs to change their default password
-            if let currentUser = apiService.currentUser,
-               currentUser.needsPasswordChange == true {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    showingPasswordChange = true
-                }
-            }
-        }
-        .sheet(isPresented: $showingPasswordSetup) {
-            if let currentUser = apiService.currentUser {
-                PasswordSetupView(
-                    email: currentUser.email ?? "",
-                    organizationName: currentUser.name ?? "Organization Admin"
-                )
-            }
-        }
-        .sheet(isPresented: $showingPasswordChange) {
-            PasswordChangeView()
         }
     }
 }
@@ -279,14 +134,6 @@ struct CreatorRequestsView: View {
             .navigationTitle("Requests")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Clear All") {
-                        apiService.clearAllRequests()
-                        loadPendingRequests()
-                    }
-                    .foregroundColor(.red)
-                }
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Refresh") {
                         loadPendingRequests()
@@ -581,37 +428,6 @@ struct SimpleRequestDetailView: View {
     }
 }
 
-// MARK: - Info Row
-struct InfoRow: View {
-    let label: String
-    let value: String
-    
-    init(label: String, value: String, format: Format = .none) {
-        self.label = label
-        self.value = value
-    }
-    
-    var body: some View {
-        HStack {
-            Text(label)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(.primary)
-                .frame(width: 100, alignment: .leading)
-            
-            Text(value)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            Spacer()
-        }
-    }
-    
-    enum Format {
-        case none
-        case dateTime
-    }
-}
 
 // MARK: - Simple My Alerts View
 struct SimpleMyAlertsView: View {
@@ -1133,10 +949,10 @@ struct WeatherAlertsTabView: View {
                                 FollowedLocationRow(
                                     location: location,
                                     onToggle: { isEnabled in
-                                        toggleLocation(locationId: location.id, enabled: isEnabled)
+                                        toggleLocation(locationId: location.id.uuidString, enabled: isEnabled)
                                     },
                                     onDelete: {
-                                        deleteLocation(locationId: location.id)
+                                        deleteLocation(locationId: location.id.uuidString)
                                     }
                                 )
                             }
@@ -1207,14 +1023,14 @@ struct WeatherAlertsTabView: View {
     }
     
     private func toggleLocation(locationId: String, enabled: Bool) {
-        if let index = followedLocations.firstIndex(where: { $0.id == locationId }) {
+        if let index = followedLocations.firstIndex(where: { $0.id.uuidString == locationId }) {
             followedLocations[index].isEnabled = enabled
             saveFollowedLocations()
         }
     }
     
     private func deleteLocation(locationId: String) {
-        followedLocations.removeAll { $0.id == locationId }
+        followedLocations.removeAll { $0.id.uuidString == locationId }
         saveFollowedLocations()
     }
 }

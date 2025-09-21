@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreLocation
 import UIKit
+import MapKit
 
 struct WeatherAlertView: View {
     let alert: WeatherAlert
@@ -254,32 +255,6 @@ struct WeatherAlertView: View {
     }
 }
 
-struct DetailRow: View {
-    let icon: String
-    let title: String
-    let value: String
-    
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .foregroundColor(.blue)
-                .frame(width: 20)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .textCase(.uppercase)
-                
-                Text(value)
-                    .font(.body)
-                    .foregroundColor(.primary)
-            }
-            
-            Spacer()
-        }
-    }
-}
 
 struct WeatherAlertMapView: View {
     let alert: WeatherAlert

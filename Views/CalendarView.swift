@@ -518,7 +518,7 @@ struct WeekDayView: View {
                 }
                 
                 ForEach(dayAlerts, id: \.id) { alert in
-                    AlertRowView(alert: alert) {
+                    ScheduledAlertRowView(alert: alert) {
                         onAlertTap(alert)
                     }
                 }
@@ -575,7 +575,7 @@ struct DayCalendarView: View {
                     }
                     
                     ForEach(dayAlerts, id: \.id) { alert in
-                        AlertRowView(alert: alert) {
+                        ScheduledAlertRowView(alert: alert) {
                             onAlertTap(alert)
                         }
                     }
@@ -729,7 +729,7 @@ struct AgendaDayView: View {
                     }
                     
                     ForEach(dayAlerts, id: \.id) { alert in
-                        AlertRowView(alert: alert) {
+                        ScheduledAlertRowView(alert: alert) {
                             onAlertTap(alert)
                         }
                     }
@@ -804,8 +804,9 @@ struct EventRowView: View {
     }
 }
 
-// MARK: - Alert Row View
-struct AlertRowView: View {
+
+// MARK: - Scheduled Alert Row View
+struct ScheduledAlertRowView: View {
     let alert: ScheduledAlert
     let onTap: () -> Void
     

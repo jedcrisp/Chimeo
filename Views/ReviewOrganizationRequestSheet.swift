@@ -71,8 +71,6 @@ struct ReviewOrganizationRequestSheet: View {
                     // Request Summary Card
                     requestSummaryCard
                     
-                    // Review Decision Card
-                    reviewDecisionCard
                     
                     // Conditional Sections
                     if selectedReviewStatus == .requiresMoreInfo {
@@ -159,51 +157,6 @@ struct ReviewOrganizationRequestSheet: View {
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
     
-    private var reviewDecisionCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Review Decision")
-                .font(.headline)
-                .fontWeight(.semibold)
-            
-            VStack(spacing: 12) {
-                // Status Picker
-                Picker("Status", selection: $selectedReviewStatus) {
-                    ForEach([RequestStatus.approved, RequestStatus.rejected, RequestStatus.requiresMoreInfo], id: \.self) { status in
-                        HStack {
-                            Image(systemName: status.icon)
-                                .foregroundColor(status.color)
-                            Text(status.displayName)
-                        }
-                        .tag(status)
-                    }
-                }
-                .pickerStyle(.segmented)
-                
-                // Status Description
-                if selectedReviewStatus == .requiresMoreInfo {
-                    HStack {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundColor(.blue)
-                        Text("This will request additional information from the organization before approval.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                } else if selectedReviewStatus == .rejected {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.red)
-                        Text("Please provide clear reasons for rejection.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-        }
-        .padding(20)
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
-    }
     
     private var moreInfoRequestCard: some View {
         VStack(alignment: .leading, spacing: 16) {

@@ -49,15 +49,6 @@ struct IncidentFeedView: View {
             }
             .navigationTitle("Alerts")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: loadAlerts) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.blue)
-                    }
-                }
-            }
             .onAppear {
                 loadAlerts()
             }
@@ -248,28 +239,6 @@ struct IncidentFeedView: View {
                 }
             }
             
-            // Enhanced Action Button
-            Button(action: loadAlerts) {
-                HStack(spacing: 10) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 16, weight: .medium))
-                    Text("Refresh Alerts")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .padding(.horizontal, 28)
-                .padding(.vertical, 16)
-                .background(
-                    LinearGradient(
-                        colors: [.blue, .blue.opacity(0.8)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .cornerRadius(20)
-                .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
-            }
-            
             Spacer()
         }
         .padding(.horizontal, 20)
@@ -299,6 +268,9 @@ struct IncidentFeedView: View {
         }
         .listStyle(PlainListStyle())
         .background(Color(.systemGray6).opacity(0.3))
+        .refreshable {
+            await refreshAlerts()
+        }
     }
     
     private var filteredAlerts: [OrganizationAlert] {
@@ -389,6 +361,33 @@ struct IncidentFeedView: View {
                     self.showingErrorAlert = true
                     self.errorMessage = "Failed to load alerts: \(error.localizedDescription)"
                 }
+            }
+        }
+    }
+    
+    private func refreshAlerts() async {
+        print("🔄 Pull-to-refresh: Starting to load alerts...")
+        
+        do {
+            let fetchedAlerts = try await apiService.getFollowingOrganizationAlerts()
+            
+            print("📥 Pull-to-refresh: Loaded \(fetchedAlerts.count) alerts from API")
+            for alert in fetchedAlerts {
+                print("📋 Alert: '\(alert.title)' - Type: \(alert.type.rawValue), Severity: \(alert.severity.rawValue)")
+            }
+            
+            await MainActor.run {
+                self.alerts = fetchedAlerts
+                print("✅ Pull-to-refresh: Updated UI with \(fetchedAlerts.count) alerts")
+            }
+        } catch {
+            print("❌ Pull-to-refresh: Failed to load alerts: \(error)")
+            print("❌ Pull-to-refresh: Error details: \(error.localizedDescription)")
+            
+            await MainActor.run {
+                // Show error to user
+                self.showingErrorAlert = true
+                self.errorMessage = "Failed to refresh alerts: \(error.localizedDescription)"
             }
         }
     }

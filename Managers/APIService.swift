@@ -420,6 +420,9 @@ class APIService: ObservableObject {
             // Load organizations after successful sign-in
             await loadOrganizations()
             
+            // Post notification that user has logged in (for FCM token registration)
+            NotificationCenter.default.post(name: NSNotification.Name("UserLoggedIn"), object: userToUse)
+            
             print("✅ Using existing Firestore user: \(userToUse.id)")
             return userToUse
             
@@ -465,10 +468,13 @@ class APIService: ObservableObject {
         // Save user profile
         await saveUserProfileToDefaults(newUser)
         
-            // Load organizations after successful sign-in
-            await loadOrganizations()
-            
-            print("✅ Created new user with Firebase UID: \(newUser.id)")
+        // Load organizations after successful sign-in
+        await loadOrganizations()
+        
+        // Post notification that user has logged in (for FCM token registration)
+        NotificationCenter.default.post(name: NSNotification.Name("UserLoggedIn"), object: newUser)
+        
+        print("✅ Created new user with Firebase UID: \(newUser.id)")
         return newUser
         }
     }

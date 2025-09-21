@@ -13,6 +13,7 @@ struct AdminOrganizationReviewView: View {
     @State private var selectedReviewStatus: RequestStatus = .pending
     @State private var nextSteps: [String] = []
     @State private var newNextStep = ""
+    @State private var listener: ListenerRegistration?
     
     var body: some View {
         NavigationView {
@@ -43,7 +44,10 @@ struct AdminOrganizationReviewView: View {
                 }
             }
             .onAppear {
-                loadRequests()
+                setupRealtimeListener()
+            }
+            .onDisappear {
+                removeRealtimeListener()
             }
             .sheet(isPresented: $showingRequestDetail) {
                 if let request = selectedRequest {
@@ -215,22 +219,9 @@ struct AdminOrganizationReviewView: View {
     }
     
     private func loadRequests() {
-        isLoading = true
-        
-        Task {
-            do {
-                let requests = try await apiService.fetchOrganizationRequests(status: selectedStatus)
-                await MainActor.run {
-                    self.organizationRequests = requests
-                    self.isLoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    self.isLoading = false
-                    print("Error loading requests: \(error)")
-                }
-            }
-        }
+        // This method is now handled by the real-time listener
+        // Keeping it for the refresh button functionality
+        setupRealtimeListener()
     }
     
     private func submitReview() {
@@ -779,6 +770,124 @@ struct OrganizationRequestDetailView: View {
         case .emergency: return .red
         default: return .gray
         }
+    }
+    
+    // MARK: - Real-time Listener Methods
+    private func setupRealtimeListener() {
+        print("🔄 Setting up real-time listener for organization requests...")
+        
+        let db = Firestore.firestore()
+        var query: Query = db.collection("organizationRequests")
+        
+        // Apply status filter if selected
+        if let status = selectedStatus {
+            query = query.whereField("status", isEqualTo: status.rawValue)
+        }
+        
+        // Set up real-time listener
+        listener = query.addSnapshotListener { [self] snapshot, error in
+            if let error = error {
+                print("❌ Error listening to organization requests: \(error)")
+                return
+            }
+            
+            guard let snapshot = snapshot else {
+                print("⚠️ No snapshot received from organization requests listener")
+                return
+            }
+            
+            print("📡 Received \(snapshot.documentChanges.count) changes for organization requests")
+            
+            var requests: [OrganizationRequest] = []
+            
+            for document in snapshot.documents {
+                do {
+                    let data = document.data()
+                    print("📄 Processing real-time request: \(document.documentID)")
+                    print("   - Status: \(data["status"] as? String ?? "nil")")
+                    print("   - Name: \(data["name"] as? String ?? "nil")")
+                    
+                    let request = try parseOrganizationRequestFromFirestore(document: document, data: data)
+                    requests.append(request)
+                    print("✅ Successfully parsed real-time request: \(request.name)")
+                } catch {
+                    print("⚠️ Error parsing real-time organization request \(document.documentID): \(error)")
+                    continue
+                }
+            }
+            
+            // Sort by submission date (newest first)
+            requests.sort { request1, request2 in
+                request1.submittedAt > request2.submittedAt
+            }
+            
+            DispatchQueue.main.async {
+                self.organizationRequests = requests
+                self.isLoading = false
+                print("✅ Updated organization requests list with \(requests.count) requests")
+            }
+        }
+        
+        print("✅ Real-time listener set up successfully")
+    }
+    
+    private func removeRealtimeListener() {
+        print("🔄 Removing real-time listener for organization requests...")
+        listener?.remove()
+        listener = nil
+        print("✅ Real-time listener removed")
+    }
+    
+    private func parseOrganizationRequestFromFirestore(document: QueryDocumentSnapshot, data: [String: Any]) throws -> OrganizationRequest {
+        let id = data["id"] as? String ?? document.documentID
+        let name = data["name"] as? String ?? data["organizationName"] as? String ?? "Unknown Organization"
+        let typeString = data["type"] as? String ?? data["organizationType"] as? String ?? "other"
+        let organizationType = OrganizationType(rawValue: typeString) ?? .other
+        let description = data["description"] as? String ?? ""
+        let website = data["website"] as? String
+        let phone = data["phone"] as? String
+        let email = data["email"] as? String ?? data["officeEmail"] as? String ?? ""
+        
+        // Parse location
+        let locationData = data["location"] as? [String: Any] ?? [:]
+        let location = OrganizationLocation(
+            latitude: locationData["latitude"] as? Double ?? 0.0,
+            longitude: locationData["longitude"] as? Double ?? 0.0,
+            address: locationData["address"] as? String ?? data["address"] as? String ?? "",
+            city: locationData["city"] as? String ?? data["city"] as? String ?? "",
+            state: locationData["state"] as? String ?? data["state"] as? String ?? "",
+            zipCode: locationData["zipCode"] as? String ?? data["zipCode"] as? String ?? ""
+        )
+        
+        // Parse timestamps
+        let submittedAt = (data["submittedAt"] as? Timestamp)?.dateValue() ?? Date()
+        let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
+        
+        // Parse status
+        let statusString = data["status"] as? String ?? "pending"
+        let status = RequestStatus(rawValue: statusString) ?? .pending
+        
+        // Parse admin info
+        let adminFirstName = data["adminFirstName"] as? String ?? ""
+        let adminLastName = data["adminLastName"] as? String ?? ""
+        let adminEmail = data["adminEmail"] as? String ?? ""
+        
+        return OrganizationRequest(
+            id: id,
+            name: name,
+            type: organizationType,
+            description: description,
+            website: website,
+            phone: phone,
+            email: email,
+            location: location,
+            submittedAt: submittedAt,
+            updatedAt: updatedAt,
+            status: status,
+            adminFirstName: adminFirstName,
+            adminLastName: adminLastName,
+            adminEmail: adminEmail
+        )
     }
 }
 

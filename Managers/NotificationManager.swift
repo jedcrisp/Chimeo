@@ -131,24 +131,15 @@ class NotificationManager: NSObject, ObservableObject {
     private func registerFCMTokenWithUser(_ token: String) async {
         print("📱 Registering FCM token with user profile...")
         
-        // First try to get current user from Firebase Auth
-        var userId: String?
-        
-        if let firebaseUser = Auth.auth().currentUser {
-            print("✅ Found Firebase Auth user for FCM registration: \(firebaseUser.uid)")
-            userId = firebaseUser.uid
-        } else if let data = UserDefaults.standard.data(forKey: "currentUser"),
-                  let user = try? JSONDecoder().decode(User.self, from: data) {
-            print("✅ Found UserDefaults user for FCM registration: \(user.id)")
-            userId = user.id
-        }
-        
-        guard let userId = userId else {
+        // Get current user ID using centralized method
+        guard let userId = getCurrentUserId() else {
             print("❌ No current user found for FCM token registration")
             // Store token for later registration
             UserDefaults.standard.set(token, forKey: "pending_fcm_token")
             return
         }
+        
+        print("✅ Found user ID for FCM registration: \(userId)")
         
         // Update user's FCM token in Firestore
         do {
@@ -168,6 +159,141 @@ class NotificationManager: NSObject, ObservableObject {
             UserDefaults.standard.removeObject(forKey: "pending_fcm_token")
         } catch {
             print("❌ Failed to register FCM token: \(error)")
+        }
+    }
+    
+    // MARK: - Centralized User ID Resolution
+    private func getCurrentUserId() -> String? {
+        // First try Firebase Auth
+        if let firebaseUser = Auth.auth().currentUser {
+            print("✅ Found Firebase Auth user: \(firebaseUser.uid)")
+            return firebaseUser.uid
+        }
+        
+        // Then try UserDefaults
+        if let data = UserDefaults.standard.data(forKey: "currentUser"),
+           let user = try? JSONDecoder().decode(User.self, from: data) {
+            print("✅ Found UserDefaults user: \(user.id)")
+            return user.id
+        }
+        
+        // Finally try APIService currentUser
+        if let apiService = getAPIService(),
+           let currentUser = apiService.currentUser {
+            print("✅ Found APIService user: \(currentUser.id)")
+            return currentUser.id
+        }
+        
+        print("❌ No user ID found from any source")
+        return nil
+    }
+    
+    private func getAPIService() -> APIService? {
+        // Try to get APIService from the environment or a shared instance
+        // This is a workaround since we can't easily access the environment object here
+        return nil // Will be implemented with proper dependency injection
+    }
+    
+    // MARK: - Retry FCM Token Registration
+    func retryFCMTokenRegistration() {
+        print("🔄 Retrying FCM token registration...")
+        
+        // Check if we have a pending token
+        if let pendingToken = UserDefaults.standard.string(forKey: "pending_fcm_token") {
+            print("📱 Found pending FCM token, attempting registration...")
+            Task {
+                await registerFCMTokenWithUser(pendingToken)
+            }
+        } else if let currentToken = fcmToken {
+            print("📱 Re-registering current FCM token...")
+            Task {
+                await registerFCMTokenWithUser(currentToken)
+            }
+        } else {
+            print("📱 No FCM token available, requesting new one...")
+            requestFCMToken()
+        }
+    }
+    
+    // MARK: - Debug FCM Token Status
+    func debugFCMTokenStatus() {
+        print("🔍 FCM Token Debug Status:")
+        print("   - Current FCM Token: \(fcmToken ?? "nil")")
+        print("   - Pending Token: \(UserDefaults.standard.string(forKey: "pending_fcm_token") ?? "nil")")
+        print("   - Current User ID: \(getCurrentUserId() ?? "nil")")
+        print("   - Is Authorized: \(isAuthorized)")
+        print("   - Authorization Status: \(authorizationStatus.rawValue)")
+        
+        // Check Firestore for user's FCM token
+        if let userId = getCurrentUserId() {
+            Task {
+                do {
+                    let db = Firestore.firestore()
+                    let userDoc = try await db.collection("users").document(userId).getDocument()
+                    if userDoc.exists {
+                        let userData = userDoc.data() ?? [:]
+                        let storedToken = userData["fcmToken"] as? String ?? "nil"
+                        print("   - Stored FCM Token in Firestore: \(storedToken)")
+                        print("   - Token matches current: \(storedToken == fcmToken)")
+                    } else {
+                        print("   - User document not found in Firestore")
+                    }
+                } catch {
+                    print("   - Error checking Firestore: \(error)")
+                }
+            }
+        }
+    }
+    
+    // MARK: - Test FCM Token Registration
+    func testFCMTokenRegistration() {
+        print("🧪 Testing FCM Token Registration...")
+        
+        // Get current FCM token
+        Messaging.messaging().token { [weak self] token, error in
+            if let error = error {
+                print("❌ Error getting FCM token: \(error)")
+                return
+            }
+            
+            guard let token = token, !token.isEmpty else {
+                print("❌ No FCM token available")
+                return
+            }
+            
+            print("✅ FCM Token: \(token.prefix(20))...")
+            print("   - Token Length: \(token.count)")
+            
+            // Update local token
+            self?.updateFCMToken(token)
+            
+            // Register with user profile
+            Task {
+                await self?.registerFCMTokenWithUser(token)
+            }
+        }
+    }
+    
+    // MARK: - Test Local Notification
+    func testLocalNotification() {
+        print("🧪 Testing local notification...")
+        
+        let content = UNMutableNotificationContent()
+        content.title = "🧪 Test Notification"
+        content.body = "This is a test notification to verify the system is working"
+        content.sound = .default
+        content.categoryIdentifier = "TEST_NOTIFICATION"
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false)
+        let request = UNNotificationRequest(identifier: "test-notification-\(Date().timeIntervalSince1970)", content: content, trigger: trigger)
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Test notification failed: \(error)")
+            } else {
+                print("✅ Test notification scheduled successfully")
+                print("🧪 Test notification will appear in 2 seconds")
+            }
         }
     }
     

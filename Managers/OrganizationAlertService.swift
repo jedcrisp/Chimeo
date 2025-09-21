@@ -57,6 +57,8 @@ class OrganizationAlertService: ObservableObject {
         
         print("✅ Organization alert posted successfully")
         print("   📍 Location: organizations/\(alert.organizationId)/alerts/\(alertRef.documentID)")
+        print("   🔥 This should trigger Firebase function: sendAlertNotifications")
+        print("   📊 Alert data: \(alertData)")
         
         // Update organization alert count
         try await Firestore.firestore().collection("organizations").document(alert.organizationId).updateData([
@@ -65,6 +67,30 @@ class OrganizationAlertService: ObservableObject {
         
         // Send notifications to followers
         await sendNotificationsToFollowers(for: alert)
+    }
+    
+    // MARK: - Test Alert Creation
+    func createTestAlert(organizationId: String, organizationName: String) async throws {
+        print("🧪 Creating test alert for debugging...")
+        
+        let testAlert = OrganizationAlert(
+            id: UUID().uuidString,
+            title: "Test Alert - Debug Push Notifications",
+            description: "This is a test alert to verify push notifications are working correctly.",
+            organizationId: organizationId,
+            organizationName: organizationName,
+            groupId: nil,
+            groupName: nil,
+            type: .other,
+            severity: .medium,
+            location: nil,
+            postedBy: "Test User",
+            postedByUserId: "test-user-id",
+            postedAt: Date()
+        )
+        
+        try await postOrganizationAlert(testAlert)
+        print("🧪 Test alert created successfully")
     }
     
     // MARK: - Send Notifications to Followers

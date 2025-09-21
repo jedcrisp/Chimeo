@@ -27,39 +27,27 @@ exports.sendAlertNotifications = functions.firestore
         return;
     }
     try {
-        // Get organization followers from the correct structure: users/{userId}/followedOrganizations/{orgId}
-        // We need to get all users who follow this organization by checking the subcollection
+        // Get organization followers from the subcollection: organizations/{orgId}/followers/{userId}
+        console.log(`   🔍 Getting followers from organizations/${orgId}/followers subcollection`);
         const followersSnapshot = await admin.firestore()
-            .collection('users')
+            .collection('organizations')
+            .doc(orgId)
+            .collection('followers')
             .get();
-        // Filter users who follow this organization by checking their followedOrganizations subcollection
-        console.log(`   🔍 Checking ${followersSnapshot.docs.length} users for followers of organization ${orgId}`);
+        console.log(`   🔍 Found ${followersSnapshot.docs.length} followers in subcollection`);
         const followerIds = [];
-        for (const userDoc of followersSnapshot.docs) {
-            try {
-                // Check if this user follows the organization by looking in their subcollection
-                const followedOrgDoc = await admin.firestore()
-                    .collection('users')
-                    .doc(userDoc.id)
-                    .collection('followedOrganizations')
-                    .doc(orgId)
-                    .get();
-                if (followedOrgDoc.exists) {
-                    // Don't include the alert creator in the notification list
-                    if (userDoc.id !== alert.postedByUserId) {
-                        followerIds.push(userDoc.id);
-                        console.log(`   ✅ User ${userDoc.id} follows organization ${orgId}`);
-                    }
-                    else {
-                        console.log(`   🚫 User ${userDoc.id} is the alert creator - excluding from notifications`);
-                        console.log(`      Alert creator ID: ${alert.postedByUserId}`);
-                        console.log(`      Current user ID: ${userDoc.id}`);
-                        console.log(`      IDs match: ${userDoc.id === alert.postedByUserId}`);
-                    }
-                }
+        for (const followerDoc of followersSnapshot.docs) {
+            const followerId = followerDoc.id;
+            // Don't include the alert creator in the notification list
+            if (followerId !== alert.postedByUserId) {
+                followerIds.push(followerId);
+                console.log(`   ✅ User ${followerId} follows organization ${orgId}`);
             }
-            catch (error) {
-                console.log(`   ⚠️ Error checking if user ${userDoc.id} follows organization: ${error}`);
+            else {
+                console.log(`   🚫 User ${followerId} is the alert creator - excluding from notifications`);
+                console.log(`      Alert creator ID: ${alert.postedByUserId}`);
+                console.log(`      Current user ID: ${followerId}`);
+                console.log(`      IDs match: ${followerId === alert.postedByUserId}`);
             }
         }
         if (followerIds.length === 0) {

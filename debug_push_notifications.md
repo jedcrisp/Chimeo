@@ -1,99 +1,176 @@
-# 🔔 iOS Push Notification Debugging Guide
+# Push Notification Debug Guide
 
-## 🚨 **Problem: External Testers Not Receiving Push Notifications**
+## Current FCM Token
+Your FCM token: `cLFvlpquB0-ErL-6Azo-Zq:APA91bHi6lqJhGLrfpTGTNQHtiRt-Hw_YgLlZFaIL9DPyn1-UtR42HZ69YfJjqcnm4RAHF95mc4qBzrAq4s5hA6cZwnGs7ue4MYJAU5SKaMuxG_9OOeHV3U`
 
-### **1. Immediate Checks for Testers**
+## Potential Issues Identified
 
-#### **A. iOS Settings Verification**
-- [ ] **Notifications enabled** for your app in iOS Settings
-- [ ] **Background App Refresh** enabled for your app
-- [ ] **Do Not Disturb** mode disabled
-- [ ] **Focus modes** not blocking notifications
+### 1. **APNS Environment Mismatch**
+- **Issue**: Your entitlements show `aps-environment: development` but you might be testing on a production build
+- **Solution**: Ensure you're testing on a development build or update entitlements for production
 
-#### **B. App Permission Status**
-- [ ] **Notification permissions granted** when app first launched
-- [ ] **App has notification access** in iOS Settings > Notifications > [Your App]
+### 2. **FCM Token Registration Issues**
+- **Issue**: Multiple token registration methods that might conflict
+- **Current Setup**: 
+  - `NotificationManager` registers tokens
+  - `APIService` has its own registration
+  - `LocalAlertApp` has auto-registration
+- **Solution**: Consolidate to one registration method
 
-### **2. FCM Token Verification**
+### 3. **Firebase Configuration**
+- **Issue**: `FirebaseAppDelegateProxyEnabled: false` in Info.plist
+- **Impact**: This disables automatic FCM handling
+- **Solution**: Set to `true` or handle FCM manually (which you're doing)
 
-#### **A. Check Firestore Database**
-Go to [Firebase Console](https://console.firebase.google.com/project/chimeo-96dfc/firestore/data/users)
+### 4. **Token Validation**
+- **Issue**: Your token length is 163 characters, which is valid
+- **Issue**: Need to verify token is properly stored in Firestore
 
-Look for your testers' user documents and verify:
-- [ ] **fcmToken field exists** and contains a valid token
-- [ ] **Token is not empty** or "nil"
-- [ ] **Token was updated recently** (within last 24 hours)
+## Debug Steps
 
-#### **B. Check iOS Console Logs**
-When testers launch the app, look for these log messages:
+### Step 1: Check Token Registration
+Run this in your app to verify token registration:
+
+```swift
+// Add this to your app for debugging
+func debugFCMStatus() {
+    let token = UserDefaults.standard.string(forKey: "fcm_token") ?? "No token"
+    print("🔍 FCM Debug Status:")
+    print("   - Stored Token: \(token.prefix(20))...")
+    print("   - Token Length: \(token.count)")
+    print("   - Current User: \(Auth.auth().currentUser?.uid ?? "Not logged in")")
+    
+    // Check Firestore
+    if let userId = Auth.auth().currentUser?.uid {
+        let db = Firestore.firestore()
+        db.collection("users").document(userId).getDocument { doc, error in
+            if let doc = doc, doc.exists {
+                let data = doc.data() ?? [:]
+                let storedToken = data["fcmToken"] as? String ?? "No token in Firestore"
+                print("   - Firestore Token: \(storedToken.prefix(20))...")
+                print("   - Tokens Match: \(token == storedToken)")
+            } else {
+                print("   - Firestore Error: \(error?.localizedDescription ?? "Document not found")")
+            }
+        }
+    }
+}
 ```
-🔥 FCM Registration Token updated: [TOKEN]
-✅ FCM token stored in UserDefaults
-✅ FCM token automatically registered for user: [USER_ID]
-```
 
-### **3. Common Issues & Solutions**
+### Step 2: Test with Firebase Functions
+Use the test function to send a notification:
 
-#### **A. Development vs Production Builds**
-- **TestFlight builds** need production APNS certificates
-- **Development builds** need development APNS certificates
-- **Verify provisioning profile** matches build type
-
-#### **B. FCM Token Expiration**
-- FCM tokens expire and need refresh
-- Check if tokens are being refreshed automatically
-- Look for "FCM Registration Token updated" logs
-
-#### **C. User Authentication Issues**
-- FCM tokens only stored for authenticated users
-- Verify testers are properly signed in
-- Check if `currentUser` exists when registering tokens
-
-### **4. Testing Steps**
-
-#### **Step 1: Create Test Alert**
-1. Create an alert from web app
-2. Check Firebase Functions logs for execution
-3. Verify alert appears in `organizations/{orgId}/alerts`
-
-#### **Step 2: Check FCM Token Storage**
-1. Have tester launch app
-2. Check console for FCM token logs
-3. Verify token stored in Firestore
-
-#### **Step 3: Test Direct FCM**
-1. Use Firebase Console to send test message
-2. Verify tester receives test notification
-3. Check if issue is with alerts or FCM in general
-
-### **5. Debug Commands**
-
-#### **Check Firebase Functions Logs**
 ```bash
-firebase functions:log --only sendAlertNotifications
+# In Firebase Functions directory
+firebase functions:shell
+
+# Then call the test function
+testFCMNotification({
+  userId: "YOUR_USER_ID",
+  title: "Test Notification",
+  body: "This is a test from Firebase Functions"
+})
 ```
 
-#### **Check Recent Alerts**
-Look in Firebase Console > Firestore > `organizations/{orgId}/alerts`
+### Step 3: Check Notification Permissions
+```swift
+UNUserNotificationCenter.current().getNotificationSettings { settings in
+    print("🔔 Notification Settings:")
+    print("   - Authorization: \(settings.authorizationStatus.rawValue)")
+    print("   - Alert Setting: \(settings.alertSetting.rawValue)")
+    print("   - Sound Setting: \(settings.soundSetting.rawValue)")
+    print("   - Badge Setting: \(settings.badgeSetting.rawValue)")
+}
+```
 
-#### **Check User FCM Tokens**
-Look in Firebase Console > Firestore > `users` collection
+## Quick Fixes to Try
 
-### **6. Most Likely Causes**
+### Fix 1: Enable Firebase App Delegate Proxy
+Update your `Info.plist`:
+```xml
+<key>FirebaseAppDelegateProxyEnabled</key>
+<true/>
+```
 
-1. **APNS Certificate Issues** (40% probability)
-2. **FCM Token Not Stored** (30% probability)  
-3. **Notification Permissions Denied** (20% probability)
-4. **Background App Refresh Disabled** (10% probability)
+### Fix 2: Simplify FCM Token Registration
+Remove duplicate registration methods and use only one:
 
-### **7. Next Steps**
+```swift
+// In ChimeoApp.swift, simplify the FCM setup
+private func setupFirebaseMessaging() {
+    print("🔥 Setting up Firebase Cloud Messaging...")
+    
+    // Set the delegate
+    Messaging.messaging().delegate = FCMDelegate()
+    
+    // Request permissions and get token
+    Task {
+        do {
+            let center = UNUserNotificationCenter.current()
+            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+            
+            if granted {
+                await MainActor.run {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+                
+                // Get FCM token
+                Messaging.messaging().token { token, error in
+                    if let error = error {
+                        print("❌ Error getting FCM token: \(error)")
+                    } else if let token = token {
+                        print("✅ FCM token received: \(token)")
+                        // Register with user profile
+                        Task {
+                            await self.registerFCMTokenWithUser(token)
+                        }
+                    }
+                }
+            }
+        } catch {
+            print("❌ Error requesting permissions: \(error)")
+        }
+    }
+}
+```
 
-1. **Verify FCM token storage** in Firestore
-2. **Check APNS certificate configuration**
-3. **Test with Firebase Console** direct messaging
-4. **Review iOS app logs** for FCM registration
-5. **Verify provisioning profiles** match build type
+### Fix 3: Test with Simple Notification
+Add this test function to your app:
 
----
+```swift
+func sendTestNotification() {
+    let content = UNMutableNotificationContent()
+    content.title = "Test Notification"
+    content.body = "This is a local test notification"
+    content.sound = .default
+    
+    let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+    let request = UNNotificationRequest(identifier: "test", content: content, trigger: trigger)
+    
+    UNUserNotificationCenter.current().add(request) { error in
+        if let error = error {
+            print("❌ Test notification failed: \(error)")
+        } else {
+            print("✅ Test notification scheduled")
+        }
+    }
+}
+```
 
-**Need Help?** Check Firebase Console logs and iOS device logs for specific error messages.
+## Next Steps
+
+1. **Run the debug function** to check token registration
+2. **Test local notifications** to verify permissions work
+3. **Use Firebase Functions test** to verify FCM works
+4. **Check Firebase Console** for any error logs
+5. **Verify APNS certificates** are properly configured
+
+## Common Issues
+
+- **Development vs Production**: Make sure you're using the right APNS environment
+- **Token Expiration**: FCM tokens can expire and need refresh
+- **Network Issues**: FCM requires internet connection
+- **App State**: Notifications might not show if app is in foreground without proper handling
+- **iOS Simulator**: Push notifications don't work on iOS Simulator, only on physical devices
+
+Let me know what the debug output shows and we can narrow down the issue!

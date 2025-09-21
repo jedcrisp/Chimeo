@@ -143,15 +143,18 @@ struct ChimeoApp: App {
             object: nil,
             queue: .main
         ) { _ in
-            print("📱 User profile saved - checking for pending FCM token")
-            
-            // Check if there's a pending FCM token to register
-            if let pendingToken = UserDefaults.standard.string(forKey: "pending_fcm_token") {
-                print("📱 Found pending FCM token, registering with user profile")
-                Task {
-                    await self.notificationManager.registerFCMTokenWithUser(pendingToken)
-                }
-            }
+            print("📱 User profile saved - retrying FCM token registration")
+            self.notificationManager.retryFCMTokenRegistration()
+        }
+        
+        // Also listen for user login events
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("UserLoggedIn"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            print("📱 User logged in - retrying FCM token registration")
+            self.notificationManager.retryFCMTokenRegistration()
         }
     }
 }

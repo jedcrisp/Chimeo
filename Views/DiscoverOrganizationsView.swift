@@ -5,7 +5,7 @@ struct DiscoverOrganizationsView: View {
     @EnvironmentObject var apiService: APIService
     @EnvironmentObject var locationManager: LocationManager
     @EnvironmentObject var serviceCoordinator: ServiceCoordinator
-    @StateObject private var followStatusManager = FollowStatusManager.shared
+    @ObservedObject private var followStatusManager = FollowStatusManager.shared
     @State private var organizations: [Organization] = []
     @State private var isLoading = false
     @State private var showingOrganizationProfile: Organization?
@@ -75,6 +75,9 @@ struct DiscoverOrganizationsView: View {
                         }
                     }
                     .listStyle(PlainListStyle())
+                    .refreshable {
+                        await loadOrganizationsAsync()
+                    }
                 }
             }
             .navigationTitle("Discover")
@@ -97,17 +100,21 @@ struct DiscoverOrganizationsView: View {
         isLoading = true
         
         Task {
-            do {
-                let fetchedOrganizations = try await apiService.fetchOrganizations()
-                await MainActor.run {
-                    self.organizations = fetchedOrganizations
-                    self.isLoading = false
-                }
-            } catch {
-                print("❌ Error loading organizations: \(error)")
-                await MainActor.run {
-                    self.isLoading = false
-                }
+            await loadOrganizationsAsync()
+        }
+    }
+    
+    private func loadOrganizationsAsync() async {
+        do {
+            let fetchedOrganizations = try await apiService.fetchOrganizations()
+            await MainActor.run {
+                self.organizations = fetchedOrganizations
+                self.isLoading = false
+            }
+        } catch {
+            print("❌ Error loading organizations: \(error)")
+            await MainActor.run {
+                self.isLoading = false
             }
         }
     }
@@ -183,7 +190,7 @@ struct DiscoverOrganizationRowView: View {
     @EnvironmentObject var apiService: APIService
     @EnvironmentObject var locationManager: LocationManager
     @EnvironmentObject var serviceCoordinator: ServiceCoordinator
-    @StateObject private var followStatusManager = FollowStatusManager.shared
+    @ObservedObject private var followStatusManager = FollowStatusManager.shared
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var localFollowStatus: Bool? // Local state for immediate UI updates
@@ -397,12 +404,12 @@ struct DiscoverOrganizationRowView: View {
         Task {
             do {
                 print("🔄 Starting follow/unfollow operation...")
-                if isFollowing {
-                    print("🔄 Currently following, so unfollowing organization: \(organization.id)")
-                    try await serviceCoordinator.unfollowOrganization(organization.id)
-                } else {
-                    print("🔄 Currently not following, so following organization: \(organization.id)")
+                if newFollowStatus {
+                    print("🔄 New status is following, so following organization: \(organization.id)")
                     try await serviceCoordinator.followOrganization(organization.id)
+                } else {
+                    print("🔄 New status is not following, so unfollowing organization: \(organization.id)")
+                    try await serviceCoordinator.unfollowOrganization(organization.id)
                 }
                 
                 // Update the FollowStatusManager to reflect the new state

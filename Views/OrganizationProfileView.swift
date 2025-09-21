@@ -6,7 +6,7 @@ struct OrganizationProfileView: View {
     let organization: Organization
     @EnvironmentObject var apiService: APIService
     @EnvironmentObject var serviceCoordinator: ServiceCoordinator
-    @StateObject private var followStatusManager = FollowStatusManager.shared
+    @ObservedObject private var followStatusManager = FollowStatusManager.shared
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showingErrorAlert = false

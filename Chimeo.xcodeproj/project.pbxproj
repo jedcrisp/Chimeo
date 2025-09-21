@@ -75,7 +75,6 @@
 		F4B261D72E7CF7DF00592CFE /* BiometricAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261B72E7CF7DF00592CFE /* BiometricAuthManager.swift */; };
 		F4B261D82E7CF7DF00592CFE /* GeocodingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261BB2E7CF7DF00592CFE /* GeocodingService.swift */; };
 		F4B261D92E7CF7DF00592CFE /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261C72E7CF7DF00592CFE /* WeatherService.swift */; };
-		F4B261DC2E7CF7ED00592CFE /* IncidentModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261DA2E7CF7ED00592CFE /* IncidentModel.swift */; };
 		F4B261DD2E7CF7ED00592CFE /* OrganizationRequestModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261DB2E7CF7ED00592CFE /* OrganizationRequestModel.swift */; };
 		F4B261FA2E7CF8D400592CFE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F4B261F92E7CF8D400592CFE /* Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -101,7 +100,7 @@
 		7949B36C2E500FD500C37BEC /* Chimeo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Chimeo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7949B3792E500FD700C37BEC /* ChimeoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChimeoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7949B3832E500FD700C37BEC /* ChimeoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChimeoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		7949B3992E50136900C37BEC /* IncidentModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncidentModel.swift; sourceTree = "<group>"; };
+		7949B3992E50136900C37BEC /* IncidentModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IncidentModel.swift"; sourceTree = "<group>"; };
 		7966DE3F2E5013C500AB33F7 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		7966DE402E5013C500AB33F7 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		7966DE412E5013C500AB33F7 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
@@ -173,7 +172,6 @@
 		F4B261C52E7CF7DF00592CFE /* UserProfileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfileService.swift; sourceTree = "<group>"; };
 		F4B261C62E7CF7DF00592CFE /* WeatherNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherNotificationManager.swift; sourceTree = "<group>"; };
 		F4B261C72E7CF7DF00592CFE /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
-		F4B261DA2E7CF7ED00592CFE /* IncidentModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncidentModel.swift; sourceTree = "<group>"; };
 		F4B261DB2E7CF7ED00592CFE /* OrganizationRequestModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizationRequestModel.swift; sourceTree = "<group>"; };
 		F4B261F92E7CF8D400592CFE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -210,7 +208,6 @@
 				7966DE422E5013CA00AB33F7 /* Views */,
 				7949B39B2E50138F00C37BEC /* Managers */,
 				7949B3982E50134D00C37BEC /* Models */,
-				7949B3992E50136900C37BEC /* IncidentModel.swift */,
 				7966DE4F2E5013F000AB33F7 /* Chimeo/ChimeoApp.swift */,
 				7966DE502E5013F000AB33F7 /* Chimeo/ContentView.swift */,
 				7949B36D2E500FD500C37BEC /* Products */,
@@ -230,7 +227,7 @@
 		7949B3982E50134D00C37BEC /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				F4B261DA2E7CF7ED00592CFE /* IncidentModel.swift */,
+				7949B3992E50136900C37BEC /* IncidentModel.swift */,
 				F4B261DB2E7CF7ED00592CFE /* OrganizationRequestModel.swift */,
 			);
 			path = Models;
@@ -460,7 +457,6 @@
 				7966DE522E5013F000AB33F7 /* Chimeo/ContentView.swift in Sources */,
 				F4B2618D2E7CF7CE00592CFE /* AdminPlatformStatsView.swift in Sources */,
 				F4B2618E2E7CF7CE00592CFE /* AuthView.swift in Sources */,
-				F4B261DC2E7CF7ED00592CFE /* IncidentModel.swift in Sources */,
 				F4B261DD2E7CF7ED00592CFE /* OrganizationRequestModel.swift in Sources */,
 				F4B2618F2E7CF7CE00592CFE /* NotificationPreferencesView.swift in Sources */,
 				F4B261902E7CF7CE00592CFE /* AdminUserManagementView.swift in Sources */,

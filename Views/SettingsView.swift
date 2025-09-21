@@ -14,6 +14,7 @@ struct SettingsView: View {
     @State private var alertMessage = ""
     @State private var showingAlert = false
     @State private var isFixingUsers = false
+    @State private var organizationAlertService = OrganizationAlertService()
     
     private var isCreatorAccount: Bool {
         apiService.currentUser?.email == "jed@onetrack-consulting.com"
@@ -534,6 +535,215 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(isFixingUsers)
+                
+                Divider()
+                    .padding(.horizontal, 20)
+                
+                Button(action: {
+                    notificationManager.debugFCMTokenStatus()
+                }) {
+                    HStack {
+                        Image(systemName: "bell.badge")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.blue)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Debug FCM Token")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.primary)
+                            
+                            Text("Check push notification status")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                
+                Divider()
+                    .padding(.horizontal, 20)
+                
+                Button(action: {
+                    notificationManager.retryFCMTokenRegistration()
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.green)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Retry FCM Registration")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.primary)
+                            
+                            Text("Re-register push notification token")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                
+                Divider()
+                    .padding(.horizontal, 20)
+                
+                Button(action: {
+                    notificationManager.testFCMTokenRegistration()
+                }) {
+                    HStack {
+                        Image(systemName: "wifi")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.purple)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Test FCM Token")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.primary)
+                            
+                            Text("Test FCM token registration")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                
+                Divider()
+                    .padding(.horizontal, 20)
+                
+                Button(action: {
+                    notificationManager.testLocalNotification()
+                }) {
+                    HStack {
+                        Image(systemName: "bell")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.red)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Test Local Notification")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.primary)
+                            
+                            Text("Send test notification in 2 seconds")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                
+                Divider()
+                    .padding(.horizontal, 20)
+                
+                Button(action: {
+                    self.debugFollowStatus()
+                }) {
+                    HStack {
+                        Image(systemName: "person.2")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.orange)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Debug Follow Status")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.primary)
+                            
+                            Text("Check follow status for all organizations")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                
+                Button(action: {
+                    debugOrganizationRequests()
+                }) {
+                    HStack {
+                        Image(systemName: "building.2")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.purple)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Debug Organization Requests")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.primary)
+                            
+                            Text("Check organization requests in Firestore")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                
+                Divider()
+                    .padding(.horizontal, 20)
+                
+                Button(action: {
+                    Task {
+                        await createTestAlert()
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "bell.badge.fill")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.red)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Create Test Alert")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.primary)
+                            
+                            Text("Send test push notification")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
                 
                 Divider()
                     .padding(.horizontal, 20)
@@ -1648,6 +1858,105 @@ struct SettingsView: View {
             }
         }
     }
+    
+    private func createTestAlert() async {
+        guard let currentUser = apiService.currentUser else {
+            print("❌ No current user for test alert")
+            return
+        }
+        
+        // Get the first organization the user has access to
+        guard let organization = apiService.organizations.first else {
+            print("❌ No organizations available for test alert")
+            return
+        }
+        
+        do {
+            try await organizationAlertService.createTestAlert(
+                organizationId: organization.id,
+                organizationName: organization.name
+            )
+            print("✅ Test alert created successfully")
+        } catch {
+            print("❌ Failed to create test alert: \(error)")
+        }
+    }
+    
+    private func debugFollowStatus() {
+        print("🔍 Debug Follow Status:")
+        print("   FollowStatusManager shared instance: \(FollowStatusManager.shared)")
+        print("   Current follow status changes: \(FollowStatusManager.shared.followStatusChanges)")
+        
+        // Check a specific organization if we have one
+        if let firstOrg = apiService.organizations.first {
+            let followStatus = FollowStatusManager.shared.getFollowStatus(for: firstOrg.id)
+            print("   Follow status for '\(firstOrg.name)': \(followStatus?.description ?? "nil")")
+        }
+        
+        // Check if user is following any organizations
+        Task {
+            do {
+                guard let userId = apiService.currentUser?.id else {
+                    print("   No current user ID available")
+                    return
+                }
+                let followedOrgs = try await serviceCoordinator.getFollowedOrganizations(userId: userId)
+                print("   Followed organizations count: \(followedOrgs.count)")
+                for org in followedOrgs {
+                    print("   - Following: \(org.name) (ID: \(org.id))")
+                }
+            } catch {
+                print("   Error getting followed organizations: \(error)")
+            }
+        }
+    }
+    
+    private func debugOrganizationRequests() {
+        print("🔍 Debug Organization Requests:")
+        
+        Task {
+            do {
+                let db = Firestore.firestore()
+                
+                // Get all organization requests
+                let snapshot = try await db.collection("organizationRequests").getDocuments()
+                print("📊 Total organization requests in Firestore: \(snapshot.documents.count)")
+                
+                // Debug: Print all requests and their details
+                for (index, doc) in snapshot.documents.enumerated() {
+                    let data = doc.data()
+                    let status = data["status"] as? String ?? "nil"
+                    let name = data["name"] as? String ?? data["organizationName"] as? String ?? "Unknown"
+                    let id = data["id"] as? String ?? doc.documentID
+                    let submittedAt = data["submittedAt"] as? Timestamp
+                    let createdAt = data["createdAt"] as? Timestamp
+                    
+                    print("📄 Request \(index + 1):")
+                    print("   - Document ID: \(doc.documentID)")
+                    print("   - Request ID: \(id)")
+                    print("   - Name: \(name)")
+                    print("   - Status: \(status)")
+                    print("   - Submitted At: \(submittedAt?.dateValue() ?? Date())")
+                    print("   - Created At: \(createdAt?.dateValue() ?? Date())")
+                    print("   - Admin Email: \(data["adminEmail"] as? String ?? "nil")")
+                    print("   - Organization Type: \(data["type"] as? String ?? data["organizationType"] as? String ?? "nil")")
+                    print("   ---")
+                }
+                
+                // Try to fetch using the iOS app's method
+                print("🔄 Testing iOS app's fetchOrganizationRequests method...")
+                let requests = try await apiService.getPendingOrganizationRequests()
+                print("📱 iOS app found \(requests.count) pending requests")
+                
+                for request in requests {
+                    print("📱 iOS Request: \(request.name) (Status: \(request.status.rawValue))")
+                }
+                
+            } catch {
+                print("❌ Error debugging organization requests: \(error)")
+            }
+        }
+    }
 }
 
 // MARK: - Settings Section
@@ -2236,6 +2545,7 @@ struct AddAdminSheet: View {
             }
         }
     }
+    
     
     private func addUserAsAdmin(_ user: User) {
         guard let org = selectedOrganization else { return }

@@ -65,6 +65,9 @@ struct FollowedOrganizationsView: View {
                     FollowedOrganizationRowView(organization: organization)
                 }
                 .listStyle(.plain)
+                .refreshable {
+                    await loadFollowedOrganizationsAsync()
+                }
             }
         }
         .background(Color(.systemGroupedBackground))
@@ -79,19 +82,23 @@ struct FollowedOrganizationsView: View {
         isLoading = true
         
         Task {
-            do {
-                let organizations = try await apiService.fetchOrganizations()
-                await MainActor.run {
-                    // For now, show all organizations as "followed"
-                    // In production, you'd filter by actual followed status
-                    self.followedOrganizations = organizations
-                    self.isLoading = false
-                }
-            } catch {
-                await MainActor.run {
-                    self.isLoading = false
-                    print("Failed to load organizations: \(error)")
-                }
+            await loadFollowedOrganizationsAsync()
+        }
+    }
+    
+    private func loadFollowedOrganizationsAsync() async {
+        do {
+            let organizations = try await apiService.fetchOrganizations()
+            await MainActor.run {
+                // For now, show all organizations as "followed"
+                // In production, you'd filter by actual followed status
+                self.followedOrganizations = organizations
+                self.isLoading = false
+            }
+        } catch {
+            await MainActor.run {
+                self.isLoading = false
+                print("Failed to load organizations: \(error)")
             }
         }
     }
@@ -100,7 +107,7 @@ struct FollowedOrganizationsView: View {
 // MARK: - Followed Organization Row View
 struct FollowedOrganizationRowView: View {
     let organization: Organization
-    @StateObject private var followStatusManager = FollowStatusManager.shared
+    @ObservedObject private var followStatusManager = FollowStatusManager.shared
     @EnvironmentObject var serviceCoordinator: ServiceCoordinator
     @State private var isLoading = false
     @State private var localFollowStatus: Bool? // Local state for immediate UI updates
@@ -200,12 +207,12 @@ struct FollowedOrganizationRowView: View {
         
         Task {
             do {
-                if isFollowing {
-                    try await serviceCoordinator.unfollowOrganization(organization.id)
-                    followStatusManager.updateFollowStatus(organizationId: organization.id, isFollowing: false)
-                } else {
+                if newFollowStatus {
                     try await serviceCoordinator.followOrganization(organization.id)
                     followStatusManager.updateFollowStatus(organizationId: organization.id, isFollowing: true)
+                } else {
+                    try await serviceCoordinator.unfollowOrganization(organization.id)
+                    followStatusManager.updateFollowStatus(organizationId: organization.id, isFollowing: false)
                 }
             } catch {
                 // Revert local state on error

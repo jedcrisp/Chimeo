@@ -8,6 +8,7 @@ struct MainTabView: View {
     @EnvironmentObject var serviceCoordinator: ServiceCoordinator
     @StateObject private var locationManager = LocationManager()
     @StateObject private var calendarService = CalendarService()
+    @StateObject private var scheduledAlertService = ScheduledAlertExecutionService()
     @State private var selectedTab = 1  // Start with Feed tab (tag 1)
     @State private var showingPasswordSetup = false
     @State private var showingPasswordChange = false
@@ -162,6 +163,9 @@ struct MainTabView: View {
                     await addUserAsAdminToOrganization()
                 }
             }
+            
+            // Start scheduled alert execution service
+            scheduledAlertService.startBackgroundExecution()
         }
         .overlay(
             // Debug overlay to show admin status
@@ -206,6 +210,18 @@ struct MainTabView: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(forceShowCalendar ? Color.green : Color.purple)
+                        .cornerRadius(8)
+                        
+                        Button("Test Alerts") {
+                            Task {
+                                await scheduledAlertService.executeScheduledAlerts()
+                            }
+                        }
+                        .font(.caption2)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.cyan)
                         .cornerRadius(8)
                     }
                     .padding(.trailing, 16)

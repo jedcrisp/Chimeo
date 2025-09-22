@@ -33,6 +33,8 @@ struct OrganizationProfileView: View {
     @State private var showingCreateGroupAlert = false
     @State private var newGroupName = ""
     @State private var newGroupDescription = ""
+    @State private var newGroupIsPrivate = false
+    @State private var newGroupAllowPublicJoin = true
     @State private var selectedGroupForAlert: OrganizationGroup?
     
     // Add state for current organization data that can be updated
@@ -316,25 +318,13 @@ struct OrganizationProfileView: View {
                        print("🔄 Edit sheet opened")
                    }
                }
-        .alert("Create New Group", isPresented: $showingCreateGroupAlert) {
-            TextField("Group Name", text: $newGroupName)
-            TextField("Description", text: $newGroupDescription)
-            
-            Button("Cancel", role: .cancel) {
-                newGroupName = ""
-                newGroupDescription = ""
-            }
-            
-            Button("Create") {
-                if !newGroupName.isEmpty {
-                    createGroupWithDetails(name: newGroupName, description: newGroupDescription.isEmpty ? "No description" : newGroupDescription)
-                    newGroupName = ""
-                    newGroupDescription = ""
+        .sheet(isPresented: $showingCreateGroupAlert) {
+            CreateGroupSheetView(
+                organization: currentOrganization,
+                onGroupCreated: { group in
+                    createGroupWithDetails(name: group.name, description: group.description ?? "No description", isPrivate: group.isPrivate, allowPublicJoin: group.allowPublicJoin)
                 }
-            }
-            .disabled(newGroupName.isEmpty)
-        } message: {
-            Text("Enter the name and description for your new alert group.")
+            )
         }
         .onAppear {
             print("🏢 OrganizationProfileView appeared for: \(organization.name)")
@@ -1245,9 +1235,11 @@ struct OrganizationProfileView: View {
         showingCreateGroupAlert = true
     }
     
-    private func createGroupWithDetails(name: String, description: String) {
+    private func createGroupWithDetails(name: String, description: String, isPrivate: Bool = false, allowPublicJoin: Bool = true) {
         print("🔍 Creating new group: \(name)")
         print("   Description: \(description)")
+        print("   Is Private: \(isPrivate)")
+        print("   Allow Public Join: \(allowPublicJoin)")
         print("   Organization ID: \(organization.id)")
         
         Task {
@@ -1255,7 +1247,9 @@ struct OrganizationProfileView: View {
                 let newGroup = OrganizationGroup(
                     name: name,
                     description: description,
-                    organizationId: organization.id
+                    organizationId: organization.id,
+                    isPrivate: isPrivate,
+                    allowPublicJoin: allowPublicJoin
                 )
                 
                 print("   📋 New group object created: \(newGroup.name) (ID: \(newGroup.id))")
@@ -1870,5 +1864,117 @@ struct OrganizationContactSheet: View {
             )
         )
         .environmentObject(APIService())
+    }
+}
+
+struct CreateGroupSheetView: View {
+    let organization: Organization
+    let onGroupCreated: (OrganizationGroup) -> Void
+    
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var apiService: APIService
+    @State private var groupName = ""
+    @State private var groupDescription = ""
+    @State private var isPrivate = false
+    @State private var allowPublicJoin = true
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+    @State private var showingErrorAlert = false
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Group Details")) {
+                    TextField("Group Name", text: $groupName)
+                    TextField("Description (Optional)", text: $groupDescription, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+                
+                Section(header: Text("Privacy Settings")) {
+                    Toggle("Make Group Private", isOn: $isPrivate)
+                        .onChange(of: isPrivate) { _, newValue in
+                            if !newValue {
+                                allowPublicJoin = true
+                            }
+                        }
+                    
+                    if isPrivate {
+                        Toggle("Allow Public Join", isOn: $allowPublicJoin)
+                        
+                        Text("When a group is private, members must be manually invited by organization admins.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Section(footer: Text("Groups help organize your alerts and allow users to choose which types of notifications they want to receive.")) {
+                    Button(action: createGroup) {
+                        if isLoading {
+                            HStack {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                                Text("Creating Group...")
+                            }
+                        } else {
+                            Text("Create Group")
+                        }
+                    }
+                    .disabled(groupName.isEmpty || isLoading)
+                }
+            }
+            .navigationTitle("Create New Group")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+            .alert("Error", isPresented: $showingErrorAlert) {
+                Button("OK") {
+                    errorMessage = nil
+                    showingErrorAlert = false
+                }
+            } message: {
+                if let errorMessage = errorMessage {
+                    Text(errorMessage)
+                }
+            }
+        }
+    }
+    
+    private func createGroup() {
+        guard !groupName.isEmpty else { return }
+        
+        isLoading = true
+        
+        let newGroup = OrganizationGroup(
+            name: groupName,
+            description: groupDescription.isEmpty ? nil : groupDescription,
+            organizationId: organization.id,
+            isPrivate: isPrivate,
+            allowPublicJoin: allowPublicJoin
+        )
+        
+        Task {
+            do {
+                let createdGroup = try await apiService.createOrganizationGroup(
+                    group: newGroup,
+                    organizationId: organization.id
+                )
+                
+                await MainActor.run {
+                    onGroupCreated(createdGroup)
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to create group: \(error.localizedDescription)"
+                    showingErrorAlert = true
+                    isLoading = false
+                }
+            }
+        }
     }
 } 

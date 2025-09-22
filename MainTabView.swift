@@ -2,15 +2,17 @@ import SwiftUI
 import FirebaseAuth
 
 struct MainTabView: View {
+    @EnvironmentObject var authManager: SimpleAuthManager
+    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var serviceCoordinator: ServiceCoordinator
     @StateObject private var locationManager = LocationManager()
-    @StateObject private var apiService = APIService()
     @StateObject private var calendarService = CalendarService()
     @State private var selectedTab = 1  // Start with Feed tab (tag 1)
     @State private var showingPasswordSetup = false
     @State private var showingPasswordChange = false
     
     private var isCreatorAccount: Bool {
-        apiService.currentUser?.email == "jed@onetrack-consulting.com"
+        authManager.currentUser?.email == "jed@onetrack-consulting.com"
     }
     
     private var tabs: some View {
@@ -91,7 +93,6 @@ struct MainTabView: View {
             }
         }
         .environmentObject(locationManager)
-        .environmentObject(apiService)
         .environmentObject(calendarService)
         .onAppear {
             // Request location permissions when app launches

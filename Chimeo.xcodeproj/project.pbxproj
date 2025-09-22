@@ -16,6 +16,7 @@
 		7966DE5C2E5013F000AB33F7 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966DE412E5013C500AB33F7 /* APIService.swift */; };
 		7966DE5D2E5013F000AB33F7 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966DE3F2E5013C500AB33F7 /* LocationManager.swift */; };
 		7966DE5E2E5013F000AB33F7 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966DE402E5013C500AB33F7 /* NotificationManager.swift */; };
+		9732C6CD043945E1BA1D9F89 /* CustomFormComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FFCDEFBE49A419980D942FE /* CustomFormComponents.swift */; };
 		F44E3E892E803668002F41E2 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = F44E3E882E803668002F41E2 /* GoogleSignIn */; };
 		F44E3E8B2E803668002F41E2 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = F44E3E8A2E803668002F41E2 /* GoogleSignInSwift */; };
 		F44E3E8E2E8036A4002F41E2 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F44E3E8D2E8036A4002F41E2 /* FirebaseAuth */; };
@@ -38,6 +39,16 @@
 		F44E3EC12E8043FE002F41E2 /* AppIcon-29x29@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EAD2E8043FE002F41E2 /* AppIcon-29x29@3x.png */; };
 		F44E3EC22E8043FE002F41E2 /* AppIcon-60x60@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EB32E8043FE002F41E2 /* AppIcon-60x60@3x.png */; };
 		F44E3EC32E8043FE002F41E2 /* AppIcon-57x57@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F44E3EB12E8043FE002F41E2 /* AppIcon-57x57@2x.png */; };
+		F46AE54C2E80B410000211D5 /* SimpleAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE54B2E80B410000211D5 /* SimpleAuthManager.swift */; };
+		F46AE54E2E80B4D1000211D5 /* SimpleSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE54D2E80B4D1000211D5 /* SimpleSignInView.swift */; };
+		F46AE5532E80C2D8000211D5 /* EmailLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE54F2E80C2D8000211D5 /* EmailLoginView.swift */; };
+		F46AE5542E80C2D8000211D5 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE5512E80C2D8000211D5 /* OnboardingView.swift */; };
+		F46AE5552E80C2D8000211D5 /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE5522E80C2D8000211D5 /* SignUpView.swift */; };
+		F46AE5562E80C2D8000211D5 /* ModernAuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE5502E80C2D8000211D5 /* ModernAuthView.swift */; };
+		F46AE5592E80DBA3000211D5 /* GroupNotificationTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE5572E80DBA2000211D5 /* GroupNotificationTestView.swift */; };
+		F46AE55A2E80DBA3000211D5 /* NotificationDebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE5582E80DBA2000211D5 /* NotificationDebugView.swift */; };
+		F46AE55C2E80DD53000211D5 /* OrganizationFollowingTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE55B2E80DD53000211D5 /* OrganizationFollowingTestView.swift */; };
+		F46AE55E2E80DF78000211D5 /* PushNotificationTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE55D2E80DF78000211D5 /* PushNotificationTestView.swift */; };
 		F4B2618D2E7CF7CE00592CFE /* AdminPlatformStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261672E7CF7CE00592CFE /* AdminPlatformStatsView.swift */; };
 		F4B2618E2E7CF7CE00592CFE /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B2616C2E7CF7CE00592CFE /* AuthView.swift */; };
 		F4B2618F2E7CF7CE00592CFE /* NotificationPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261772E7CF7CE00592CFE /* NotificationPreferencesView.swift */; };
@@ -130,6 +141,7 @@
 
 /* Begin PBXFileReference section */
 		0DF0F0AC4D3240BCABC7FC3D /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		0FFCDEFBE49A419980D942FE /* CustomFormComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomFormComponents.swift; sourceTree = "<group>"; };
 		309593EB63984B70BE8E5A80 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		7949B36C2E500FD500C37BEC /* Chimeo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Chimeo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7949B3792E500FD700C37BEC /* ChimeoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChimeoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -157,6 +169,16 @@
 		F44E3EB42E8043FE002F41E2 /* AppIcon-1024x1024.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AppIcon-1024x1024.png"; sourceTree = "<group>"; };
 		F44E3EB52E8043FE002F41E2 /* Contents.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Contents.json; sourceTree = "<group>"; };
 		F46AE5032E806376000211D5 /* Chimeo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = Chimeo.entitlements; path = Chimeo/Chimeo.entitlements; sourceTree = "<group>"; };
+		F46AE54B2E80B410000211D5 /* SimpleAuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleAuthManager.swift; sourceTree = "<group>"; };
+		F46AE54D2E80B4D1000211D5 /* SimpleSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleSignInView.swift; sourceTree = "<group>"; };
+		F46AE54F2E80C2D8000211D5 /* EmailLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailLoginView.swift; sourceTree = "<group>"; };
+		F46AE5502E80C2D8000211D5 /* ModernAuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModernAuthView.swift; sourceTree = "<group>"; };
+		F46AE5512E80C2D8000211D5 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		F46AE5522E80C2D8000211D5 /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
+		F46AE5572E80DBA2000211D5 /* GroupNotificationTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupNotificationTestView.swift; sourceTree = "<group>"; };
+		F46AE5582E80DBA2000211D5 /* NotificationDebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationDebugView.swift; sourceTree = "<group>"; };
+		F46AE55B2E80DD53000211D5 /* OrganizationFollowingTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizationFollowingTestView.swift; sourceTree = "<group>"; };
+		F46AE55D2E80DF78000211D5 /* PushNotificationTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationTestView.swift; sourceTree = "<group>"; };
 		F4B261642E7CF7CE00592CFE /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		F4B261652E7CF7CE00592CFE /* AdminOrganizationManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminOrganizationManagementView.swift; sourceTree = "<group>"; };
 		F4B261662E7CF7CE00592CFE /* AdminOrganizationReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminOrganizationReviewView.swift; sourceTree = "<group>"; };
@@ -314,6 +336,7 @@
 		7949B39B2E50138F00C37BEC /* Managers */ = {
 			isa = PBXGroup;
 			children = (
+				F46AE54B2E80B410000211D5 /* SimpleAuthManager.swift */,
 				F4B261B62E7CF7DF00592CFE /* AuthenticationService.swift */,
 				F4B261B72E7CF7DF00592CFE /* BiometricAuthManager.swift */,
 				F4B261B82E7CF7DF00592CFE /* DevelopmentService.swift */,
@@ -344,6 +367,15 @@
 		7966DE422E5013CA00AB33F7 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				F46AE55D2E80DF78000211D5 /* PushNotificationTestView.swift */,
+				F46AE55B2E80DD53000211D5 /* OrganizationFollowingTestView.swift */,
+				F46AE5572E80DBA2000211D5 /* GroupNotificationTestView.swift */,
+				F46AE5582E80DBA2000211D5 /* NotificationDebugView.swift */,
+				F46AE54F2E80C2D8000211D5 /* EmailLoginView.swift */,
+				F46AE5502E80C2D8000211D5 /* ModernAuthView.swift */,
+				F46AE5512E80C2D8000211D5 /* OnboardingView.swift */,
+				F46AE5522E80C2D8000211D5 /* SignUpView.swift */,
+				F46AE54D2E80B4D1000211D5 /* SimpleSignInView.swift */,
 				F4B261642E7CF7CE00592CFE /* AboutView.swift */,
 				F4B261652E7CF7CE00592CFE /* AdminOrganizationManagementView.swift */,
 				F4B261662E7CF7CE00592CFE /* AdminOrganizationReviewView.swift */,
@@ -371,6 +403,7 @@
 				F4B2617C2E7CF7CE00592CFE /* OrganizationGroupPreferencesView.swift */,
 				F4B2617D2E7CF7CE00592CFE /* OrganizationProfileView.swift */,
 				F4B2617E2E7CF7CE00592CFE /* OrganizationRequestView.swift */,
+				0FFCDEFBE49A419980D942FE /* CustomFormComponents.swift */,
 				F4B2617F2E7CF7CE00592CFE /* PasswordChangeView.swift */,
 				F4B261802E7CF7CE00592CFE /* PasswordSetupView.swift */,
 				F4B261812E7CF7CE00592CFE /* PrivacyPolicyView.swift */,
@@ -595,6 +628,7 @@
 				309593EC63984B70BE8E5A81 /* MainTabView.swift in Sources */,
 				7966DE512E5013F000AB33F7 /* Chimeo/ChimeoApp.swift in Sources */,
 				F4B2618D2E7CF7CE00592CFE /* AdminPlatformStatsView.swift in Sources */,
+				F46AE54E2E80B4D1000211D5 /* SimpleSignInView.swift in Sources */,
 				F4B2618E2E7CF7CE00592CFE /* AuthView.swift in Sources */,
 				F4B261DD2E7CF7ED00592CFE /* OrganizationRequestModel.swift in Sources */,
 				F4B261E12E7CF7ED00592CFE /* ScheduledAlertExecutionService.swift in Sources */,
@@ -604,6 +638,7 @@
 				F4B261902E7CF7CE00592CFE /* AdminUserManagementView.swift in Sources */,
 				F4B261912E7CF7CE00592CFE /* NotificationTestView.swift in Sources */,
 				F4B261922E7CF7CE00592CFE /* OrganizationRequestView.swift in Sources */,
+				9732C6CD043945E1BA1D9F89 /* CustomFormComponents.swift in Sources */,
 				F4B261932E7CF7CE00592CFE /* AllOrganizationsView.swift in Sources */,
 				F4B261942E7CF7CE00592CFE /* AboutView.swift in Sources */,
 				F4B261952E7CF7CE00592CFE /* PasswordChangeView.swift in Sources */,
@@ -653,8 +688,17 @@
 				F4B261D22E7CF7DF00592CFE /* OrganizationService.swift in Sources */,
 				F4B261D32E7CF7DF00592CFE /* IncidentService.swift in Sources */,
 				F4B261D42E7CF7DF00592CFE /* UserManagementService.swift in Sources */,
+				F46AE55C2E80DD53000211D5 /* OrganizationFollowingTestView.swift in Sources */,
 				F4B261D52E7CF7DF00592CFE /* UserProfileService.swift in Sources */,
 				F4B261D62E7CF7DF00592CFE /* WeatherNotificationManager.swift in Sources */,
+				F46AE54C2E80B410000211D5 /* SimpleAuthManager.swift in Sources */,
+				F46AE5532E80C2D8000211D5 /* EmailLoginView.swift in Sources */,
+				F46AE5592E80DBA3000211D5 /* GroupNotificationTestView.swift in Sources */,
+				F46AE55A2E80DBA3000211D5 /* NotificationDebugView.swift in Sources */,
+				F46AE5542E80C2D8000211D5 /* OnboardingView.swift in Sources */,
+				F46AE5552E80C2D8000211D5 /* SignUpView.swift in Sources */,
+				F46AE5562E80C2D8000211D5 /* ModernAuthView.swift in Sources */,
+				F46AE55E2E80DF78000211D5 /* PushNotificationTestView.swift in Sources */,
 				F4B261D72E7CF7DF00592CFE /* BiometricAuthManager.swift in Sources */,
 				F4B261D82E7CF7DF00592CFE /* GeocodingService.swift in Sources */,
 				F4B261D92E7CF7DF00592CFE /* WeatherService.swift in Sources */,

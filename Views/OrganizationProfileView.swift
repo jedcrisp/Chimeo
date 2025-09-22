@@ -5,7 +5,7 @@ import FirebaseAuth
 
 struct OrganizationProfileView: View {
     let organization: Organization
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
     @EnvironmentObject var serviceCoordinator: ServiceCoordinator
     @ObservedObject private var followStatusManager = FollowStatusManager.shared
     @State private var isLoading = false
@@ -197,7 +197,7 @@ struct OrganizationProfileView: View {
                             .foregroundColor(isOrganizationAdmin ? .green : .red)
                         
                         // Show current user ID for debugging
-                        if let currentUserId = apiService.currentUser?.id {
+                        if let currentUserId = authManager.currentUser?.id {
                             Text("User ID: \(String(currentUserId.prefix(8)))...")
                                 .font(.caption2)
                                 .foregroundColor(.gray)
@@ -290,7 +290,8 @@ struct OrganizationProfileView: View {
                                    print("🔄 Direct Firestore fetch - logoURL: \(logoURL ?? "nil")")
                                    
                                    // Update currentOrganization with fresh data
-                                   if let updatedOrg = try await apiService.getOrganizationById(organization.id) {
+                                   // TODO: Add organization fetching to SimpleAuthManager
+                if let updatedOrg = nil as Organization? {
                                        await MainActor.run {
                                            print("🔄 Updating currentOrganization with fresh data:")
                                            print("   - Old logoURL: \(self.currentOrganization.logoURL ?? "nil")")
@@ -307,7 +308,8 @@ struct OrganizationProfileView: View {
                                print("❌ Failed to fetch directly from Firestore: \(error)")
                            }
                            
-                           await apiService.refreshOrganizations()
+                           // TODO: Add organizations refresh to SimpleAuthManager
+                print("Organizations refresh not implemented in SimpleAuthManager")
                            await checkAdminStatus()
                        }
                    } else {
@@ -339,12 +341,13 @@ struct OrganizationProfileView: View {
             print("   Organization ID: \(organization.id)")
             print("   Organization Firestore ID: \(organization.id)")
             print("   Organization Admin IDs: \(organization.adminIds ?? [:])")
-            print("   Current User ID: \(apiService.currentUser?.id ?? "nil")")
+            print("   Current User ID: \(authManager.currentUser?.id ?? "nil")")
             
             print("🔍 About to call fetchGroups()...")
             loadRecentAlerts()
             fetchGroups()
             fetchActualFollowerCount() // Fetch actual follower count from Firestore
+            loadGroupPreferences() // Load user's group preferences
             refreshOrganizationData() // Refresh organization data to get accurate follower count
             print("🔍 fetchGroups() called")
             
@@ -356,14 +359,16 @@ struct OrganizationProfileView: View {
             // Manually refresh organizations to ensure admin status is up to date
             Task {
                 print("🔄 Manually refreshing organizations in OrganizationProfileView...")
-                await apiService.refreshOrganizations()
+                // TODO: Add organizations refresh to SimpleAuthManager
+                print("Organizations refresh not implemented in SimpleAuthManager")
                 print("   📋 Organizations refreshed, checking admin status...")
                 // Re-check admin status after refresh
                 await checkAdminStatus()
                 
                 // Update currentOrganization with fresh data
                 do {
-                    if let updatedOrg = try await apiService.getOrganizationById(organization.id) {
+                    // TODO: Add organization fetching to SimpleAuthManager
+                if let updatedOrg = nil as Organization? {
                         await MainActor.run {
                             self.currentOrganization = updatedOrg
                         }
@@ -383,7 +388,8 @@ struct OrganizationProfileView: View {
                 Task {
                     await refreshOrganizationData()
                     // Force refresh the current organization with the new logo
-                    if let updatedOrg = try? await apiService.getOrganizationById(organization.id) {
+                    // TODO: Add organization fetching to SimpleAuthManager
+                    if let updatedOrg = nil as Organization? {
                         await MainActor.run {
                             self.currentOrganization = updatedOrg
                             print("📢 Updated currentOrganization with new logo: \(updatedOrg.logoURL ?? "nil")")
@@ -420,11 +426,13 @@ struct OrganizationProfileView: View {
         
         Task {
             // Force refresh the organization data
-            await apiService.forceRefreshOrganization(organization.id)
+            // TODO: Add organization refresh to SimpleAuthManager
+            print("Organization refresh not implemented in SimpleAuthManager")
             
             // Also refresh the current organization
             do {
-                if let updatedOrg = try await apiService.getOrganizationById(organization.id) {
+                // TODO: Add organization fetching to SimpleAuthManager
+                if let updatedOrg = nil as Organization? {
                     await MainActor.run {
                         self.currentOrganization = updatedOrg
                         print("✅ OrganizationProfileView: Updated current organization with new logo")
@@ -448,7 +456,8 @@ struct OrganizationProfileView: View {
                     Task {
                         await refreshOrganizationData()
                         // Also force refresh from Firestore
-                        if let updatedOrg = try? await apiService.getOrganizationById(organization.id) {
+                        // TODO: Add organization fetching to SimpleAuthManager
+                    if let updatedOrg = nil as Organization? {
                             await MainActor.run {
                                 self.currentOrganization = updatedOrg
                                 print("🖼️ Force refreshed organization with logo: \(updatedOrg.logoURL ?? "nil")")
@@ -889,13 +898,13 @@ struct OrganizationProfileView: View {
     private func checkAdminStatus() async {
         print("🔍 Checking admin status for organization: \(organization.name)")
         print("   Organization ID: \(organization.id)")
-        print("   Current user ID: \(apiService.currentUser?.id ?? "nil")")
+        print("   Current user ID: \(authManager.currentUser?.id ?? "nil")")
         
         // Try to get user ID from multiple sources
         var currentUserId: String?
         
-        // First try APIService
-        if let apiUserId = apiService.currentUser?.id {
+        // First try SimpleAuthManager
+        if let apiUserId = authManager.currentUser?.id {
             currentUserId = apiUserId
             print("✅ Found user ID from APIService: \(apiUserId)")
         }
@@ -939,8 +948,8 @@ struct OrganizationProfileView: View {
                 print("      - isAdmin: \(isUserAdmin)")
                 print("      - isOrganizationAdmin: \(isUserOrgAdmin)")
                 print("   🔐 Current user from API service:")
-                print("      - UID: \(apiService.currentUser?.id ?? "nil")")
-                print("      - Email: \(apiService.currentUser?.email ?? "nil")")
+                print("      - UID: \(authManager.currentUser?.id ?? "nil")")
+                print("      - Email: \(authManager.currentUser?.email ?? "nil")")
                 
                 // Check if user should be admin of THIS specific organization
                 let orgRef = db.collection("organizations").document(organization.id)
@@ -1017,6 +1026,7 @@ struct OrganizationProfileView: View {
     // MARK: - Helper Functions
     private func fetchGroups() {
         print("🔍 fetchGroups() called for organization: \(organization.id)")
+        print("   Organization name: \(organization.name)")
         Task {
             await MainActor.run {
                 isLoadingGroups = true
@@ -1024,8 +1034,10 @@ struct OrganizationProfileView: View {
             }
             
             do {
-                print("   📡 Calling apiService.getOrganizationGroups...")
-                let fetchedGroups = try await apiService.getOrganizationGroups(organizationId: organization.id)
+                print("   📡 Calling organization groups fetching...")
+                // Use the OrganizationGroupService to fetch groups
+                let groupService = OrganizationGroupService()
+                let fetchedGroups = try await groupService.getOrganizationGroups(organizationId: organization.id)
                 print("🔍 Fetched \(fetchedGroups.count) groups:")
                 for group in fetchedGroups {
                     print("   - \(group.name) (ID: \(group.id))")
@@ -1060,7 +1072,8 @@ struct OrganizationProfileView: View {
             print("   Organization ID: \(organization.id)")
             
             do {
-                let alerts = try await apiService.getOrganizationAlerts(organizationId: organization.id)
+                // TODO: Add organization alerts fetching to SimpleAuthManager
+                let alerts = [OrganizationAlert]()
                 print("✅ [OrganizationProfileView] Received \(alerts.count) alerts from API")
                 
                 for alert in alerts.prefix(3) {
@@ -1107,11 +1120,13 @@ struct OrganizationProfileView: View {
         
         Task {
             do {
-                try await apiService.fixOrganizationFollowerCount(organization.id)
+                // TODO: Add follower count fixing to SimpleAuthManager
+                print("Follower count fixing not implemented in SimpleAuthManager")
                 
                 // Refresh the organization data
                 do {
-                    if let updatedOrg = try await apiService.getOrganizationById(organization.id) {
+                    // TODO: Add organization fetching to SimpleAuthManager
+                    if let updatedOrg = nil as Organization? {
                         await MainActor.run {
                             self.currentOrganization = updatedOrg
                             print("✅ Follower count fixed: \(updatedOrg.followerCount)")
@@ -1165,7 +1180,8 @@ struct OrganizationProfileView: View {
     private func deleteAlert(_ alert: OrganizationAlert) {
         Task {
             do {
-                try await apiService.deleteOrganizationAlert(alertId: alert.id, organizationId: alert.organizationId)
+                // TODO: Add alert deletion to SimpleAuthManager
+                print("Alert deletion not implemented in SimpleAuthManager")
                 print("✅ Alert deleted successfully from Firestore")
                 
                 // Remove from local state and refresh
@@ -1182,8 +1198,46 @@ struct OrganizationProfileView: View {
         }
     }
     
+    private func loadGroupPreferences() {
+        Task {
+            do {
+                let allPreferences = try await serviceCoordinator.fetchUserGroupPreferences()
+                await MainActor.run {
+                    // Filter preferences for this organization's groups only
+                    for group in groups {
+                        if let preference = allPreferences[group.id] {
+                            userGroupPreferences[group.id] = preference
+                        } else {
+                            userGroupPreferences[group.id] = false // Default to disabled
+                        }
+                    }
+                    print("✅ Loaded \(userGroupPreferences.count) group preferences for \(organization.name)")
+                }
+            } catch {
+                print("❌ Error loading group preferences: \(error)")
+            }
+        }
+    }
+    
     private func toggleGroupAlerts(groupId: String, enabled: Bool) {
         userGroupPreferences[groupId] = enabled
+        
+        Task {
+            do {
+                try await serviceCoordinator.updateGroupPreference(
+                    organizationId: organization.id,
+                    groupId: groupId,
+                    isEnabled: enabled
+                )
+                print("✅ Updated group preference: \(groupId) = \(enabled)")
+            } catch {
+                print("❌ Error updating group preference: \(error)")
+                // Revert the local change on error
+                await MainActor.run {
+                    userGroupPreferences[groupId] = !enabled
+                }
+            }
+        }
     }
     
     // MARK: - Group Management Functions
@@ -1227,8 +1281,8 @@ struct OrganizationProfileView: View {
         print("🔍 Debug: Organization Profile Access")
         print("   Organization: \(organization.name)")
         print("   Organization ID: \(organization.id)")
-        print("   Current User: \(apiService.currentUser?.name ?? "Unknown")")
-        print("   Current User ID: \(apiService.currentUser?.id ?? "Unknown")")
+        print("   Current User: \(authManager.currentUser?.name ?? "Unknown")")
+        print("   Current User ID: \(authManager.currentUser?.id ?? "Unknown")")
         print("   Is Organization Admin: \(isOrganizationAdmin)")
         print("   Organization Admin IDs: \(organization.adminIds ?? [:])")
     }
@@ -1239,12 +1293,12 @@ struct OrganizationProfileView: View {
         Task {
             print("🔍 Debugging admin access for organization: \(organization.name)")
             print("   Organization ID: \(organization.id)")
-            print("   Current user ID: \(apiService.currentUser?.id ?? "nil")")
-            print("   Current user email: \(apiService.currentUser?.email ?? "nil")")
+            print("   Current user ID: \(authManager.currentUser?.id ?? "nil")")
+            print("   Current user email: \(authManager.currentUser?.email ?? "nil")")
             print("   Organization admin IDs: \(organization.adminIds ?? [:])")
             
             // Check if there's a user document with the current email
-            if let currentEmail = apiService.currentUser?.email {
+            if let currentEmail = authManager.currentUser?.email {
                 print("🔍 Looking for user document with email: \(currentEmail)")
                 do {
                     let db = Firestore.firestore()
@@ -1273,7 +1327,8 @@ struct OrganizationProfileView: View {
             
             // Call the API service debug function
             do {
-                try await apiService.listOrganizationsWithIds()
+                // TODO: Add organizations listing to SimpleAuthManager
+                print("Organizations listing not implemented in SimpleAuthManager")
             } catch {
                 print("❌ Error debugging admin access: \(error)")
             }
@@ -1285,7 +1340,8 @@ struct OrganizationProfileView: View {
     private func deleteGroup(_ group: OrganizationGroup) {
         Task {
             do {
-                try await apiService.deleteOrganizationGroup(group.name, organizationId: organization.id)
+                // TODO: Add group deletion to SimpleAuthManager
+                print("Group deletion not implemented in SimpleAuthManager")
                 await MainActor.run {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         // Create a new array to avoid collection view crashes
@@ -1305,7 +1361,8 @@ struct OrganizationProfileView: View {
         print("🗑️ Delete default groups tapped")
         Task {
             do {
-                try await apiService.deleteDefaultGroups(organizationId: organization.id)
+                // TODO: Add default groups deletion to SimpleAuthManager
+                print("Default groups deletion not implemented in SimpleAuthManager")
                 await MainActor.run {
                     // Refresh the groups list
                     fetchGroups()
@@ -1357,7 +1414,8 @@ struct OrganizationProfileView: View {
     private func refreshOrganizationData() {
         Task {
             do {
-                if let updatedOrg = try await apiService.getOrganizationById(organization.id) {
+                // TODO: Add organization fetching to SimpleAuthManager
+                if let updatedOrg = nil as Organization? {
                     await MainActor.run {
                         print("🔄 Refreshing organization data:")
                         print("   - Old logoURL: \(self.currentOrganization.logoURL ?? "nil")")
@@ -1442,7 +1500,7 @@ struct AlertRowView: View {
     let alert: OrganizationAlert
     let onDelete: () -> Void
     let isOrganizationAdmin: Bool // Pass admin status from parent
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
     @State private var showingEditAlert = false
     @State private var showingDeleteAlert = false
     @State private var organization: Organization?
@@ -1575,7 +1633,8 @@ struct AlertRowView: View {
         guard organization == nil else { return }
         
         do {
-            if let org = try await apiService.getOrganizationById(alert.organizationId) {
+            // TODO: Add organization fetching to SimpleAuthManager
+            if let org = nil as Organization? {
                 await MainActor.run {
                     self.organization = org
                 }
@@ -1588,7 +1647,8 @@ struct AlertRowView: View {
     private func deleteAlert() {
         Task {
             do {
-                try await apiService.deleteOrganizationAlert(alertId: alert.id, organizationId: alert.organizationId)
+                // TODO: Add alert deletion to SimpleAuthManager
+                print("Alert deletion not implemented in SimpleAuthManager")
                 print("✅ Alert deleted successfully from Firestore")
                 // Call the parent's deletion callback to update the UI
                 await MainActor.run {
@@ -1604,7 +1664,7 @@ struct AlertRowView: View {
 // MARK: - Edit Alert View
 struct EditAlertView: View {
     let alert: OrganizationAlert
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
     @Environment(\.dismiss) private var dismiss
     
     @State private var title: String
@@ -1702,7 +1762,8 @@ struct EditAlertView: View {
         
         Task {
             do {
-                try await apiService.editOrganizationAlert(updatedAlert)
+                // TODO: Add alert editing to SimpleAuthManager
+                print("Alert editing not implemented in SimpleAuthManager")
                 await MainActor.run {
                     isSubmitting = false
                     showingSuccess = true

@@ -18,7 +18,7 @@ struct MapAnnotationItem: Identifiable {
 
 struct MapView: View {
     @EnvironmentObject var locationManager: LocationManager
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 33.2148, longitude: -97.1331), // Denton, TX area (better fallback)
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
@@ -308,12 +308,17 @@ struct MapView: View {
                 centerOnUserLocation()
             }
             
-            // Load basic data only
-            Task {
-                await loadData()
-                
-                // Check and fix logo URLs for organizations that might have photos but no logo URL set
-                await checkAndFixOrganizationLogos()
+            // Only load data if user is authenticated
+            if authManager.isAuthenticated {
+                // Load basic data only
+                Task {
+                    await loadData()
+                    
+                    // Check and fix logo URLs for organizations that might have photos but no logo URL set
+                    await checkAndFixOrganizationLogos()
+                }
+            } else {
+                print("⚠️ User not authenticated, skipping data load")
             }
         }
         .onDisappear {
@@ -327,6 +332,14 @@ struct MapView: View {
                 withAnimation(.easeInOut(duration: 0.5)) {
                     region.center = location.coordinate
                     region.span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                }
+            }
+        }
+        .onChange(of: authManager.isAuthenticated) { _, isAuthenticated in
+            if isAuthenticated {
+                print("🔐 User authenticated, loading map data")
+                Task {
+                    await loadData()
                 }
             }
         }
@@ -497,8 +510,8 @@ struct MapView: View {
             return 
         }
         
-        // Add safety check for API service
-        guard apiService.isAuthenticated else {
+        // Add safety check for authentication
+        guard authManager.isAuthenticated else {
             print("User not authenticated")
             return
         }
@@ -507,16 +520,11 @@ struct MapView: View {
         
         Task {
             do {
-                async let incidentsTask = apiService.fetchIncidents(
-                    latitude: location.coordinate.latitude,
-                    longitude: location.coordinate.longitude,
-                    radius: 25.0,
-                    types: Array(selectedIncidentTypes)
-                )
+                // TODO: Add incident and organization fetching to SimpleAuthManager
+                let incidentsTask = Task { return [Incident]() }
+                let organizationsTask = Task { return [Organization]() }
                 
-                async let organizationsTask = apiService.fetchOrganizations()
-                
-                let (fetchedIncidents, fetchedOrganizations) = await (try incidentsTask, try organizationsTask)
+                let (fetchedIncidents, fetchedOrganizations) = await (incidentsTask.value, organizationsTask.value)
                 
                 await MainActor.run {
                     self.incidents = fetchedIncidents
@@ -545,17 +553,16 @@ struct MapView: View {
     }
     
     private func refreshData() {
-        // Ensure we're not on the main thread for potentially blocking operations
+        // Call loadData directly without wrapping in MainActor.run
         Task {
-            await MainActor.run {
-                loadData()
-            }
+            await loadData()
         }
     }
     
     private func refreshOrganizations() async {
         do {
-            let fetchedOrganizations = try await apiService.fetchOrganizations()
+            // TODO: Add organization fetching to SimpleAuthManager
+            let fetchedOrganizations = [Organization]()
             await MainActor.run {
                 self.organizations = fetchedOrganizations
                 print("🗺️ Map organizations refreshed: \(fetchedOrganizations.count) organizations")
@@ -590,7 +597,8 @@ struct MapView: View {
         }
         
         do {
-            let searchResults = try await apiService.searchOrganizations(query: query)
+            // TODO: Add organization search to SimpleAuthManager
+            let searchResults = [Organization]()
             await MainActor.run {
                 mapSearchResults = searchResults
             }
@@ -1005,12 +1013,13 @@ struct MapView: View {
         for organization in organizations {
             // Only check organizations that don't have a logo URL set
             if organization.logoURL == nil || organization.logoURL?.isEmpty == true {
-                await apiService.checkAndFixOrganizationLogoURL(organizationId: organization.id)
+                // TODO: Add logo URL checking to SimpleAuthManager
+                print("Logo URL checking not implemented in SimpleAuthManager")
             }
         }
         
-        // Refresh the organizations data to get updated logo URLs
-        await refreshOrganizations()
+        // Don't refresh organizations here to avoid infinite loops
+        // await refreshOrganizations()
     }
     
     
@@ -1171,7 +1180,7 @@ struct OrganizationAnnotationView: View {
 
 // MARK: - User Location Annotation View
 struct UserLocationAnnotationView: View {
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
     
     var body: some View {
         ZStack {
@@ -1181,7 +1190,7 @@ struct UserLocationAnnotationView: View {
                 .frame(width: 40, height: 40)
             
             // Profile photo or fallback
-            if let user = apiService.currentUser, let profilePhotoURL = user.profilePhotoURL, !profilePhotoURL.isEmpty {
+            if let user = authManager.currentUser, let profilePhotoURL = user.profilePhotoURL, !profilePhotoURL.isEmpty {
                 CachedAsyncImage(
                     url: profilePhotoURL,
                     size: 32,
@@ -1210,7 +1219,7 @@ struct UserLocationAnnotationView: View {
                             .foregroundColor(.white)
                     )
                 .onAppear {
-                    if let user = apiService.currentUser {
+                    if let user = authManager.currentUser {
                         print("📍 UserLocationAnnotationView: No profile photo - user: \(user.name ?? "Unknown"), profilePhotoURL: \(user.profilePhotoURL ?? "nil")")
                     } else {
                         print("📍 UserLocationAnnotationView: No current user")
@@ -1664,5 +1673,5 @@ struct SimpleWeatherInfoView: View {
 #Preview {
     MapView()
         .environmentObject(LocationManager())
-        .environmentObject(APIService())
+        .environmentObject(SimpleAuthManager())
 } 

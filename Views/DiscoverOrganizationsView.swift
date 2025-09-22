@@ -204,6 +204,7 @@ struct DiscoverOrganizationRowView: View {
         }
         let fallbackStatus = followStatusManager.getFollowStatus(for: organization.id) ?? false
         print("   🔍 isFollowing computed property: using fallback status = \(fallbackStatus)")
+        print("   🔍 localFollowStatus is nil, fallback from FollowStatusManager: \(fallbackStatus)")
         return fallbackStatus
     }
     
@@ -240,7 +241,11 @@ struct DiscoverOrganizationRowView: View {
             Spacer()
             
             // Follow button - separate from profile opening
-            Button(action: toggleFollow) {
+            Button(action: {
+                Task {
+                    await toggleFollow()
+                }
+            }) {
                 HStack(spacing: 4) {
                     if isLoading {
                         ProgressView()
@@ -267,6 +272,16 @@ struct DiscoverOrganizationRowView: View {
                 print("🔍 Follow button onAppear for organization: \(organization.name)")
                 print("   Initial localFollowStatus: \(localFollowStatus?.description ?? "nil")")
                 print("   Initial fallback status: \(followStatusManager.getFollowStatus(for: organization.id)?.description ?? "nil")")
+                print("   ServiceCoordinator isAuthenticated: \(serviceCoordinator.isAuthenticated)")
+                print("   ServiceCoordinator currentUser: \(serviceCoordinator.currentUser?.id ?? "NIL")")
+                
+                // Trigger authentication state check to ensure ServiceCoordinator is synchronized
+                Task {
+                    await serviceCoordinator.checkAndRestoreAuthenticationState()
+                    print("   After auth check - ServiceCoordinator isAuthenticated: \(serviceCoordinator.isAuthenticated)")
+                    print("   After auth check - ServiceCoordinator currentUser: \(serviceCoordinator.currentUser?.id ?? "NIL")")
+                }
+                
                 checkFollowStatus()
             }
         }
@@ -378,19 +393,44 @@ struct DiscoverOrganizationRowView: View {
                 }
             } catch {
                 print("❌ Error checking follow status: \(error)")
+                print("   Error details: \(error.localizedDescription)")
+                
+                // Don't set localFollowStatus to false on error - keep it nil
+                // so the computed property can fall back to FollowStatusManager
                 await MainActor.run {
-                    // Update both local state and FollowStatusManager
-                    localFollowStatus = false
-                    followStatusManager.updateFollowStatus(organizationId: organization.id, isFollowing: false)
+                    // Only update FollowStatusManager if we have a definitive status
+                    // For now, just log the error and let the computed property handle it
+                    print("   🔍 Keeping localFollowStatus as nil due to error")
                 }
             }
         }
     }
     
-    private func toggleFollow() {
+    private func toggleFollow() async {
         print("🔍 toggleFollow called for organization: \(organization.name)")
         print("   Current isFollowing state: \(isFollowing)")
+        print("   localFollowStatus: \(localFollowStatus?.description ?? "nil")")
+        print("   FollowStatusManager status: \(followStatusManager.getFollowStatus(for: organization.id)?.description ?? "nil")")
         print("   ServiceCoordinator available: \(serviceCoordinator != nil)")
+        
+        // Check if user is authenticated first
+        print("🔍 Checking authentication before follow operation...")
+        print("   ServiceCoordinator isAuthenticated: \(serviceCoordinator.isAuthenticated)")
+        print("   ServiceCoordinator currentUser: \(serviceCoordinator.currentUser?.id ?? "NIL")")
+        
+        // If not authenticated, try to restore authentication state
+        if !serviceCoordinator.isAuthenticated || serviceCoordinator.currentUser == nil {
+            print("🔄 Authentication state not found, attempting to restore...")
+            await serviceCoordinator.checkAndRestoreAuthenticationState()
+            print("   After restoration - isAuthenticated: \(serviceCoordinator.isAuthenticated)")
+            print("   After restoration - currentUser: \(serviceCoordinator.currentUser?.id ?? "NIL")")
+        }
+        
+        guard serviceCoordinator.isAuthenticated, serviceCoordinator.currentUser != nil else {
+            print("❌ User not authenticated after restoration attempt - cannot follow organizations")
+            errorMessage = "Please sign in to follow organizations"
+            return
+        }
         
         // Immediately update local state for instant UI feedback
         let newFollowStatus = !isFollowing
@@ -404,6 +444,17 @@ struct DiscoverOrganizationRowView: View {
         Task {
             do {
                 print("🔄 Starting follow/unfollow operation...")
+                
+                // Ensure ServiceCoordinator is synchronized with current auth state
+                await serviceCoordinator.checkAndRestoreAuthenticationState()
+                
+                // Check if we have a current user after restoration
+                print("   🔍 ServiceCoordinator currentUser after restoration: \(serviceCoordinator.currentUser?.id ?? "NIL")")
+                print("   🔍 ServiceCoordinator isAuthenticated after restoration: \(serviceCoordinator.isAuthenticated)")
+                
+                // Wait a moment for the state to be restored
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                
                 if newFollowStatus {
                     print("🔄 New status is following, so following organization: \(organization.id)")
                     try await serviceCoordinator.followOrganization(organization.id)
@@ -432,18 +483,9 @@ struct DiscoverOrganizationRowView: View {
                     localFollowStatus = !newFollowStatus // Revert to previous state
                     isLoading = false
                     
-                    // Show detailed error to user
-                    let errorMessage = """
-                    Follow operation failed:
-                    
-                    Error: \(error.localizedDescription)
-                    Type: \(type(of: error))
-                    
-                    Please try again or contact support if the issue persists.
-                    """
-                    
-                    // You can add an alert here to show the error
-                    print("🚨 User should see this error: \(errorMessage)")
+                    // Show error to user
+                    errorMessage = "Follow operation failed: \(error.localizedDescription)"
+                    print("🚨 User should see this error: \(errorMessage ?? "Unknown error")")
                 }
             }
         }

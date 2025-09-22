@@ -16,11 +16,10 @@ struct ChimeoApp: App {
     @StateObject private var notificationManager = NotificationManager()
     @StateObject private var weatherNotificationManager = WeatherNotificationManager()
     @StateObject private var weatherService: WeatherService
-    @StateObject private var apiService = APIService()
+    @StateObject private var authManager = SimpleAuthManager()
     @StateObject private var biometricAuthManager = BiometricAuthManager()
     @StateObject private var serviceCoordinator: ServiceCoordinator
-    @StateObject private var notificationService = iOSNotificationService()
-    @StateObject private var scheduledAlertExecutionService = ScheduledAlertExecutionService()
+    @StateObject private var apiService = APIService()
     @State private var hasError = false
     @State private var errorMessage = ""
 
@@ -42,13 +41,16 @@ struct ChimeoApp: App {
         let locationManager = LocationManager()
         let weatherNotificationManager = WeatherNotificationManager()
         
-        // Initialize ServiceCoordinator only if Firebase is available
-        let serviceCoordinator = ServiceCoordinator()
-        
         self._locationManager = StateObject(wrappedValue: locationManager)
         self._weatherNotificationManager = StateObject(wrappedValue: weatherNotificationManager)
         self._weatherService = StateObject(wrappedValue: WeatherService(locationManager: locationManager))
-        self._serviceCoordinator = StateObject(wrappedValue: serviceCoordinator)
+        
+        // Initialize SimpleAuthManager first
+        let authManager = SimpleAuthManager()
+        self._authManager = StateObject(wrappedValue: authManager)
+        
+        // Initialize ServiceCoordinator with the same SimpleAuthManager instance
+        self._serviceCoordinator = StateObject(wrappedValue: ServiceCoordinator(simpleAuthManager: authManager))
     }
 
     var body: some Scene {
@@ -57,14 +59,13 @@ struct ChimeoApp: App {
                 .environmentObject(locationManager)
                 .environmentObject(notificationManager)
                 .environmentObject(weatherNotificationManager)
-                .environmentObject(apiService)
+                .environmentObject(authManager)
                 .environmentObject(biometricAuthManager)
                 .environmentObject(serviceCoordinator)
-                .environmentObject(notificationService)
-                .environmentObject(scheduledAlertExecutionService)
+                .environmentObject(apiService)
                 .onAppear {
                     print("🎯 ChimeoApp: ContentView appeared")
-                    print("🔐 APIService state: isAuthenticated = \(apiService.isAuthenticated)")
+                    print("🔐 AuthManager state: isAuthenticated = \(authManager.isAuthenticated)")
                 }
                 .preferredColorScheme(ColorScheme.light)
                 .onAppear {
@@ -86,8 +87,7 @@ struct ChimeoApp: App {
                         // Clear any existing weather notifications
                         weatherNotificationManager.cancelAllWeatherAlerts()
                         
-                        // Start scheduled alert execution service
-                        scheduledAlertExecutionService.startBackgroundExecution()
+                        // FCM token registration will be handled by SimpleAuthManager
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
@@ -96,6 +96,8 @@ struct ChimeoApp: App {
                     
                     // Check for pending FCM requests
                     checkForPendingFCMRequests()
+                    
+                    // FCM token registration will be handled by SimpleAuthManager
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
                     // Update badge count when app goes to background
@@ -126,35 +128,11 @@ struct ChimeoApp: App {
         // Use the NotificationManager for handling notifications
         UNUserNotificationCenter.current().delegate = notificationManager
         
-        // Request notification permissions and register for remote notifications
-        Task {
-            do {
-                let center = UNUserNotificationCenter.current()
-                
-                print("🔔 Requesting notification permissions...")
-                let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
-                
-                if granted {
-                    print("✅ Notification permissions granted")
-                    
-                    // Register for remote notifications
-                    await MainActor.run {
-                        print("📱 Calling registerForRemoteNotifications...")
-                        UIApplication.shared.registerForRemoteNotifications()
-                        print("📱 registerForRemoteNotifications called")
-                    }
-                    
-                    // Wait for APNS token to be set before requesting FCM token
-                    // The FCM token will be requested in the AppDelegate when APNS token is received
-                    print("⏳ Waiting for APNS token before requesting FCM token...")
-                } else {
-                    print("❌ Notification permissions denied")
-                }
-            } catch {
-                print("❌ Error requesting notification permissions: \(error)")
-            }
-        }
+        // Let NotificationManager handle the entire FCM setup to avoid conflicts
+        print("🔄 Delegating FCM setup to NotificationManager...")
+        notificationManager.registerForPushNotifications()
     }
+    
     
     // MARK: - User Profile Notification Observer
     private func setupUserProfileNotificationObserver() {
@@ -235,30 +213,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             Messaging.messaging().apnsToken = deviceToken
             print("✅ APNS token set for Firebase Messaging")
             
-            // Check if there's a pending FCM request
-            let hasPendingFCMRequest = UserDefaults.standard.bool(forKey: "pending_fcm_request")
-            if hasPendingFCMRequest {
-                print("🔄 Found pending FCM request, clearing flag...")
-                UserDefaults.standard.removeObject(forKey: "pending_fcm_request")
-            }
-            
-            // Now that APNS token is set, request FCM token
-            print("🔥 Requesting FCM token after APNS token is set...")
-            Messaging.messaging().token { token, error in
-                if let error = error {
-                    print("❌ Error getting FCM token: \(error)")
-                } else if let token = token {
-                    print("✅ FCM token received: \(token.prefix(20))...")
-                    // Update the notification manager with the new token
-                    DispatchQueue.main.async {
-                        NotificationCenter.default.post(
-                            name: .fcmTokenReceived,
-                            object: nil,
-                            userInfo: ["token": token]
-                        )
-                    }
-                }
-            }
+            // Let NotificationManager handle FCM token request to avoid conflicts
+            print("🔄 APNS token set, NotificationManager will handle FCM token request")
         } else {
             print("❌ Firebase not available, APNS token not set")
         }

@@ -169,12 +169,28 @@ export const sendAlertNotifications = functions.firestore
             token: uniqueFcmTokens[i]
           };
           
-          await admin.messaging().send(singleMessage);
+          const result = await admin.messaging().send(singleMessage);
           successCount++;
-          console.log(`✅ Sent notification to unique token ${i + 1}/${uniqueFcmTokens.length}`);
+          console.log(`✅ Sent notification to unique token ${i + 1}/${uniqueFcmTokens.length} - Message ID: ${result}`);
         } catch (tokenError) {
           failureCount++;
-          console.error(`❌ Failed to send to unique token ${i + 1}: ${tokenError instanceof Error ? tokenError.message : 'Unknown error'}`);
+          console.error(`❌ Failed to send to unique token ${i + 1}:`, tokenError);
+          
+          // Enhanced error logging for FCM issues
+          if (tokenError instanceof Error) {
+            console.error(`   Error message: ${tokenError.message}`);
+            console.error(`   Error code: ${(tokenError as any).code || 'unknown'}`);
+            console.error(`   Error details: ${JSON.stringify((tokenError as any).errorInfo || {})}`);
+            
+            // Check for specific FCM errors
+            if (tokenError.message.includes('404') || tokenError.message.includes('batch')) {
+              console.error(`🚨 FCM API 404 Error - This usually means:`);
+              console.error(`   1. Firebase project doesn't have FCM enabled`);
+              console.error(`   2. Service account lacks FCM permissions`);
+              console.error(`   3. Firebase project ID is incorrect`);
+              console.error(`   4. FCM API is not properly configured`);
+            }
+          }
         }
       }
       
@@ -551,6 +567,94 @@ export const testFCMNotification = functions.https.onCall(async (data, context) 
   } catch (error) {
     console.error(`❌ Error sending test FCM notification:`, error);
     throw new functions.https.HttpsError('internal', 'Failed to send test notification');
+  }
+});
+
+// 🔧 FCM Configuration Diagnostic Function
+export const diagnoseFCMConfiguration = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  try {
+    console.log('🔍 Diagnosing FCM configuration...');
+    
+    const diagnostics = {
+      timestamp: new Date().toISOString(),
+      firebaseProject: process.env.GCLOUD_PROJECT || 'unknown',
+      nodeVersion: process.version,
+      firebaseAdminVersion: require('firebase-admin/package.json').version,
+      firebaseFunctionsVersion: require('firebase-functions/package.json').version,
+      fcmApiAvailable: false,
+      serviceAccountInfo: {},
+      errors: []
+    };
+
+    // Check Firebase Admin initialization
+    try {
+      const app = admin.app();
+      const projectId = app.options.projectId;
+      diagnostics.serviceAccountInfo.projectId = projectId;
+      console.log(`✅ Firebase Admin initialized with project: ${projectId}`);
+    } catch (error) {
+      diagnostics.errors.push(`Firebase Admin initialization error: ${error}`);
+      console.error('❌ Firebase Admin initialization error:', error);
+    }
+
+    // Test FCM API availability with a simple call
+    try {
+      // Try to get FCM app instance
+      const messaging = admin.messaging();
+      console.log('✅ FCM messaging instance created successfully');
+      
+      // Try a simple validation call (this will fail if FCM is not properly configured)
+      // We'll use a dummy token to test the API endpoint
+      const testMessage = {
+        notification: {
+          title: 'FCM Test',
+          body: 'Testing FCM API availability'
+        },
+        token: 'test-token-for-api-check'
+      };
+      
+      try {
+        await messaging.send(testMessage);
+        diagnostics.fcmApiAvailable = true;
+        console.log('✅ FCM API is accessible');
+      } catch (apiError) {
+        // We expect this to fail with invalid token, but it tells us if the API is reachable
+        if (apiError instanceof Error && apiError.message.includes('InvalidRegistration')) {
+          diagnostics.fcmApiAvailable = true;
+          console.log('✅ FCM API is accessible (got expected InvalidRegistration error)');
+        } else if (apiError instanceof Error && apiError.message.includes('404')) {
+          diagnostics.fcmApiAvailable = false;
+          diagnostics.errors.push('FCM API returned 404 - project may not have FCM enabled');
+          console.error('❌ FCM API 404 error - project may not have FCM enabled');
+        } else {
+          diagnostics.errors.push(`FCM API error: ${apiError}`);
+          console.error('❌ FCM API error:', apiError);
+        }
+      }
+    } catch (error) {
+      diagnostics.errors.push(`FCM messaging error: ${error}`);
+      console.error('❌ FCM messaging error:', error);
+    }
+
+    // Check environment variables
+    const envVars = {
+      GCLOUD_PROJECT: process.env.GCLOUD_PROJECT,
+      FIREBASE_CONFIG: process.env.FIREBASE_CONFIG ? 'present' : 'missing',
+      GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'present' : 'missing'
+    };
+    diagnostics.environmentVariables = envVars;
+
+    console.log('🔍 FCM Configuration Diagnostics:', JSON.stringify(diagnostics, null, 2));
+    
+    return diagnostics;
+
+  } catch (error) {
+    console.error('❌ Error in FCM configuration diagnosis:', error);
+    throw new functions.https.HttpsError('internal', 'Failed to diagnose FCM configuration');
   }
 });
 

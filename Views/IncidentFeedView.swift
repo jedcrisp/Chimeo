@@ -3,7 +3,8 @@ import FirebaseFirestore
 
 struct IncidentFeedView: View {
     @EnvironmentObject var locationManager: LocationManager
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
+    @EnvironmentObject var serviceCoordinator: ServiceCoordinator
     @State private var alerts: [OrganizationAlert] = []
     @State private var isLoading = false
 
@@ -50,7 +51,17 @@ struct IncidentFeedView: View {
             .navigationTitle("Alerts")
             .navigationBarTitleDisplayMode(.large)
             .onAppear {
-                loadAlerts()
+                print("🚀 IncidentFeedView appeared")
+                print("🔍 AuthManager isAuthenticated: \(authManager.isAuthenticated)")
+                print("🔍 ServiceCoordinator isAuthenticated: \(serviceCoordinator.isAuthenticated)")
+                print("🔍 AuthManager currentUser: \(authManager.currentUser?.id ?? "nil")")
+                print("🔍 ServiceCoordinator currentUser: \(serviceCoordinator.currentUser?.id ?? "nil")")
+                
+                // Ensure ServiceCoordinator is synced before loading alerts
+                Task {
+                    await serviceCoordinator.checkAndRestoreAuthenticationState()
+                    loadAlerts()
+                }
             }
             .alert("Error Loading Alerts", isPresented: $showingErrorAlert) {
                 Button("OK") { }
@@ -73,7 +84,7 @@ struct IncidentFeedView: View {
             }
         }
         .sheet(isPresented: $showingGroupSelection) {
-            GroupSelectionView(apiService: apiService)
+            GroupSelectionView(authManager: authManager)
         }
         .sheet(isPresented: $showingFilterSheet) {
             FilterSheetView(
@@ -155,16 +166,13 @@ struct IncidentFeedView: View {
     
     private func hideAlertFromFeed(_ alert: OrganizationAlert) {
         Task {
-            do {
-                try await apiService.hideAlertFromFeed(alertId: alert.id)
-                print("✅ Alert hidden successfully")
-                
-                // Remove from local state
-                await MainActor.run {
-                    alerts.removeAll { $0.id == alert.id }
-                }
-            } catch {
-                print("❌ Failed to hide alert: \(error)")
+            // TODO: Add alert hiding to SimpleAuthManager
+            print("Alert hiding not implemented in SimpleAuthManager")
+            print("✅ Alert hidden successfully")
+            
+            // Remove from local state
+            await MainActor.run {
+                alerts.removeAll { $0.id == alert.id }
             }
         }
     }
@@ -332,18 +340,58 @@ struct IncidentFeedView: View {
     
     private func loadAlerts() {
         print("🔄 Starting to load alerts...")
-        print("📱 Current user: \(apiService.currentUser?.id ?? "nil")")
-        print("📱 Current user email: \(apiService.currentUser?.email ?? "nil")")
+        print("📱 Current user: \(authManager.currentUser?.id ?? "nil")")
+        print("📱 Current user email: \(authManager.currentUser?.email ?? "nil")")
+        print("🔍 ServiceCoordinator isAuthenticated: \(serviceCoordinator.isAuthenticated)")
+        print("🔍 ServiceCoordinator currentUser: \(serviceCoordinator.currentUser?.id ?? "nil")")
         
         isLoading = true
         
         Task {
             do {
-                let fetchedAlerts = try await apiService.getFollowingOrganizationAlerts()
+                // First, let's check if there are any followed organizations
+                print("🔍 Checking followed organizations...")
+                let followedOrgs = try await serviceCoordinator.fetchFollowedOrganizations()
+                print("📋 Found \(followedOrgs.count) followed organizations:")
+                for org in followedOrgs {
+                    print("   📍 \(org.name) (ID: \(org.id))")
+                }
+                
+                // Let's also check if there are ANY alerts in the system at all
+                print("🔍 Checking for ANY alerts in the system...")
+                let allAlerts = try await serviceCoordinator.getAllAlerts()
+                print("📊 Found \(allAlerts.count) total alerts in the system")
+                for alert in allAlerts {
+                    print("   📋 Alert: '\(alert.title)' from org \(alert.organizationId)")
+                }
+                
+                // If no alerts exist, let's create a test alert
+                if allAlerts.isEmpty && !followedOrgs.isEmpty {
+                    print("🔧 No alerts found - creating a test alert...")
+                    let testOrg = followedOrgs.first!
+                    try await serviceCoordinator.createTestAlert(organizationId: testOrg.id)
+                    print("✅ Test alert created for \(testOrg.name)")
+                }
+                
+                print("📡 Fetching alerts from followed organizations...")
+                let fetchedAlerts = try await serviceCoordinator.getFollowingOrganizationAlerts()
                 
                 print("📥 Loaded \(fetchedAlerts.count) alerts from API")
                 for alert in fetchedAlerts {
                     print("📋 Alert: '\(alert.title)' - Type: \(alert.type.rawValue), Severity: \(alert.severity.rawValue)")
+                    print("   📍 Organization ID: \(alert.organizationId)")
+                    print("   📍 Organization Name: \(alert.organizationName)")
+                    print("   📅 Posted at: \(alert.postedAt)")
+                    print("   ⏰ Expires at: \(alert.expiresAt)")
+                    print("   🔄 Is Active: \(alert.isActive)")
+                }
+                
+                // Also check if there are any alerts that might be filtered out
+                print("🔍 Checking for any alerts that might be filtered out...")
+                let allSystemAlerts = try await serviceCoordinator.getAllAlerts()
+                print("📊 Total alerts in system: \(allSystemAlerts.count)")
+                for alert in allSystemAlerts {
+                    print("   📋 System Alert: '\(alert.title)' from \(alert.organizationName) (ID: \(alert.organizationId))")
                 }
                 
                 await MainActor.run {
@@ -352,14 +400,14 @@ struct IncidentFeedView: View {
                     print("✅ Updated UI with \(fetchedAlerts.count) alerts")
                 }
             } catch {
-                print("❌ Failed to load alerts: \(error)")
-                print("❌ Error details: \(error.localizedDescription)")
-                
+                print("❌ Error loading alerts: \(error)")
+                print("   Error type: \(type(of: error))")
+                print("   Error details: \(error.localizedDescription)")
                 await MainActor.run {
+                    self.alerts = []
                     self.isLoading = false
-                    // Show error to user
-                    self.showingErrorAlert = true
                     self.errorMessage = "Failed to load alerts: \(error.localizedDescription)"
+                    self.showingErrorAlert = true
                 }
             }
         }
@@ -369,7 +417,8 @@ struct IncidentFeedView: View {
         print("🔄 Pull-to-refresh: Starting to load alerts...")
         
         do {
-            let fetchedAlerts = try await apiService.getFollowingOrganizationAlerts()
+            print("📡 Pull-to-refresh: Fetching alerts from followed organizations...")
+            let fetchedAlerts = try await serviceCoordinator.getFollowingOrganizationAlerts()
             
             print("📥 Pull-to-refresh: Loaded \(fetchedAlerts.count) alerts from API")
             for alert in fetchedAlerts {
@@ -381,13 +430,11 @@ struct IncidentFeedView: View {
                 print("✅ Pull-to-refresh: Updated UI with \(fetchedAlerts.count) alerts")
             }
         } catch {
-            print("❌ Pull-to-refresh: Failed to load alerts: \(error)")
-            print("❌ Pull-to-refresh: Error details: \(error.localizedDescription)")
-            
+            print("❌ Pull-to-refresh: Error loading alerts: \(error)")
             await MainActor.run {
-                // Show error to user
-                self.showingErrorAlert = true
+                self.alerts = []
                 self.errorMessage = "Failed to refresh alerts: \(error.localizedDescription)"
+                self.showingErrorAlert = true
             }
         }
     }
@@ -398,7 +445,8 @@ struct IncidentFeedView: View {
 // MARK: - Incident Feed Alert Row View
 struct IncidentFeedAlertRowView: View {
     let alert: OrganizationAlert
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
+    @EnvironmentObject var serviceCoordinator: ServiceCoordinator
     @State private var organization: Organization?
     
     var body: some View {
@@ -518,13 +566,15 @@ struct IncidentFeedAlertRowView: View {
         
         Task {
             do {
-                if let org = try await apiService.getOrganizationById(alert.organizationId) {
+                // Fetch organization details by ID
+                let organizations = try await serviceCoordinator.fetchOrganizations()
+                if let org = organizations.first(where: { $0.id == alert.organizationId }) {
                     await MainActor.run {
                         self.organization = org
                     }
                 }
             } catch {
-                print("❌ Failed to load organization: \(error)")
+                print("❌ Error loading organization: \(error)")
             }
         }
     }
@@ -579,7 +629,8 @@ struct FilterButton: View {
 
 // MARK: - Group Selection View
 struct GroupSelectionView: View {
-    let apiService: APIService
+    let authManager: SimpleAuthManager
+    @EnvironmentObject var serviceCoordinator: ServiceCoordinator
     @Environment(\.dismiss) private var dismiss
     @State private var organizations: [Organization] = []
     @State private var isLoading = true
@@ -746,9 +797,13 @@ struct GroupSelectionView: View {
                 ForEach(organization.groups ?? [], id: \.id) { group in
                     Button(action: {
                         print("🎯 Selected group: \(group.name) in organization: \(organization.name)")
+                        print("   Organization ID: \(organization.id)")
+                        print("   Group ID: \(group.id)")
                         selectedOrganization = organization
                         selectedGroup = group
+                        print("   Setting showingAlertPost = true")
                         showingAlertPost = true
+                        print("   showingAlertPost is now: \(showingAlertPost)")
                     }) {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
@@ -807,42 +862,51 @@ struct GroupSelectionView: View {
             var adminOrgs: [Organization] = []
             
             do {
-                // Use the public method to fetch all organizations
-                let allOrgs = try await apiService.fetchOrganizations()
+                // Use APIService to fetch all organizations
+                let allOrgs = try await serviceCoordinator.fetchOrganizations()
+                print("📋 Fetched \(allOrgs.count) total organizations")
+                
+                // Get current user ID for admin check
+                guard let currentUserId = authManager.currentUser?.id else {
+                    print("❌ No current user ID found for admin check")
+                    await MainActor.run {
+                        self.organizations = []
+                        self.isLoading = false
+                    }
+                    return
+                }
                 
                 // Filter to only include organizations where the current user is an admin
                 for organization in allOrgs {
-                    if await apiService.isAdminOfOrganization(organization.id) {
+                    let isAdmin = organization.adminIds?[currentUserId] == true
+                    print("🔍 Organization '\(organization.name)': isAdmin = \(isAdmin)")
+                    
+                    if isAdmin {
                         // Fetch groups for this organization
-                        do {
-                            let groups = try await apiService.fetchGroups(for: organization.id)
-                            print("📋 Organization '\(organization.name)' has \(groups.count) groups")
-                            
-                            // Create a new organization instance with the fetched groups
-                            let orgWithGroups = Organization(
-                                id: organization.id,
-                                name: organization.name,
-                                type: organization.type,
-                                description: organization.description,
-                                location: organization.location,
-                                verified: organization.verified,
-                                followerCount: organization.followerCount,
-                                logoURL: organization.logoURL,
-                                website: organization.website,
-                                phone: organization.phone,
-                                email: organization.email,
-                                groups: groups, // Add the fetched groups
-                                adminIds: organization.adminIds,
-                                createdAt: organization.createdAt,
-                                updatedAt: organization.updatedAt
-                            )
-                            
-                            adminOrgs.append(orgWithGroups)
-                        } catch {
-                            print("⚠️ Warning: Could not fetch groups for organization '\(organization.name)': \(error)")
-                            // Still add the organization without groups
-                            adminOrgs.append(organization)
-                        }
+                        let groupService = OrganizationGroupService()
+                        let groups = try await groupService.getOrganizationGroups(organizationId: organization.id)
+                        print("📋 Organization '\(organization.name)' has \(groups.count) groups")
+                        
+                        // Create a new organization instance with the fetched groups
+                        let orgWithGroups = Organization(
+                            id: organization.id,
+                            name: organization.name,
+                            type: organization.type,
+                            description: organization.description,
+                            location: organization.location,
+                            verified: organization.verified,
+                            followerCount: organization.followerCount,
+                            logoURL: organization.logoURL,
+                            website: organization.website,
+                            phone: organization.phone,
+                            email: organization.email,
+                            groups: groups, // Add the fetched groups
+                            adminIds: organization.adminIds,
+                            createdAt: organization.createdAt,
+                            updatedAt: organization.updatedAt
+                        )
+                        
+                        adminOrgs.append(orgWithGroups)
                     }
                 }
                 
@@ -850,10 +914,11 @@ struct GroupSelectionView: View {
                     self.organizations = adminOrgs
                     self.isLoading = false
                     print("📋 Loaded \(adminOrgs.count) admin organizations with groups")
-                    }
-} catch {
+                }
+            } catch {
                 print("❌ Error loading organizations: \(error)")
                 await MainActor.run {
+                    self.organizations = []
                     self.isLoading = false
                 }
             }

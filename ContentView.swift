@@ -9,49 +9,34 @@ extension Notification.Name {
 }
 
 struct ContentView: View {
-    @EnvironmentObject var apiService: APIService
+    @StateObject private var authManager = SimpleAuthManager()
     @EnvironmentObject var locationManager: LocationManager
-    @EnvironmentObject var biometricAuthManager: BiometricAuthManager
+    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var serviceCoordinator: ServiceCoordinator
     @State private var hasError = false
     @State private var errorMessage = ""
-    @State private var showingBiometricReEnrollment = false
 
     var body: some View {
         Group {
-            if apiService.isAuthenticated {
+            if authManager.isAuthenticated {
                 MainTabView()
-                    .sheet(isPresented: $showingBiometricReEnrollment) {
-                        BiometricReEnrollmentView()
-                    }
-                    .onAppear {
-                        // Check if biometric setup or re-enrollment is needed after successful login
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                            if biometricAuthManager.shouldReEnroll || biometricAuthManager.shouldOfferBiometricSetup {
-                                showingBiometricReEnrollment = true
-                            }
-                        }
-                    }
+                    .environmentObject(authManager)
+                    .environmentObject(apiService)
+                    .environmentObject(serviceCoordinator)
             } else {
-                AuthView()
+                ModernAuthView()
+                    .environmentObject(authManager)
             }
         }
         .onAppear {
-            print("🔍 ContentView: User is authenticated: \(apiService.isAuthenticated)")
-            print("🔍 ContentView: Current user: \(apiService.currentUser?.id ?? "nil")")
+            print("🔍 ContentView: User is authenticated: \(authManager.isAuthenticated)")
+            print("🔍 ContentView: Current user: \(authManager.currentUser?.id ?? "nil")")
             print("🔍 ContentView: Firebase Auth current user: \(Auth.auth().currentUser?.uid ?? "none")")
         }
         .onAppear {
             // Add safety delay and error handling
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 locationManager.requestLocationPermission()
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .biometricReEnrollmentNeeded)) { _ in
-            // Check if biometric setup or re-enrollment is needed
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                if biometricAuthManager.shouldReEnroll || biometricAuthManager.shouldOfferBiometricSetup {
-                    showingBiometricReEnrollment = true
-                }
             }
         }
         .alert("Error", isPresented: $hasError) {

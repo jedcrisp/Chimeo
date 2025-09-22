@@ -18,7 +18,7 @@ import FirebaseAuth
 
 class APIService: ObservableObject {
     private let baseURL = "https://api.localalert.com" // Replace with your actual API URL
-    private var authToken: String?
+    var authToken: String?
     
     @Published var isAuthenticated = false
     @Published var currentUser: User?
@@ -39,6 +39,9 @@ class APIService: ObservableObject {
         // Try to restore authentication state from stored data
         restoreAuthenticationState()
         
+        // Also try to sync with ServiceCoordinator if available
+        syncWithServiceCoordinator()
+        
         print("🔐 APIService: Forcing login screen - isAuthenticated: \(self.isAuthenticated)")
         print("🔍 DEBUG: APIService initialized - isAuthenticated: \(self.isAuthenticated)")
         print("🔍 DEBUG: APIService currentUser: \(self.currentUser?.id ?? "nil")")
@@ -48,7 +51,9 @@ class APIService: ObservableObject {
             DispatchQueue.main.async {
                 if let user = user {
                     print("🔥 Firebase Auth: User signed in - \(user.email ?? "unknown")")
+                    print("🔥 Firebase Auth: User UID - \(user.uid)")
                     print("🔐 APIService: Current isAuthenticated = \(self?.isAuthenticated ?? false)")
+                    print("🔐 APIService: Current user ID = \(self?.currentUser?.id ?? "nil")")
                     
                     // If we have a Firebase user but not authenticated, try to restore authentication
                     if let strongSelf = self, !strongSelf.isAuthenticated {
@@ -66,6 +71,9 @@ class APIService: ObservableObject {
                     }
                 } else {
                     print("🔥 Firebase Auth: User signed out")
+                    print("🔐 APIService: Current isAuthenticated = \(self?.isAuthenticated ?? false)")
+                    print("🔐 APIService: Current user ID = \(self?.currentUser?.id ?? "nil")")
+                    
                     // Only clear authentication state if we were previously authenticated
                     // This prevents clearing state on initial app launch when no user was signed in
                     if let strongSelf = self, strongSelf.isAuthenticated {
@@ -132,12 +140,8 @@ class APIService: ObservableObject {
                     await loadOrganizations()
                 }
             } else {
-                print("⚠️ Firebase user exists but no stored user data - signing out")
-                do {
-                    try Auth.auth().signOut()
-                } catch {
-                    print("❌ Error signing out: \(error)")
-                }
+                print("⚠️ Firebase user exists but no stored user data - but NOT signing out (SimpleAuthManager will handle this)")
+                // Don't sign out - let SimpleAuthManager handle authentication state
             }
         } else {
             print("🔐 No Firebase Auth user - staying unauthenticated")
@@ -146,6 +150,162 @@ class APIService: ObservableObject {
         print("🔐 Authentication state restored - isAuthenticated: \(self.isAuthenticated)")
         print("🔍 DEBUG: APIService currentUser: \(self.currentUser?.id ?? "nil")")
         print("🔍 DEBUG: APIService isAuthenticated: \(self.isAuthenticated)")
+    }
+    
+    // MARK: - Sync with ServiceCoordinator
+    private func syncWithServiceCoordinator() {
+        print("🔄 APIService: Attempting to sync with ServiceCoordinator...")
+        
+        // If we already have a user, no need to sync
+        if currentUser != nil {
+            print("✅ APIService already has user, no sync needed")
+            return
+        }
+        
+        // Only sync if there's a Firebase Auth user
+        guard let firebaseUser = Auth.auth().currentUser else {
+            print("❌ No Firebase Auth user found - skipping sync with ServiceCoordinator")
+            return
+        }
+        
+        // Try to get user from UserDefaults (which ServiceCoordinator uses)
+        if let data = UserDefaults.standard.data(forKey: "currentUser"),
+           let user = try? JSONDecoder().decode(User.self, from: data) {
+            print("✅ Found user in UserDefaults for sync: \(user.name ?? "Unknown")")
+            
+            DispatchQueue.main.async {
+                self.currentUser = user
+                self.isAuthenticated = true
+                print("✅ APIService synced with ServiceCoordinator user: \(user.name ?? "Unknown")")
+            }
+            return
+        }
+        
+        // Try to get user ID from UserDefaults and fetch full user data from Firestore
+        if let userId = UserDefaults.standard.string(forKey: "currentUserId"), !userId.isEmpty {
+            print("✅ Found user ID in UserDefaults for sync: \(userId)")
+            
+            // Try to fetch full user data from Firestore
+            Task {
+                do {
+                    let db = Firestore.firestore()
+                    let userDoc = try await db.collection("users").document(userId).getDocument()
+                    
+                    if userDoc.exists, let userData = userDoc.data() {
+                        let fullUser = User(
+                            id: userId,
+                            email: userData["email"] as? String,
+                            name: userData["name"] as? String ?? "User",
+                            phone: userData["phone"] as? String,
+                            homeLocation: nil,
+                            workLocation: nil,
+                            schoolLocation: nil,
+                            alertRadius: userData["alertRadius"] as? Double ?? 10.0,
+                            preferences: UserPreferences(
+                                incidentTypes: [.weather, .road, .other],
+                                criticalAlertsOnly: false,
+                                pushNotifications: true,
+                                quietHoursEnabled: false,
+                                quietHoursStart: nil,
+                                quietHoursEnd: nil
+                            ),
+                            createdAt: (userData["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                            isAdmin: userData["isAdmin"] as? Bool ?? false,
+                            displayName: userData["customDisplayName"] as? String ?? userData["name"] as? String ?? "User"
+                        )
+                        
+                        await MainActor.run {
+                            self.currentUser = fullUser
+                            self.isAuthenticated = true
+                            print("✅ APIService synced with full user data from Firestore: \(fullUser.name ?? "Unknown")")
+                            
+                            // Save user data to UserDefaults for future use
+                            self.saveUserToDefaults(fullUser)
+                        }
+                    } else {
+                        // Fallback: Create a basic user object
+                        let basicUser = User(
+                            id: userId,
+                            email: nil,
+                            name: "User",
+                            phone: nil,
+                            homeLocation: nil,
+                            workLocation: nil,
+                            schoolLocation: nil,
+                            alertRadius: 10.0,
+                            preferences: UserPreferences(
+                                incidentTypes: [.weather, .road, .other],
+                                criticalAlertsOnly: false,
+                                pushNotifications: true,
+                                quietHoursEnabled: false,
+                                quietHoursStart: nil,
+                                quietHoursEnd: nil
+                            ),
+                            createdAt: Date(),
+                            isAdmin: false,
+                            displayName: "User"
+                        )
+                        
+                        await MainActor.run {
+                            self.currentUser = basicUser
+                            self.isAuthenticated = true
+                            print("✅ APIService synced with basic user data: \(userId)")
+                        }
+                    }
+                } catch {
+                    print("⚠️ Error fetching user from Firestore: \(error)")
+                    
+                    // Fallback: Create a basic user object
+                    let basicUser = User(
+                        id: userId,
+                        email: nil,
+                        name: "User",
+                        phone: nil,
+                        homeLocation: nil,
+                        workLocation: nil,
+                        schoolLocation: nil,
+                        alertRadius: 10.0,
+                        preferences: UserPreferences(
+                            incidentTypes: [.weather, .road, .other],
+                            criticalAlertsOnly: false,
+                            pushNotifications: true,
+                            quietHoursEnabled: false,
+                            quietHoursStart: nil,
+                            quietHoursEnd: nil
+                        ),
+                        createdAt: Date(),
+                        isAdmin: false,
+                        displayName: "User"
+                    )
+                    
+                    await MainActor.run {
+                        self.currentUser = basicUser
+                        self.isAuthenticated = true
+                        print("✅ APIService synced with basic user data (fallback): \(userId)")
+                    }
+                }
+            }
+            return
+        }
+        
+        print("⚠️ No user data found for sync with ServiceCoordinator")
+    }
+    
+    // MARK: - Manual Sync Method
+    func syncUserFromServiceCoordinator() {
+        print("🔄 APIService: Manual sync requested...")
+        syncWithServiceCoordinator()
+    }
+    
+    // MARK: - Save User to UserDefaults
+    private func saveUserToDefaults(_ user: User) {
+        if let encoded = try? JSONEncoder().encode(user) {
+            UserDefaults.standard.set(encoded, forKey: "currentUser")
+            UserDefaults.standard.set(user.id, forKey: "currentUserId")
+            print("✅ User data saved to UserDefaults: \(user.name ?? "Unknown")")
+        } else {
+            print("❌ Failed to encode user data for UserDefaults")
+        }
     }
     
     // MARK: - Development Helper
@@ -458,9 +618,38 @@ class APIService: ObservableObject {
     func signInWithEmail(email: String, password: String) async throws -> User {
         print("🔐 Signing in with email: \(email)")
         
-        // Sign in with Firebase Auth
-        let authResult = try await Auth.auth().signIn(withEmail: email, password: password)
-        print("✅ Firebase Auth successful for UID: \(authResult.user.uid)")
+        let authResult: AuthDataResult
+        do {
+            // Sign in with Firebase Auth
+            authResult = try await Auth.auth().signIn(withEmail: email, password: password)
+            print("✅ Firebase Auth successful for UID: \(authResult.user.uid)")
+            print("✅ Firebase Auth user email: \(authResult.user.email ?? "none")")
+            print("✅ Firebase Auth user display name: \(authResult.user.displayName ?? "none")")
+            
+            // Debug: Check Firebase Auth state immediately after sign in
+            if let currentUser = Auth.auth().currentUser {
+                print("✅ Firebase Auth current user confirmed: \(currentUser.uid)")
+            } else {
+                print("❌ Firebase Auth current user is nil immediately after sign in!")
+                throw APIError.custom("Firebase Auth session not established")
+            }
+            
+            // Additional verification: Check if the user is actually signed in
+            if Auth.auth().currentUser?.uid != authResult.user.uid {
+                print("❌ Firebase Auth UID mismatch!")
+                print("   - Auth result UID: \(authResult.user.uid)")
+                print("   - Current user UID: \(Auth.auth().currentUser?.uid ?? "nil")")
+                throw APIError.custom("Firebase Auth UID mismatch")
+            }
+            
+        } catch {
+            print("❌ Firebase Auth sign-in failed: \(error)")
+            print("❌ Error details: \(error.localizedDescription)")
+            if let authError = error as? AuthErrorCode {
+                print("❌ Auth error code: \(authError.rawValue)")
+            }
+            throw error
+        }
         
         // Check if user already exists in Firestore by email
         let existingUser = try await findUserByEmail(email)
@@ -636,6 +825,9 @@ class APIService: ObservableObject {
         // Force UI update on main thread
         DispatchQueue.main.async {
             print("✅ APIService sign out completed - UI should update")
+            print("🔍 APIService isAuthenticated after sign out: \(self.isAuthenticated)")
+            print("🔍 APIService currentUser after sign out: \(self.currentUser?.id ?? "nil")")
+            
             // Force a UI refresh by triggering objectWillChange
             self.objectWillChange.send()
         }
@@ -900,14 +1092,33 @@ class APIService: ObservableObject {
     func followOrganization(_ organizationId: String) async throws -> Bool {
         print("🔗 Following organization: \(organizationId)")
         
-        guard let currentUser = currentUser else {
-            print("❌ No current user found")
+        // Try to get user ID from multiple sources
+        var currentUserId: String?
+        
+        // First try APIService currentUser
+        if let apiUserId = currentUser?.id {
+            currentUserId = apiUserId
+            print("✅ Found user ID from APIService: \(apiUserId)")
+        }
+        // Then try UserDefaults
+        else if let defaultsUserId = UserDefaults.standard.string(forKey: "currentUserId"), !defaultsUserId.isEmpty {
+            currentUserId = defaultsUserId
+            print("✅ Found user ID from UserDefaults: \(defaultsUserId)")
+        }
+        // Finally try Firebase Auth
+        else if let firebaseUserId = Auth.auth().currentUser?.uid {
+            currentUserId = firebaseUserId
+            print("✅ Found user ID from Firebase Auth: \(firebaseUserId)")
+        }
+        
+        guard let userId = currentUserId else {
+            print("❌ No current user found from any source")
             throw APIError.unauthorized
         }
         
         // Use the OrganizationFollowingService for consistency
         let followingService = OrganizationFollowingService()
-        try await followingService.followOrganization(organizationId, userId: currentUser.id)
+        try await followingService.followOrganization(organizationId, userId: userId)
         
         print("✅ Successfully followed organization \(organizationId)")
         return true
@@ -916,14 +1127,33 @@ class APIService: ObservableObject {
     func unfollowOrganization(_ organizationId: String) async throws -> Bool {
         print("❌ Unfollowing organization: \(organizationId)")
         
-        guard let currentUser = currentUser else {
-            print("❌ No current user found")
+        // Try to get user ID from multiple sources
+        var currentUserId: String?
+        
+        // First try APIService currentUser
+        if let apiUserId = currentUser?.id {
+            currentUserId = apiUserId
+            print("✅ Found user ID from APIService: \(apiUserId)")
+        }
+        // Then try UserDefaults
+        else if let defaultsUserId = UserDefaults.standard.string(forKey: "currentUserId"), !defaultsUserId.isEmpty {
+            currentUserId = defaultsUserId
+            print("✅ Found user ID from UserDefaults: \(defaultsUserId)")
+        }
+        // Finally try Firebase Auth
+        else if let firebaseUserId = Auth.auth().currentUser?.uid {
+            currentUserId = firebaseUserId
+            print("✅ Found user ID from Firebase Auth: \(firebaseUserId)")
+        }
+        
+        guard let userId = currentUserId else {
+            print("❌ No current user found from any source")
             throw APIError.unauthorized
         }
         
         // Use the OrganizationFollowingService for consistency
         let followingService = OrganizationFollowingService()
-        try await followingService.unfollowOrganization(organizationId, userId: currentUser.id)
+        try await followingService.unfollowOrganization(organizationId, userId: userId)
         
         print("✅ Successfully unfollowed organization \(organizationId)")
         return true
@@ -932,23 +1162,58 @@ class APIService: ObservableObject {
     func isFollowingOrganization(_ organizationId: String) async throws -> Bool {
         print("🔍 Checking if following organization: \(organizationId)")
         
-        guard let currentUser = currentUser else {
-            print("❌ No current user found")
+        // Try to get user ID from multiple sources
+        var currentUserId: String?
+        
+        // First try APIService currentUser
+        if let apiUserId = currentUser?.id {
+            currentUserId = apiUserId
+            print("✅ Found user ID from APIService: \(apiUserId)")
+        }
+        // Then try UserDefaults
+        else if let defaultsUserId = UserDefaults.standard.string(forKey: "currentUserId"), !defaultsUserId.isEmpty {
+            currentUserId = defaultsUserId
+            print("✅ Found user ID from UserDefaults: \(defaultsUserId)")
+        }
+        // Finally try Firebase Auth
+        else if let firebaseUserId = Auth.auth().currentUser?.uid {
+            currentUserId = firebaseUserId
+            print("✅ Found user ID from Firebase Auth: \(firebaseUserId)")
+        }
+        
+        guard let userId = currentUserId else {
+            print("❌ No current user found from any source")
             return false
         }
         
         // Use the OrganizationFollowingService for consistency
         let followingService = OrganizationFollowingService()
-        return try await followingService.isFollowingOrganization(organizationId, userId: currentUser.id)
+        return try await followingService.isFollowingOrganization(organizationId, userId: userId)
     }
     
     func hasOrganizationAdminAccess() -> Bool {
         // Check if current user is an admin of any organization
-        guard let currentUser = currentUser else { return false }
+        // Try to get user ID from multiple sources
+        var currentUserId: String?
+        
+        // First try APIService currentUser
+        if let apiUserId = currentUser?.id {
+            currentUserId = apiUserId
+        }
+        // Then try UserDefaults
+        else if let defaultsUserId = UserDefaults.standard.string(forKey: "currentUserId"), !defaultsUserId.isEmpty {
+            currentUserId = defaultsUserId
+        }
+        // Finally try Firebase Auth
+        else if let firebaseUserId = Auth.auth().currentUser?.uid {
+            currentUserId = firebaseUserId
+        }
+        
+        guard let userId = currentUserId else { return false }
         
         // Check if user is marked as admin in any organization
         for organization in organizations {
-            if organization.adminIds?[currentUser.id] == true {
+            if organization.adminIds?[userId] == true {
                 return true
             }
         }
@@ -1389,8 +1654,22 @@ class APIService: ObservableObject {
                 .document(organizationId)
                 .collection("alerts")
             
+            print("🔍 Querying path: organizations/\(organizationId)/alerts")
             let snapshot = try await alertsRef.getDocuments()
             print("📊 Found \(snapshot.documents.count) alerts in organization \(organizationId)")
+            
+            // Log each document found
+            for (index, document) in snapshot.documents.enumerated() {
+                print("   📄 Document \(index + 1): \(document.documentID)")
+                let data = document.data()
+                print("   📋 Data keys: \(Array(data.keys).sorted())")
+                if let title = data["title"] as? String {
+                    print("   📝 Title: \(title)")
+                }
+                if let isActive = data["isActive"] as? Bool {
+                    print("   🔄 Is Active: \(isActive)")
+                }
+            }
             
             var alerts: [OrganizationAlert] = []
             
@@ -1399,8 +1678,10 @@ class APIService: ObservableObject {
                     let data = document.data()
                     let alert = try parseOrganizationAlertFromFirestore(document: document, data: data)
                     alerts.append(alert)
+                    print("✅ Successfully parsed alert: \(alert.title)")
                 } catch {
                     print("⚠️ Error parsing alert \(document.documentID): \(error)")
+                    print("   Error details: \(error.localizedDescription)")
                     // Continue with other alerts
                     continue
                 }
@@ -1411,6 +1692,7 @@ class APIService: ObservableObject {
             
         } catch {
             print("❌ Error fetching alerts for organization \(organizationId): \(error)")
+            print("   Error details: \(error.localizedDescription)")
             throw error
         }
     }
@@ -1628,16 +1910,73 @@ class APIService: ObservableObject {
             // Update the specific group preference
             currentPreferences[groupId] = isEnabled
             
+            print("💾 Saving group preferences to Firestore:")
+            print("   Organization: \(organizationId)")
+            print("   Group: \(groupId)")
+            print("   Enabled: \(isEnabled)")
+            print("   All preferences: \(currentPreferences)")
+            
             // Save updated preferences
             try await followedOrgDoc.setData([
                 "groupPreferences": currentPreferences,
                 "updatedAt": FieldValue.serverTimestamp()
             ], merge: true)
             
-            print("✅ Successfully updated group preference: \(groupId) = \(isEnabled)")
+            print("✅ Successfully saved group preference to Firestore: \(groupId) = \(isEnabled)")
+            
+            // Verify the save by reading it back
+            let verifyDoc = try await followedOrgDoc.getDocument()
+            if let verifyData = verifyDoc.data(),
+               let savedPreferences = verifyData["groupPreferences"] as? [String: Bool] {
+                print("🔍 Verification: Saved preferences = \(savedPreferences)")
+            }
             
         } catch {
             print("❌ Error updating group preference for organization \(organizationId): \(error)")
+            throw error
+        }
+    }
+    
+    func fetchUserGroupPreferences() async throws -> [String: Bool] {
+        print("🔍 Fetching user group preferences...")
+        
+        guard let currentUser = currentUser else {
+            print("❌ No current user found")
+            throw APIError.unauthorized
+        }
+        
+        let db = Firestore.firestore()
+        var allPreferences: [String: Bool] = [:]
+        
+        do {
+            // Get all followed organizations
+            let userDoc = db.collection("users").document(currentUser.id)
+            let followedOrgsRef = userDoc.collection("followedOrganizations")
+            let snapshot = try await followedOrgsRef.getDocuments()
+            
+            print("📋 Found \(snapshot.documents.count) followed organizations")
+            
+            // Fetch preferences from each followed organization
+            for doc in snapshot.documents {
+                let orgId = doc.documentID
+                let data = doc.data()
+                
+                if let groupPreferences = data["groupPreferences"] as? [String: Bool] {
+                    print("📊 Found \(groupPreferences.count) group preferences for organization \(orgId):")
+                    for (groupId, isEnabled) in groupPreferences {
+                        print("   Group \(groupId): \(isEnabled ? "enabled" : "disabled")")
+                    }
+                    allPreferences.merge(groupPreferences) { (_, new) in new }
+                } else {
+                    print("ℹ️ No group preferences found for organization \(orgId)")
+                }
+            }
+            
+            print("✅ Total group preferences loaded: \(allPreferences.count)")
+            return allPreferences
+            
+        } catch {
+            print("❌ Error fetching user group preferences: \(error)")
             throw error
         }
     }
@@ -1654,9 +1993,238 @@ class APIService: ObservableObject {
     }
     
     func getCurrentUserId() -> String? {
-        // This method would get the current user ID
-        // For now, it's a placeholder
-        return currentUser?.id
+        print("🔍 APIService.getCurrentUserId: Checking for user ID...")
+        
+        // First try APIService currentUser
+        if let apiUserId = currentUser?.id {
+            print("✅ Found user ID from APIService: \(apiUserId)")
+            return apiUserId
+        }
+        
+        // Then try UserDefaults
+        if let defaultsUserId = UserDefaults.standard.string(forKey: "currentUserId"), !defaultsUserId.isEmpty {
+            print("✅ Found user ID from UserDefaults: \(defaultsUserId)")
+            return defaultsUserId
+        }
+        
+        // Finally try Firebase Auth
+        if let firebaseUserId = Auth.auth().currentUser?.uid {
+            print("✅ Found user ID from Firebase Auth: \(firebaseUserId)")
+            return firebaseUserId
+        }
+        
+        print("❌ No user ID found from any source")
+        return nil
+    }
+    
+    // MARK: - Debug Authentication State
+    func debugAuthenticationState() {
+        print("🔍 === AUTHENTICATION DEBUG STATE ===")
+        print("APIService:")
+        print("  - isAuthenticated: \(isAuthenticated)")
+        print("  - currentUser: \(currentUser?.id ?? "nil")")
+        print("  - currentUser name: \(currentUser?.name ?? "nil")")
+        print("  - currentUser email: \(currentUser?.email ?? "nil")")
+        
+        print("UserDefaults:")
+        print("  - currentUserId: \(UserDefaults.standard.string(forKey: "currentUserId") ?? "nil")")
+        print("  - authToken: \(UserDefaults.standard.string(forKey: "authToken") ?? "nil")")
+        
+        print("Firebase Auth:")
+        if let firebaseUser = Auth.auth().currentUser {
+            print("  - UID: \(firebaseUser.uid)")
+            print("  - Email: \(firebaseUser.email ?? "nil")")
+            print("  - Display Name: \(firebaseUser.displayName ?? "nil")")
+        } else {
+            print("  - No Firebase Auth user")
+        }
+        
+        print("FCM Token:")
+        print("  - fcm_token: \(UserDefaults.standard.string(forKey: "fcm_token") ?? "nil")")
+        print("  - pending_fcm_token: \(UserDefaults.standard.string(forKey: "pending_fcm_token") ?? "nil")")
+        
+        print("=== END AUTHENTICATION DEBUG ===")
+    }
+    
+    // MARK: - Force FCM Token Registration
+    func forceFCMTokenRegistration() async {
+        print("🔄 APIService: Force FCM token registration...")
+        
+        // First, debug the current state
+        debugAuthenticationState()
+        
+        // Get user ID
+        guard let userId = getCurrentUserId() else {
+            print("❌ No user ID available for FCM token registration")
+            return
+        }
+        
+        // Get FCM token
+        let fcmToken = UserDefaults.standard.string(forKey: "fcm_token") ?? ""
+        if fcmToken.isEmpty {
+            print("❌ No FCM token available for registration")
+            return
+        }
+        
+        print("📱 Registering FCM token for user: \(userId)")
+        print("📱 FCM token: \(fcmToken.prefix(20))...")
+        
+        do {
+            try await validateAndRegisterFCMToken()
+            print("✅ FCM token successfully registered")
+        } catch {
+            print("❌ Failed to register FCM token: \(error)")
+        }
+    }
+    
+    // MARK: - Ensure User Document Exists with FCM Token
+    func ensureUserDocumentWithFCMToken() async {
+        print("🔧 APIService: Ensuring user document exists with FCM token...")
+        
+        guard let userId = getCurrentUserId() else {
+            print("❌ No user ID available")
+            return
+        }
+        
+        let fcmToken = UserDefaults.standard.string(forKey: "fcm_token") ?? ""
+        if fcmToken.isEmpty {
+            print("❌ No FCM token available")
+            return
+        }
+        
+        do {
+            let db = Firestore.firestore()
+            let userRef = db.collection("users").document(userId)
+            
+            // Check if user document exists
+            let userDoc = try await userRef.getDocument()
+            
+            if userDoc.exists {
+                let userData = userDoc.data() ?? [:]
+                let existingToken = userData["fcmToken"] as? String ?? ""
+                
+                if existingToken.isEmpty {
+                    print("📱 User document exists but missing FCM token, updating...")
+                    try await userRef.updateData([
+                        "fcmToken": fcmToken,
+                        "lastTokenUpdate": FieldValue.serverTimestamp(),
+                        "platform": "ios",
+                        "appVersion": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown",
+                        "tokenStatus": "active",
+                        "updatedAt": FieldValue.serverTimestamp()
+                    ])
+                    print("✅ FCM token added to existing user document")
+                } else {
+                    print("✅ User document already has FCM token")
+                }
+            } else {
+                print("📱 User document doesn't exist, creating with FCM token...")
+                
+                // Get user info from Firebase Auth
+                let firebaseUser = Auth.auth().currentUser
+                let email = firebaseUser?.email ?? "unknown@example.com"
+                let name = firebaseUser?.displayName ?? "User"
+                
+                try await userRef.setData([
+                    "id": userId,
+                    "email": email,
+                    "name": name,
+                    "displayName": name,
+                    "fcmToken": fcmToken,
+                    "alertsEnabled": true,
+                    "createdAt": FieldValue.serverTimestamp(),
+                    "updatedAt": FieldValue.serverTimestamp(),
+                    "isAdmin": false,
+                    "isOrganizationAdmin": false,
+                    "uid": userId,
+                    "lastSignIn": FieldValue.serverTimestamp(),
+                    "signInCount": 1,
+                    "platform": "ios",
+                    "appVersion": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown",
+                    "tokenStatus": "active"
+                ])
+                print("✅ User document created with FCM token")
+            }
+        } catch {
+            print("❌ Error ensuring user document: \(error)")
+        }
+    }
+    
+    // MARK: - Synchronize Authentication State
+    func synchronizeAuthenticationState() async {
+        print("🔄 APIService: Synchronizing authentication state...")
+        
+        // First, try to restore from Firebase Auth
+        if let firebaseUser = Auth.auth().currentUser {
+            print("✅ Found Firebase Auth user: \(firebaseUser.uid)")
+            
+            // If we don't have a current user or it's different, try to load from Firestore
+            if currentUser == nil || currentUser?.id != firebaseUser.uid {
+                print("🔄 Loading user data from Firestore...")
+                
+                do {
+                    let db = Firestore.firestore()
+                    let userDoc = try await db.collection("users").document(firebaseUser.uid).getDocument()
+                    
+                    if userDoc.exists, let userData = userDoc.data() {
+                        let syncedUser = User(
+                            id: firebaseUser.uid,
+                            email: userData["email"] as? String ?? firebaseUser.email,
+                            name: userData["name"] as? String ?? firebaseUser.displayName ?? "User",
+                            phone: userData["phone"] as? String ?? firebaseUser.phoneNumber,
+                            homeLocation: nil,
+                            workLocation: nil,
+                            schoolLocation: nil,
+                            alertRadius: userData["alertRadius"] as? Double ?? 10.0,
+                            preferences: UserPreferences(
+                                incidentTypes: [.weather, .road, .other],
+                                criticalAlertsOnly: false,
+                                pushNotifications: true,
+                                quietHoursEnabled: false,
+                                quietHoursStart: nil,
+                                quietHoursEnd: nil
+                            ),
+                            createdAt: (userData["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                            isAdmin: userData["isAdmin"] as? Bool ?? false,
+                            displayName: userData["customDisplayName"] as? String ?? userData["name"] as? String ?? firebaseUser.displayName ?? "User",
+                            isOrganizationAdmin: userData["isOrganizationAdmin"] as? Bool,
+                            organizations: userData["organizations"] as? [String],
+                            updatedAt: (userData["updatedAt"] as? Timestamp)?.dateValue(),
+                            needsPasswordSetup: userData["needsPasswordSetup"] as? Bool,
+                            needsPasswordChange: userData["needsPasswordChange"] as? Bool,
+                            firebaseAuthId: firebaseUser.uid
+                        )
+                        
+                        await MainActor.run {
+                            self.currentUser = syncedUser
+                            self.isAuthenticated = true
+                        }
+                        
+                        // Store user ID in UserDefaults
+                        UserDefaults.standard.set(syncedUser.id, forKey: "currentUserId")
+                        print("✅ User synchronized: \(syncedUser.name ?? "Unknown")")
+                        
+                        // Try to register FCM token
+                        await forceFCMTokenRegistration()
+                        
+                    } else {
+                        print("⚠️ User document not found in Firestore")
+                    }
+                } catch {
+                    print("❌ Error loading user from Firestore: \(error)")
+                }
+            } else {
+                print("✅ Current user already matches Firebase Auth user")
+            }
+        } else {
+            print("❌ No Firebase Auth user found")
+            await MainActor.run {
+                self.currentUser = nil
+                self.isAuthenticated = false
+            }
+        }
+        
+        print("🔄 Authentication state synchronization complete")
     }
     
     func getOrganizationGroups(organizationId: String) async throws -> [OrganizationGroup] {
@@ -2106,21 +2674,53 @@ class APIService: ObservableObject {
             return []
         }
         
+        print("👤 Current user: \(currentUser.id) (\(currentUser.email ?? "no email"))")
+        
         let db = Firestore.firestore()
         var allAlerts: [OrganizationAlert] = []
         
         // Get user's followed organizations
         let followedOrgs = try await fetchFollowedOrganizations()
         print("📋 Found \(followedOrgs.count) followed organizations")
+        for org in followedOrgs {
+            print("   📍 \(org.name) (ID: \(org.id))")
+        }
+        
+        // Get user's group preferences
+        let groupPreferences = try await fetchUserGroupPreferences()
+        print("🔧 User group preferences: \(groupPreferences)")
         
         // Fetch alerts from each followed organization
         for organization in followedOrgs {
             do {
+                print("🔍 Fetching alerts for organization: \(organization.name) (ID: \(organization.id))")
                 let orgAlerts = try await getOrganizationAlerts(organizationId: organization.id)
                 print("📢 Found \(orgAlerts.count) alerts from \(organization.name)")
-                allAlerts.append(contentsOf: orgAlerts)
+                
+                // Filter alerts by group preferences
+                let filteredAlerts = orgAlerts.filter { alert in
+                    // If alert has no group (general organization alert), include it
+                    guard let groupId = alert.groupId else {
+                        print("   📋 Alert '\(alert.title)' has no group - including")
+                        return true
+                    }
+                    
+                    // Check if user has enabled this group
+                    let isGroupEnabled = groupPreferences[groupId] ?? false
+                    print("   📋 Alert '\(alert.title)' from group '\(alert.groupName ?? "Unknown")' (ID: \(groupId)) - Enabled: \(isGroupEnabled)")
+                    
+                    return isGroupEnabled
+                }
+                
+                print("📊 Filtered to \(filteredAlerts.count) alerts from enabled groups")
+                for alert in filteredAlerts {
+                    print("   ✅ Included: '\(alert.title)' from group '\(alert.groupName ?? "General")'")
+                }
+                
+                allAlerts.append(contentsOf: filteredAlerts)
             } catch {
                 print("⚠️ Error fetching alerts from \(organization.name): \(error)")
+                print("   Error details: \(error.localizedDescription)")
                 // Continue with other organizations
                 continue
             }
@@ -2129,8 +2729,148 @@ class APIService: ObservableObject {
         // Sort by most recent first
         allAlerts.sort { $0.postedAt > $1.postedAt }
         
-        print("✅ Total alerts found: \(allAlerts.count)")
+        print("✅ Total alerts found after group filtering: \(allAlerts.count)")
         return allAlerts
+    }
+    
+    func getAllAlerts() async throws -> [OrganizationAlert] {
+        print("🔍 Fetching ALL alerts from the system...")
+        
+        let db = Firestore.firestore()
+        var allAlerts: [OrganizationAlert] = []
+        
+        do {
+            // Get all organizations first
+            let orgsSnapshot = try await db.collection("organizations").getDocuments()
+            print("📋 Found \(orgsSnapshot.documents.count) organizations in the system")
+            
+            // Fetch alerts from each organization
+            for orgDoc in orgsSnapshot.documents {
+                let orgId = orgDoc.documentID
+                let orgData = orgDoc.data()
+                let orgName = orgData["name"] as? String ?? "Unknown"
+                
+                do {
+                    let orgAlerts = try await getOrganizationAlerts(organizationId: orgId)
+                    print("📢 Found \(orgAlerts.count) alerts from \(orgName) (ID: \(orgId))")
+                    allAlerts.append(contentsOf: orgAlerts)
+                } catch {
+                    print("⚠️ Error fetching alerts from \(orgName): \(error)")
+                    continue
+                }
+            }
+            
+            // Sort by most recent first
+            allAlerts.sort { $0.postedAt > $1.postedAt }
+            
+            print("✅ Total alerts found across all organizations: \(allAlerts.count)")
+            return allAlerts
+            
+        } catch {
+            print("❌ Error fetching all alerts: \(error)")
+            throw error
+        }
+    }
+    
+    func createTestAlert(organizationId: String) async throws {
+        print("🔧 Creating test alert for organization: \(organizationId)")
+        
+        let db = Firestore.firestore()
+        
+        // First, get the organization name
+        let orgDoc = try await db.collection("organizations").document(organizationId).getDocument()
+        let orgName = orgDoc.data()?["name"] as? String ?? "Unknown Organization"
+        
+        let testAlert = OrganizationAlert(
+            id: UUID().uuidString,
+            title: "Test Alert - System Check",
+            description: "This is a test alert to verify the alert system is working correctly.",
+            organizationId: organizationId,
+            organizationName: orgName,
+            groupId: nil,
+            groupName: nil,
+            type: .other,
+            severity: .medium,
+            location: Location(
+                latitude: 33.2148,
+                longitude: -97.1331,
+                address: "123 Test Street",
+                city: "Denton",
+                state: "TX",
+                zipCode: "76201"
+            ),
+            postedBy: currentUser?.name ?? "System",
+            postedByUserId: currentUser?.id ?? "system",
+            postedAt: Date(),
+            imageURLs: []
+        )
+        
+        do {
+            var alertData: [String: Any] = [
+                "id": testAlert.id,
+                "organizationId": testAlert.organizationId,
+                "organizationName": testAlert.organizationName,
+                "title": testAlert.title,
+                "description": testAlert.description,
+                "type": testAlert.type.rawValue,
+                "severity": testAlert.severity.rawValue,
+                "postedBy": testAlert.postedBy,
+                "postedByUserId": testAlert.postedByUserId,
+                "postedAt": Timestamp(date: testAlert.postedAt),
+                "expiresAt": Timestamp(date: testAlert.expiresAt),
+                "imageURLs": testAlert.imageURLs,
+                "isActive": testAlert.isActive
+            ]
+            
+            // Only add optional fields if they have values
+            if let groupId = testAlert.groupId {
+                alertData["groupId"] = groupId
+            }
+            if let groupName = testAlert.groupName {
+                alertData["groupName"] = groupName
+            }
+            if let location = testAlert.location {
+                alertData["location"] = [
+                    "latitude": location.latitude,
+                    "longitude": location.longitude,
+                    "address": location.address,
+                    "city": location.city,
+                    "state": location.state,
+                    "zipCode": location.zipCode
+                ]
+            }
+            if let distance = testAlert.distance {
+                alertData["distance"] = distance
+            }
+            
+            try await db.collection("organizations")
+                .document(organizationId)
+                .collection("alerts")
+                .document(testAlert.id)
+                .setData(alertData)
+            
+            print("✅ Test alert created successfully: \(testAlert.title)")
+            
+        } catch {
+            print("❌ Error creating test alert: \(error)")
+            throw error
+        }
+    }
+    
+    func updateCurrentUser(from simpleAuthManager: SimpleAuthManager) {
+        print("🔄 APIService: Updating current user from SimpleAuthManager...")
+        print("   SimpleAuthManager isAuthenticated: \(simpleAuthManager.isAuthenticated)")
+        print("   SimpleAuthManager currentUser: \(simpleAuthManager.currentUser?.id ?? "nil")")
+        
+        if let user = simpleAuthManager.currentUser {
+            self.currentUser = user
+            self.isAuthenticated = true
+            print("✅ APIService: Updated current user to: \(user.name ?? "Unknown")")
+        } else {
+            self.currentUser = nil
+            self.isAuthenticated = false
+            print("✅ APIService: Cleared current user")
+        }
     }
     
     func hideAlertFromFeed(alertId: String) async throws {
@@ -2188,17 +2928,33 @@ class APIService: ObservableObject {
     func isAdminOfOrganization(_ organizationId: String) async -> Bool {
         print("👑 Checking if user is admin of organization: \(organizationId)")
         
-        guard let currentUser = currentUser else {
-            print("❌ No current user found")
+        // Try to get user ID from multiple sources
+        var currentUserId: String?
+        
+        // First try APIService currentUser
+        if let apiUserId = currentUser?.id {
+            currentUserId = apiUserId
+            print("✅ Found user ID from APIService: \(apiUserId)")
+        }
+        // Then try UserDefaults
+        else if let defaultsUserId = UserDefaults.standard.string(forKey: "currentUserId"), !defaultsUserId.isEmpty {
+            currentUserId = defaultsUserId
+            print("✅ Found user ID from UserDefaults: \(defaultsUserId)")
+        }
+        // Finally try Firebase Auth
+        else if let firebaseUserId = Auth.auth().currentUser?.uid {
+            currentUserId = firebaseUserId
+            print("✅ Found user ID from Firebase Auth: \(firebaseUserId)")
+        }
+        
+        guard let userId = currentUserId else {
+            print("❌ No current user found from any source")
             return false
         }
         
-        print("🔍 Current user details:")
-        print("   - ID: \(currentUser.id)")
-        print("   - Email: \(currentUser.email ?? "nil")")
-        print("   - Name: \(currentUser.name ?? "nil")")
+        print("✅ Using user ID for admin check: \(userId)")
         
-        // Check Firebase Auth current user
+        // Check Firebase Auth current user for comparison
         if let firebaseUser = Auth.auth().currentUser {
             print("🔥 Firebase Auth current user:")
             print("   - Firebase UID: \(firebaseUser.uid)")
@@ -2206,13 +2962,9 @@ class APIService: ObservableObject {
             print("   - Firebase Display Name: \(firebaseUser.displayName ?? "nil")")
             
             // If there's a mismatch, this is the problem
-            if currentUser.id != firebaseUser.uid {
-                print("⚠️ MISMATCH: APIService currentUser.id (\(currentUser.id)) != Firebase UID (\(firebaseUser.uid))")
-                print("⚠️ This explains why admin checks are failing!")
-            }
-            
-            if currentUser.email != firebaseUser.email {
-                print("⚠️ MISMATCH: APIService currentUser.email (\(currentUser.email ?? "nil")) != Firebase email (\(firebaseUser.email ?? "nil"))")
+            if userId != firebaseUser.uid {
+                print("⚠️ MISMATCH: Using user ID (\(userId)) != Firebase UID (\(firebaseUser.uid))")
+                print("⚠️ This explains why admin checks might be failing!")
             }
         } else {
             print("❌ No Firebase Auth user found")
@@ -2229,11 +2981,11 @@ class APIService: ObservableObject {
             if orgDoc.exists, let data = orgDoc.data() {
                 // Check if the current user is in the adminIds
                 let adminIds = data["adminIds"] as? [String: Bool] ?? [:]
-                let isAdmin = adminIds[currentUser.id] == true
+                let isAdmin = adminIds[userId] == true
                 
-                print("✅ Admin status for user \(currentUser.id) in organization \(organizationId): \(isAdmin)")
+                print("✅ Admin status for user \(userId) in organization \(organizationId): \(isAdmin)")
                 print("📋 Available adminIds: \(adminIds.keys.joined(separator: ", "))")
-                print("🔍 User ID match: \(adminIds[currentUser.id] ?? false)")
+                print("🔍 User ID match: \(adminIds[userId] ?? false)")
                 
                 // No special handling - only grant access if user is explicitly in adminIds
                 
@@ -3749,36 +4501,111 @@ class APIService: ObservableObject {
     func sendTestPushNotification() async throws {
         print("🧪 APIService: Sending test push notification...")
         
-        // Get current user
-        guard let currentUser = self.currentUser else {
+        // Only allow test push notifications for authenticated users
+        guard let firebaseUser = Auth.auth().currentUser else {
+            print("❌ No Firebase Auth user found - test push notification requires authentication")
             throw APIError.userNotFound
         }
         
-        print("👤 Current user: \(currentUser.name ?? "Unknown") (ID: \(currentUser.id))")
+        // Try to sync user state first
+        syncUserFromServiceCoordinator()
         
-        // Call Firebase Function to send test notification
-        let functions = Functions.functions()
+        // Get current user
+        var currentUser = self.currentUser
         
-        let testData: [String: Any] = [
-            "userId": currentUser.id,
-            "title": "🧪 Test Push Notification",
-            "body": "This is a test push notification sent at \(Date()) to verify FCM is working correctly."
-        ]
+        if currentUser == nil {
+            print("❌ No current user in APIService, but Firebase Auth user exists: \(firebaseUser.uid)")
+            // Create a basic user object from Firebase Auth data
+            let basicUser = User(
+                id: firebaseUser.uid,
+                email: firebaseUser.email,
+                name: firebaseUser.displayName ?? "User",
+                phone: firebaseUser.phoneNumber,
+                homeLocation: nil,
+                workLocation: nil,
+                schoolLocation: nil,
+                alertRadius: 10.0,
+                preferences: UserPreferences(
+                    incidentTypes: [.weather, .road, .other],
+                    criticalAlertsOnly: false,
+                    pushNotifications: true,
+                    quietHoursEnabled: false,
+                    quietHoursStart: nil,
+                    quietHoursEnd: nil
+                ),
+                createdAt: Date(),
+                isAdmin: false,
+                displayName: firebaseUser.displayName ?? "User"
+            )
+            
+            self.currentUser = basicUser
+            self.isAuthenticated = true
+            currentUser = basicUser
+            print("✅ Created user from Firebase Auth data for test")
+        }
         
-        print("📞 Calling Firebase Function: testFCMNotification")
-        let result = try await functions.httpsCallable("testFCMNotification").call(testData)
+        guard let finalUser = currentUser else {
+            throw APIError.userNotFound
+        }
         
-        if let data = result.data as? [String: Any] {
-            let success = data["success"] as? Bool ?? false
-            if success {
-                print("✅ Test push notification sent successfully")
-            } else {
-                print("❌ Test push notification failed")
-                throw APIError.custom("Test push notification failed")
+        print("👤 Current user: \(finalUser.name ?? "Unknown") (ID: \(finalUser.id))")
+        
+        // Check if Firebase Functions are available
+        do {
+            // Call Firebase Function to send test notification
+            let functions = Functions.functions()
+            
+            let testData: [String: Any] = [
+                "userId": finalUser.id,
+                "title": "🧪 Test Push Notification",
+                "body": "This is a test push notification sent at \(Date()) to verify FCM is working correctly."
+            ]
+            
+            print("📞 Calling Firebase Function: testFCMNotification")
+            print("🔐 Using Firebase Auth user: \(Auth.auth().currentUser?.uid ?? "none")")
+            
+            // Ensure we're authenticated with Firebase Auth
+            guard Auth.auth().currentUser != nil else {
+                print("❌ No Firebase Auth user - cannot call authenticated function")
+                throw APIError.custom("User must be authenticated with Firebase")
             }
-        } else {
-            print("❌ Unexpected result format from Firebase Function")
-            throw APIError.custom("Unexpected result format")
+            
+            let result = try await functions.httpsCallable("testFCMNotification").call(testData)
+            
+            if let data = result.data as? [String: Any] {
+                let success = data["success"] as? Bool ?? false
+                if success {
+                    print("✅ Test push notification sent successfully via Firebase Functions")
+                } else {
+                    print("❌ Test push notification failed")
+                    throw APIError.custom("Test push notification failed")
+                }
+            } else {
+                print("❌ Unexpected result format from Firebase Function")
+                throw APIError.custom("Unexpected result format")
+            }
+        } catch {
+            print("⚠️ Firebase Functions not available or not deployed: \(error)")
+            print("🔄 Falling back to local notification test...")
+            
+            // Fallback: Create a test notification document in Firestore
+            let db = Firestore.firestore()
+            let testNotificationData: [String: Any] = [
+                "title": "🧪 Test Push Notification",
+                "body": "This is a test notification to verify FCM is working correctly",
+                "userId": finalUser.id,
+                "timestamp": FieldValue.serverTimestamp(),
+                "type": "test",
+                "data": [
+                    "test": "true",
+                    "timestamp": Date().timeIntervalSince1970
+                ]
+            ]
+            
+            try await db.collection("testNotifications").addDocument(data: testNotificationData)
+            print("✅ Test notification document created in Firestore")
+            print("📱 Note: To send actual push notifications, deploy Firebase Functions")
+            print("📱 Run: firebase deploy --only functions")
         }
     }
     

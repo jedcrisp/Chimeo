@@ -231,22 +231,58 @@ struct EditProfileView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: refreshUserData) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.title3)
+                    HStack {
+                        Button(action: {
+                            print("🔍 DEBUG: Current form state:")
+                            print("   - Name: '\(name)'")
+                            print("   - Email: '\(email)'")
+                            print("   - Phone: '\(phone)'")
+                            print("🔍 DEBUG: Current user state:")
+                            print("   - User: \(apiService.currentUser?.name ?? "nil")")
+                            print("   - Email: \(apiService.currentUser?.email ?? "nil")")
+                            print("   - Phone: \(apiService.currentUser?.phone ?? "nil")")
+                        }) {
+                            Image(systemName: "info.circle")
+                                .font(.title3)
+                        }
+                        
+                        Button(action: refreshUserData) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.title3)
+                        }
+                        .disabled(isSaving)
                     }
-                    .disabled(isSaving)
                 }
             }
             .onAppear {
+                print("📝 EditProfileView: onAppear called")
                 loadCurrentProfile()
+                
+                // Also try to load after a short delay to ensure data is available
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    print("📝 EditProfileView: Delayed load attempt")
+                    loadCurrentProfile()
+                }
             }
             .onReceive(apiService.$currentUser) { user in
+                print("📝 EditProfileView: onReceive currentUser called")
                 if let user = user {
+                    print("📝 Updating form fields from currentUser:")
+                    print("   - Name: '\(user.name ?? "nil")'")
+                    print("   - Email: '\(user.email ?? "nil")'")
+                    print("   - Phone: '\(user.phone ?? "nil")'")
+                    
                     // Update the form fields when the current user changes
                     name = user.name ?? ""
                     email = user.email ?? ""
                     phone = user.phone ?? ""
+                    
+                    print("📝 Form fields updated:")
+                    print("   - Name: '\(name)'")
+                    print("   - Email: '\(email)'")
+                    print("   - Phone: '\(phone)'")
+                } else {
+                    print("❌ No current user received in onReceive")
                 }
             }
             .alert(alertTitle, isPresented: $showingAlert) {
@@ -262,11 +298,24 @@ struct EditProfileView: View {
     }
     
     private func loadCurrentProfile() {
+        print("📝 EditProfileView: Loading current profile...")
+        
         if let user = apiService.currentUser {
+            print("📝 Found current user: \(user.name ?? "Unknown")")
+            print("📝 User email: \(user.email ?? "No email")")
+            print("📝 User phone: \(user.phone ?? "No phone")")
+            
             // Load from current user first
             name = user.name ?? ""
             email = user.email ?? ""
             phone = user.phone ?? ""
+            
+            print("📝 Form fields populated:")
+            print("   - Name: '\(name)'")
+            print("   - Email: '\(email)'")
+            print("   - Phone: '\(phone)'")
+        } else {
+            print("❌ No current user found in APIService")
         }
         
         // Always try to load fresh data from Firestore
@@ -411,8 +460,12 @@ struct EditProfileView: View {
     private func refreshUserData() {
         Task {
             do {
+                print("🔄 EditProfileView: Refreshing user data from Firestore...")
+                
                 // Try to refresh user data from Firestore
                 if let userId = apiService.getCurrentUserId() {
+                    print("🔄 User ID: \(userId)")
+                    
                     let db = Firestore.firestore()
                     let userDoc = try await db.collection("users")
                         .document(userId)
@@ -423,21 +476,31 @@ struct EditProfileView: View {
                             // Update the form fields with data from Firestore
                             // Look for creatorName first, then fall back to name
                             let firestoreName = data["creatorName"] as? String ?? data["name"] as? String ?? ""
+                            let firestoreEmail = data["email"] as? String ?? ""
                             let firestorePhone = data["phone"] as? String ?? ""
                             let firestoreProfilePhotoURL = data["profilePhotoURL"] as? String
                             
                             print("📸 Firestore data loaded:")
                             print("   - Name: \(firestoreName)")
+                            print("   - Email: \(firestoreEmail)")
                             print("   - Phone: \(firestorePhone)")
                             print("   - ProfilePhotoURL: \(firestoreProfilePhotoURL ?? "nil")")
                             
-                            // Only update if we found data in Firestore
+                            // Update form fields with Firestore data
                             if !firestoreName.isEmpty {
                                 name = firestoreName
+                            }
+                            if !firestoreEmail.isEmpty {
+                                email = firestoreEmail
                             }
                             if !firestorePhone.isEmpty {
                                 phone = firestorePhone
                             }
+                            
+                            print("📝 Form fields updated from Firestore:")
+                            print("   - Name: '\(name)'")
+                            print("   - Email: '\(email)'")
+                            print("   - Phone: '\(phone)'")
                             
                             // Also update the API service current user
                             if var user = apiService.currentUser {

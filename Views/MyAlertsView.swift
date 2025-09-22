@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct MyAlertsView: View {
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
     @EnvironmentObject var serviceCoordinator: ServiceCoordinator
     @ObservedObject private var followStatusManager = FollowStatusManager.shared
     @State private var followedOrganizations: [Organization] = []
@@ -140,7 +140,10 @@ struct MyAlertsView: View {
                             expandedOrganizations.insert(organization.id)
                         }
                     },
-                    apiService: apiService
+                    authManager: authManager,
+                    followedOrganizations: followedOrganizations,
+                    organizationGroups: organizationGroups,
+                    serviceCoordinator: serviceCoordinator
                 )
             }
         }
@@ -149,8 +152,30 @@ struct MyAlertsView: View {
     
     private func loadFollowedOrganizations() async {
         isLoading = true
+        
+        guard authManager.currentUser != nil else {
+            print("❌ No current user - cannot load followed organizations")
+            await MainActor.run { 
+                self.followedOrganizations = []
+                self.isLoading = false 
+            }
+            return
+        }
+        
         do {
-            let followed = try await apiService.fetchFollowedOrganizations()
+            print("📡 Fetching followed organizations...")
+            let allOrganizations = try await serviceCoordinator.fetchOrganizations()
+            
+            // Filter to only organizations the user is following
+            var followed: [Organization] = []
+            for organization in allOrganizations {
+                let isFollowing = try await serviceCoordinator.isFollowingOrganization(organization.id)
+                if isFollowing {
+                    followed.append(organization)
+                }
+            }
+            
+            print("📥 Found \(followed.count) followed organizations")
             await MainActor.run {
                 self.followedOrganizations = followed
                 // Groups are hidden by default - user must click to expand
@@ -158,7 +183,13 @@ struct MyAlertsView: View {
             await loadOrganizationGroups(for: followed)
             await MainActor.run { self.isLoading = false }
         } catch {
-            await MainActor.run { self.isLoading = false }
+            print("❌ Error loading followed organizations: \(error)")
+            await MainActor.run { 
+                self.followedOrganizations = []
+                self.isLoading = false 
+                self.errorMessage = "Failed to load followed organizations: \(error.localizedDescription)"
+                self.showingErrorAlert = true
+            }
         }
     }
     
@@ -166,13 +197,14 @@ struct MyAlertsView: View {
         for organization in organizations {
             do {
                 // Fetch real groups from API
-                let sampleGroups = try await apiService.getOrganizationGroups(organizationId: organization.id)
+                print("📡 Fetching groups for organization: \(organization.name)")
+                let groups = try await serviceCoordinator.getOrganizationGroups(organizationId: organization.id)
                 
                 await MainActor.run {
-                    self.organizationGroups[organization.id] = sampleGroups
+                    self.organizationGroups[organization.id] = groups
                     
                     // Initialize preferences for new groups
-                    for group in sampleGroups {
+                    for group in groups {
                         if self.groupPreferences[group.id] == nil {
                             self.groupPreferences[group.id] = false // Default to disabled - user must opt-in
                         }
@@ -180,14 +212,28 @@ struct MyAlertsView: View {
                 }
                 
                 // Load persisted preferences per organization and merge
-                let savedPrefs = try await apiService.getGroupPreferences(for: organization.id)
-                await MainActor.run {
-                    for (groupId, enabled) in savedPrefs {
-                        self.groupPreferences[groupId] = enabled
+                do {
+                    let savedPrefs = try await serviceCoordinator.fetchUserGroupPreferences()
+                    await MainActor.run {
+                        print("🔄 Loading group preferences from server...")
+                        print("   Received \(savedPrefs.count) preferences: \(savedPrefs)")
+                        
+                        for (groupId, enabled) in savedPrefs {
+                            self.groupPreferences[groupId] = enabled
+                            print("   Set group \(groupId): \(enabled ? "enabled" : "disabled")")
+                        }
+                        
+                        print("✅ Loaded \(savedPrefs.count) group preferences from server")
+                        print("   Final groupPreferences: \(self.groupPreferences)")
                     }
+                } catch {
+                    print("❌ Error loading group preferences: \(error)")
                 }
             } catch {
-                print("Failed to load groups for organization: \(organization.name)")
+                print("❌ Error loading groups for \(organization.name): \(error)")
+                await MainActor.run {
+                    self.organizationGroups[organization.id] = []
+                }
             }
         }
     }
@@ -234,7 +280,10 @@ struct OrganizationCard: View {
     @Binding var groupPreferences: [String: Bool]
     let isExpanded: Bool
     let onToggleExpanded: () -> Void
-    let apiService: APIService
+    let authManager: SimpleAuthManager
+    let followedOrganizations: [Organization]
+    let organizationGroups: [String: [OrganizationGroup]]
+    let serviceCoordinator: ServiceCoordinator
     @State private var showingProfile = false
     
     private var organizationInfoSection: some View {
@@ -306,13 +355,34 @@ struct OrganizationCard: View {
                             group: group,
                             isEnabled: groupPreferences[group.id] ?? true,
                             onToggle: { isEnabled in
+                                print("🔄 Toggling group '\(group.name)' (ID: \(group.id)) to \(isEnabled ? "enabled" : "disabled")")
                                 groupPreferences[group.id] = isEnabled
+                                
                                 Task { 
-                                    try? await apiService.updateGroupPreference(
-                                        organizationId: organization.id, 
-                                        groupId: group.id, 
-                                        isEnabled: isEnabled
-                                    ) 
+                                    do {
+                                        // Find the organization this group belongs to
+                                        if let organization = followedOrganizations.first(where: { org in
+                                            organizationGroups[org.id]?.contains { $0.id == group.id } == true
+                                        }) {
+                                            print("   Found organization: \(organization.name) (ID: \(organization.id))")
+                                            try await serviceCoordinator.updateGroupPreference(
+                                                organizationId: organization.id,
+                                                groupId: group.id,
+                                                isEnabled: isEnabled
+                                            )
+                                            print("✅ Successfully updated group preference: \(group.name) = \(isEnabled)")
+                                        } else {
+                                            print("❌ Could not find organization for group \(group.name)")
+                                        }
+                                    } catch {
+                                        print("❌ Error updating group preference: \(error)")
+                                        print("   Error details: \(error.localizedDescription)")
+                                        // Revert the local change on error
+                                        await MainActor.run {
+                                            groupPreferences[group.id] = !isEnabled
+                                            print("   Reverted local state for group \(group.name)")
+                                        }
+                                    }
                                 }
                             }
                         )
@@ -407,16 +477,16 @@ struct OrganizationCard: View {
 // MARK: - Add Organization View
 struct AddOrganizationView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
     @EnvironmentObject var serviceCoordinator: ServiceCoordinator
     @State private var organizations: [Organization] = []
     @State private var isLoading = false
     @State private var searchText = ""
     @State private var selectedType: String? = nil
-    @State private var followedOrganizations: Set<String> = []
+    @State private var followedOrganizationIds: Set<String> = []
     
     private var availableOrganizations: [Organization] {
-        organizations.filter { !followedOrganizations.contains($0.id) }
+        organizations.filter { !followedOrganizationIds.contains($0.id) }
     }
     
     private var filteredOrganizations: [Organization] {
@@ -510,15 +580,21 @@ struct AddOrganizationView: View {
                     List(filteredOrganizations) { organization in
                         AddOrganizationRow(
                             organization: organization,
-                            isFollowing: followedOrganizations.contains(organization.id)
+                            isFollowing: followedOrganizationIds.contains(organization.id)
                         ) { organizationId in
                             Task {
                                 do {
-                                    let isCurrentlyFollowing = followedOrganizations.contains(organizationId)
+                                    let isCurrentlyFollowing = followedOrganizationIds.contains(organizationId)
                                     if isCurrentlyFollowing {
                                         try await serviceCoordinator.unfollowOrganization(organizationId)
+                                        await MainActor.run {
+                                            followedOrganizationIds.remove(organizationId)
+                                        }
                                     } else {
                                         try await serviceCoordinator.followOrganization(organizationId)
+                                        await MainActor.run {
+                                            followedOrganizationIds.insert(organizationId)
+                                        }
                                     }
                                 } catch {
                                     print("❌ Error toggling follow status: \(error)")
@@ -538,10 +614,26 @@ struct AddOrganizationView: View {
                     }
                 }
             }
+            .onAppear {
+                loadFollowedOrganizationIds()
+            }
 
         }
     }
     
+    private func loadFollowedOrganizationIds() {
+        Task {
+            do {
+                let followedOrgs = try await serviceCoordinator.fetchFollowedOrganizations()
+                await MainActor.run {
+                    self.followedOrganizationIds = Set(followedOrgs.map { $0.id })
+                    print("✅ Loaded \(followedOrganizationIds.count) followed organization IDs")
+                }
+            } catch {
+                print("❌ Error loading followed organization IDs: \(error)")
+            }
+        }
+    }
 
 }
 

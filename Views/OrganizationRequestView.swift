@@ -96,8 +96,8 @@ struct OrganizationRequestView: View {
                                         placeholder: "Describe your organization's purpose and activities (optional)",
                                         text: $description,
                                         icon: "text.quote",
-                                        isMultiline: true,
-                                        isRequired: false
+                                        isRequired: false,
+                                        isMultiline: true
                                     )
                                     
                                     CustomTextField(
@@ -105,6 +105,7 @@ struct OrganizationRequestView: View {
                                         placeholder: "https://yourwebsite.com (optional)",
                                         text: $website,
                                         icon: "globe",
+                                        isRequired: false,
                                         keyboardType: .URL
                                     )
                                     
@@ -113,6 +114,7 @@ struct OrganizationRequestView: View {
                                         placeholder: "(555) 123-4567 (optional)",
                                         text: $phone,
                                         icon: "phone.fill",
+                                        isRequired: false,
                                         keyboardType: .phonePad
                                     )
                                     
@@ -183,8 +185,8 @@ struct OrganizationRequestView: View {
                                         placeholder: "(555) 123-4567",
                                         text: $contactPersonPhone,
                                         icon: "phone.fill",
-                                        keyboardType: .phonePad,
-                                        isRequired: true
+                                        isRequired: true,
+                                        keyboardType: .phonePad
                                     )
                                     
                                     CustomTextField(
@@ -192,8 +194,8 @@ struct OrganizationRequestView: View {
                                         placeholder: "contact@organization.com",
                                         text: $contactPersonEmail,
                                         icon: "envelope.fill",
-                                        keyboardType: .emailAddress,
-                                        isRequired: true
+                                        isRequired: true,
+                                        keyboardType: .emailAddress
                                     )
                                 }
                             }

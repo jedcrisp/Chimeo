@@ -209,6 +209,48 @@ private func getCurrentUser() async throws -> User {
         return user
     }
     
+    // Additional fallback: Try to get user ID from UserDefaults and fetch from Firestore
+    if let userId = UserDefaults.standard.string(forKey: "currentUserId"), !userId.isEmpty {
+        print("🔍 Found user ID in UserDefaults, fetching user from Firestore: \(userId)")
+        let db = Firestore.firestore()
+        do {
+            let userDoc = try await db.collection("users").document(userId).getDocument()
+            if userDoc.exists, let userData = userDoc.data() {
+                let user = User(
+                    id: userId,
+                    email: userData["email"] as? String ?? "unknown@example.com",
+                    name: userData["name"] as? String ?? "User",
+                    phone: userData["phone"] as? String,
+                    homeLocation: nil,
+                    workLocation: nil,
+                    schoolLocation: nil,
+                    alertRadius: userData["alertRadius"] as? Double ?? 10.0,
+                    preferences: UserPreferences(
+                        incidentTypes: [.weather, .road, .other],
+                        criticalAlertsOnly: false,
+                        pushNotifications: true,
+                        quietHoursEnabled: false,
+                        quietHoursStart: nil,
+                        quietHoursEnd: nil
+                    ),
+                    createdAt: (userData["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                    isAdmin: userData["isAdmin"] as? Bool ?? false,
+                    displayName: userData["customDisplayName"] as? String ?? userData["name"] as? String ?? "User",
+                    isOrganizationAdmin: userData["isOrganizationAdmin"] as? Bool,
+                    organizations: userData["organizations"] as? [String],
+                    updatedAt: (userData["updatedAt"] as? Timestamp)?.dateValue(),
+                    needsPasswordSetup: userData["needsPasswordSetup"] as? Bool,
+                    needsPasswordChange: userData["needsPasswordChange"] as? Bool,
+                    firebaseAuthId: userId
+                )
+                print("✅ Current user found from UserDefaults + Firestore: \(user.name ?? "Unknown") (ID: \(user.id))")
+                return user
+            }
+        } catch {
+            print("⚠️ Error fetching user from Firestore with UserDefaults ID: \(error)")
+        }
+    }
+    
     print("❌ No current user found in Firebase Auth or UserDefaults")
     throw NSError(domain: "UserNotFound", code: 404, userInfo: [NSLocalizedDescriptionKey: "Current user not found"])
 }

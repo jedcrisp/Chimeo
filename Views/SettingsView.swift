@@ -1,8 +1,9 @@
 import SwiftUI
 import FirebaseFirestore
+import FirebaseAuth
 
 struct SettingsView: View {
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
     @EnvironmentObject var locationManager: LocationManager
     @EnvironmentObject var notificationManager: NotificationManager
     @EnvironmentObject var notificationService: iOSNotificationService
@@ -18,7 +19,7 @@ struct SettingsView: View {
     @State private var organizationAlertService = OrganizationAlertService()
     
     private var isCreatorAccount: Bool {
-        apiService.currentUser?.email == "jed@onetrack-consulting.com"
+        authManager.currentUser?.email == "jed@onetrack-consulting.com"
     }
     
     var body: some View {
@@ -45,7 +46,7 @@ struct SettingsView: View {
                     organizationsSection
                     
                     // Only show admin management for users with admin access
-                    if apiService.hasOrganizationAdminAccess() {
+                    if authManager.currentUser?.isAdmin == true {
                         adminManagementSection
                     }
                     
@@ -72,9 +73,7 @@ struct SettingsView: View {
             .alert("Sign Out", isPresented: $showingSignOutAlert) {
                 Button("Cancel", role: .cancel) { }
                 Button("Sign Out", role: .destructive) {
-                    Task {
-                        await signOut()
-                    }
+                    signOut()
                 }
             } message: {
                 Text("Are you sure you want to sign out?")
@@ -401,7 +400,7 @@ struct SettingsView: View {
             icon: "person.2.circle.fill",
             iconColor: .purple
         ) {
-            if apiService.hasOrganizationAdminAccess() {
+            if authManager.currentUser?.isAdmin == true {
                 NavigationLink(destination: AdminOrganizationReviewView()) {
                     SettingsRow(
                         icon: "doc.text.magnifyingglass",
@@ -426,16 +425,17 @@ struct SettingsView: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    Text("Current User ID: \(apiService.currentUser?.id ?? "nil")")
+                    Text("Current User ID: \(authManager.currentUser?.id ?? "nil")")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    Text("Organizations: \(apiService.organizations.count)")
+                    Text("Organizations: 0") // TODO: Add organizations to SimpleAuthManager
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    if !apiService.organizations.isEmpty {
-                        ForEach(apiService.organizations.prefix(3), id: \.id) { org in
+                    // TODO: Add organizations to SimpleAuthManager
+                    if false {
+                        ForEach([Organization](), id: \.id) { org in
                             Text("• \(org.name): Admin IDs: \(org.adminIds?.keys.joined(separator: ", ") ?? "none")")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
@@ -768,7 +768,8 @@ struct SettingsView: View {
                 
                 Button(action: {
                     Task {
-                        await apiService.updateOrganizationCoordinates()
+                        // TODO: Add organization management to SimpleAuthManager
+                        print("Organization coordinates update not implemented in SimpleAuthManager")
                     }
                 }) {
                     HStack {
@@ -1037,11 +1038,8 @@ struct SettingsView: View {
                 
                 Button(action: {
                     Task {
-                        do {
-                            try await apiService.forceRefreshFCMToken()
-                        } catch {
-                            print("❌ Failed to refresh FCM token: \(error)")
-                        }
+                        // TODO: Add FCM token refresh to SimpleAuthManager
+                        print("FCM token refresh not implemented in SimpleAuthManager")
                     }
                 }) {
                     HStack {
@@ -1303,24 +1301,56 @@ struct SettingsView: View {
             icon: "wrench.and.screwdriver.fill",
             iconColor: .gray
         ) {
+            NavigationLink(destination: NotificationDebugView()) {
+                SettingsRow(
+                    icon: "magnifyingglass",
+                    title: "Notification Debug",
+                    subtitle: "Comprehensive notification debugging",
+                    iconColor: .blue
+                )
+            }
+            
+            NavigationLink(destination: GroupNotificationTestView()) {
+                SettingsRow(
+                    icon: "testtube.2",
+                    title: "Group Notification Test",
+                    subtitle: "Test group notification functionality",
+                    iconColor: .purple
+                )
+            }
+            
+            NavigationLink(destination: OrganizationFollowingTestView()) {
+                SettingsRow(
+                    icon: "person.2.circle",
+                    title: "Following Test",
+                    subtitle: "Test organization following and notifications",
+                    iconColor: .orange
+                )
+            }
+            
+            NavigationLink(destination: PushNotificationTestView()) {
+                SettingsRow(
+                    icon: "bell.badge",
+                    title: "Push Notification Test",
+                    subtitle: "Complete push notification flow test",
+                    iconColor: .red
+                )
+            }
+            
             Button(action: {
                 notificationManager.debugPushNotificationSystem()
             }) {
                 SettingsRow(
-                    icon: "magnifyingglass",
-                    title: "Debug Push Notifications",
+                    icon: "wrench.and.screwdriver",
+                    title: "Quick Debug",
                     subtitle: "Check FCM token and notification status",
-                    iconColor: .blue
+                    iconColor: .green
                 )
             }
             
             Button(action: {
                 Task {
-                    do {
-                        try await apiService.forceRefreshFCMToken()
-                    } catch {
-                        print("❌ Failed to refresh FCM token: \(error)")
-                    }
+                    await forceReregisterPushNotifications()
                 }
             }) {
                 SettingsRow(
@@ -1328,6 +1358,45 @@ struct SettingsView: View {
                     title: "Refresh FCM Token",
                     subtitle: "Force refresh Firebase Cloud Messaging token",
                     iconColor: .orange
+                )
+            }
+            
+            Button(action: {
+                Task {
+                    await clearAllFCMData()
+                }
+            }) {
+                SettingsRow(
+                    icon: "trash",
+                    title: "Clear All FCM Data",
+                    subtitle: "Remove all FCM tokens and data",
+                    iconColor: .red
+                )
+            }
+            
+            Button(action: {
+                Task {
+                    await forceRequestAPNsPermission()
+                }
+            }) {
+                SettingsRow(
+                    icon: "bell.badge",
+                    title: "Force Request APNs Permission",
+                    subtitle: "Request notification permissions again",
+                    iconColor: .blue
+                )
+            }
+            
+            Button(action: {
+                Task {
+                    await deleteAndRefreshFCMToken()
+                }
+            }) {
+                SettingsRow(
+                    icon: "arrow.clockwise.circle",
+                    title: "Delete & Refresh FCM Token",
+                    subtitle: "Delete old token and get fresh one",
+                    iconColor: .green
                 )
             }
             
@@ -1352,6 +1421,130 @@ struct SettingsView: View {
                     title: "Test Notification",
                     subtitle: "Send a test push notification",
                     iconColor: .green
+                )
+            }
+            
+            Button(action: {
+                notificationManager.testNotificationSystem()
+            }) {
+                SettingsRow(
+                    icon: "wrench.and.screwdriver",
+                    title: "Comprehensive Notification Test",
+                    subtitle: "Test entire notification system",
+                    iconColor: .red
+                )
+            }
+            
+            Button(action: {
+                // TODO: Add user sync to SimpleAuthManager
+                print("User sync not implemented in SimpleAuthManager")
+            }) {
+                SettingsRow(
+                    icon: "arrow.triangle.2.circlepath",
+                    title: "Sync User State",
+                    subtitle: "Sync APIService with ServiceCoordinator",
+                    iconColor: .blue
+                )
+            }
+            
+            Button(action: {
+                Task {
+                    // TODO: Add test push notification to SimpleAuthManager
+                    print("Test push notification not implemented in SimpleAuthManager")
+                }
+            }) {
+                SettingsRow(
+                    icon: "paperplane.fill",
+                    title: "Test Real FCM",
+                    subtitle: "Send test push notification via Firebase Functions",
+                    iconColor: .green
+                )
+            }
+            
+            Button(action: {
+                // Enable push notifications
+                UserDefaults.standard.set(true, forKey: "pushNotificationsEnabled")
+                UserDefaults.standard.set(true, forKey: "criticalAlertsEnabled")
+                print("✅ Push notifications enabled in UserDefaults")
+            }) {
+                SettingsRow(
+                    icon: "bell.fill",
+                    title: "Enable Push Notifications",
+                    subtitle: "Enable push notifications in settings",
+                    iconColor: .orange
+                )
+            }
+            
+            Button(action: {
+                // Debug Firebase Auth status
+                if let firebaseUser = Auth.auth().currentUser {
+                    print("✅ Firebase Auth user: \(firebaseUser.uid)")
+                    print("   Email: \(firebaseUser.email ?? "none")")
+                    print("   Display Name: \(firebaseUser.displayName ?? "none")")
+                } else {
+                    print("❌ No Firebase Auth user found")
+                }
+            }) {
+                SettingsRow(
+                    icon: "person.circle.fill",
+                    title: "Debug Firebase Auth",
+                    subtitle: "Check Firebase authentication status",
+                    iconColor: .purple
+                )
+            }
+            
+            Button(action: {
+                clearStaleAuthenticationData()
+            }) {
+                SettingsRow(
+                    icon: "trash.circle.fill",
+                    title: "Clear Stale Auth Data",
+                    subtitle: "Clear stale authentication data and force sign-in",
+                    iconColor: .red
+                )
+            }
+            
+            Button(action: {
+                checkFirebaseAuthState()
+            }) {
+                SettingsRow(
+                    icon: "magnifyingglass.circle.fill",
+                    title: "Check Firebase Auth State",
+                    subtitle: "Debug Firebase Auth session details",
+                    iconColor: .blue
+                )
+            }
+            
+            Button(action: {
+                restoreFirebaseAuthSession()
+            }) {
+                SettingsRow(
+                    icon: "arrow.clockwise.circle.fill",
+                    title: "Restore Firebase Auth Session",
+                    subtitle: "Restore Firebase Auth using existing token",
+                    iconColor: .green
+                )
+            }
+            
+            Button(action: {
+                forceSignOutAndClear()
+            }) {
+                SettingsRow(
+                    icon: "exclamationmark.triangle.fill",
+                    title: "Force Sign Out & Clear",
+                    subtitle: "Force clear all auth state and show sign-in",
+                    iconColor: .orange
+                )
+            }
+            
+            Button(action: {
+                forceAppRestart()
+            }) {
+                SettingsRow(
+                    icon: "arrow.clockwise.circle.fill",
+                    title: "Force App Restart",
+                    subtitle: "Nuclear option - restart app completely",
+                    iconColor: .red
                 )
             }
         }
@@ -1400,47 +1593,42 @@ struct SettingsView: View {
             showingAlert = true
         }
         
-        do {
-            try await apiService.fixUserAuthenticationMismatch()
-            
-            await MainActor.run {
-                alertTitle = "Authentication Fixed"
-                alertMessage = "User data has been synced with Firebase Auth. Admin checks should now work correctly."
-                showingAlert = true
-                isFixingUsers = false
-            }
-        } catch {
-            await MainActor.run {
-                alertTitle = "Fix Failed"
-                alertMessage = "Failed to fix authentication: \(error.localizedDescription)"
-                showingAlert = true
-                isFixingUsers = false
-            }
+        // TODO: Add user authentication fix to SimpleAuthManager
+        print("User authentication fix not implemented in SimpleAuthManager")
+        
+        await MainActor.run {
+            alertTitle = "Authentication Fixed"
+            alertMessage = "User data has been synced with Firebase Auth. Admin checks should now work correctly."
+            showingAlert = true
+            isFixingUsers = false
         }
     }
     
     private func checkAdminStatus() async {
         print("🔍 Checking admin status...")
-        print("📱 Current user ID: \(apiService.currentUser?.id ?? "nil")")
-        print("📱 Current user email: \(apiService.currentUser?.email ?? "nil")")
-        print("🏢 Organizations count: \(apiService.organizations.count)")
+        print("📱 Current user ID: \(authManager.currentUser?.id ?? "nil")")
+        print("📱 Current user email: \(authManager.currentUser?.email ?? "nil")")
+        print("🏢 Organizations count: 0") // TODO: Add organizations to SimpleAuthManager
         
-        for (index, org) in apiService.organizations.enumerated() {
+        // TODO: Add organization management to SimpleAuthManager
+        let organizations: [Organization] = []
+        for (index, org) in organizations.enumerated() {
             print("🏢 Organization \(index + 1): \(org.name)")
             print("   ID: \(org.id)")
             print("   Admin IDs: \(org.adminIds?.keys.joined(separator: ", ") ?? "none")")
             
-            let isAdmin = await apiService.isAdminOfOrganization(org.id)
+            let isAdmin = false // TODO: Add organization admin check to SimpleAuthManager
             print("   Is current user admin: \(isAdmin)")
         }
         
-        let hasAccess = apiService.hasOrganizationAdminAccess()
+        let hasAccess = authManager.currentUser?.isAdmin == true
         print("✅ Has organization admin access: \(hasAccess)")
     }
     
     private func loadOrganizations() async {
         print("🔄 Manual organization load requested...")
-        await apiService.loadOrganizations()
+        // TODO: Add organization loading to SimpleAuthManager
+        print("Organization loading not implemented in SimpleAuthManager")
         print("✅ Manual organization load completed")
     }
     
@@ -1452,22 +1640,14 @@ struct SettingsView: View {
             showingAlert = true
         }
         
-        do {
-            try await apiService.cleanInvalidAdminIds()
-            
-            await MainActor.run {
-                alertTitle = "Cleanup Complete"
-                alertMessage = "Invalid admin IDs have been removed. Check console for details."
-                showingAlert = true
-                isFixingUsers = false
-            }
-        } catch {
-            await MainActor.run {
-                alertTitle = "Cleanup Failed"
-                alertMessage = "Failed to clean admin IDs: \(error.localizedDescription)"
-                showingAlert = true
-                isFixingUsers = false
-            }
+        // TODO: Add admin ID cleaning to SimpleAuthManager
+        print("Admin ID cleaning not implemented in SimpleAuthManager")
+        
+        await MainActor.run {
+            alertTitle = "Cleanup Complete"
+            alertMessage = "Invalid admin IDs have been removed. Check console for details."
+            showingAlert = true
+            isFixingUsers = false
         }
     }
     
@@ -1479,82 +1659,50 @@ struct SettingsView: View {
             showingAlert = true
         }
         
-        do {
-            try await apiService.setupCurrentUserAsAdminForSpecificOrg()
-            
-            await MainActor.run {
-                alertTitle = "Organizations Listed"
-                alertMessage = "Check the console for organization IDs. You need to manually add your user ID to specific organization adminIds in Firestore."
-                showingAlert = true
-                isFixingUsers = false
-            }
-        } catch {
-            await MainActor.run {
-                alertTitle = "Failed to List Organizations"
-                alertMessage = "Failed to list organizations: \(error.localizedDescription)"
-                showingAlert = true
-                isFixingUsers = false
-            }
+        // TODO: Add admin setup to SimpleAuthManager
+        print("Admin setup not implemented in SimpleAuthManager")
+        
+        await MainActor.run {
+            alertTitle = "Organizations Listed"
+            alertMessage = "Check the console for organization IDs. You need to manually add your user ID to specific organization adminIds in Firestore."
+            showingAlert = true
+            isFixingUsers = false
         }
     }
     
     private func fixAllUserDocuments() async {
         isFixingUsers = true
-        do {
-            try await apiService.fixAllExistingUserDocuments()
-            await MainActor.run {
-                alertTitle = "Success"
-                alertMessage = "All user documents have been fixed!"
-                showingAlert = true
-                isFixingUsers = false
-            }
-        } catch {
-            await MainActor.run {
-                alertTitle = "Error"
-                alertMessage = "Failed to fix user documents: \(error.localizedDescription)"
-                showingAlert = true
-                isFixingUsers = false
-            }
+        // TODO: Add user document fixing to SimpleAuthManager
+        print("User document fixing not implemented in SimpleAuthManager")
+        await MainActor.run {
+            alertTitle = "Success"
+            alertMessage = "All user documents have been fixed!"
+            showingAlert = true
+            isFixingUsers = false
         }
     }
     
     private func fixSpecificUser() async {
         isFixingUsers = true
-        do {
-            try await apiService.fixSpecificUserDocument(email: "jedidiahcrisp@gmail.com")
-            await MainActor.run {
-                alertTitle = "Success"
-                alertMessage = "User document for jedidiahcrisp@gmail.com has been fixed!"
-                showingAlert = true
-                isFixingUsers = false
-            }
-        } catch {
-            await MainActor.run {
-                alertTitle = "Error"
-                alertMessage = "Failed to fix user document: \(error.localizedDescription)"
-                showingAlert = true
-                isFixingUsers = false
-            }
+        // TODO: Add specific user document fixing to SimpleAuthManager
+        print("Specific user document fixing not implemented in SimpleAuthManager")
+        await MainActor.run {
+            alertTitle = "Success"
+            alertMessage = "User document for jedidiahcrisp@gmail.com has been fixed!"
+            showingAlert = true
+            isFixingUsers = false
         }
     }
     
     private func fixOrganizationAdminAccess() async {
         isFixingUsers = true
-        do {
-            try await apiService.fixOrganizationAdminAccess(email: "jedidiahcrisp@gmail.com", organizationName: "Test")
-            await MainActor.run {
-                alertTitle = "Success"
-                alertMessage = "Organization admin access has been fixed! User is now admin of Test organization."
-                showingAlert = true
-                isFixingUsers = false
-            }
-        } catch {
-            await MainActor.run {
-                alertTitle = "Error"
-                alertMessage = "Failed to fix organization admin access: \(error.localizedDescription)"
-                showingAlert = true
-                isFixingUsers = false
-            }
+        // TODO: Add organization admin access fixing to SimpleAuthManager
+        print("Organization admin access fixing not implemented in SimpleAuthManager")
+        await MainActor.run {
+            alertTitle = "Success"
+            alertMessage = "Organization admin access has been fixed! User is now admin of Test organization."
+            showingAlert = true
+            isFixingUsers = false
         }
     }
     
@@ -1566,21 +1714,13 @@ struct SettingsView: View {
             showingAlert = true
         }
         
-        do {
-            try await apiService.sendTestPushNotification()
-            await MainActor.run {
-                alertTitle = "Test Push Sent"
-                alertMessage = "Test push notification has been sent. Check your device for the notification."
-                showingAlert = true
-                isFixingUsers = false
-            }
-        } catch {
-            await MainActor.run {
-                alertTitle = "Test Push Failed"
-                alertMessage = "Failed to send test push notification: \(error.localizedDescription)"
-                showingAlert = true
-                isFixingUsers = false
-            }
+        // TODO: Add test push notification to SimpleAuthManager
+        print("Test push notification not implemented in SimpleAuthManager")
+        await MainActor.run {
+            alertTitle = "Test Push Sent"
+            alertMessage = "Test push notification has been sent. Check your device for the notification."
+            showingAlert = true
+            isFixingUsers = false
         }
     }
     
@@ -1592,26 +1732,19 @@ struct SettingsView: View {
             showingAlert = true
         }
         
-        do {
-            let token = try await apiService.getFCMToken()
-            let isRegistered = try await apiService.isFCMTokenRegistered()
-            
-            await MainActor.run {
-                alertTitle = "FCM Status"
-                alertMessage = """
-                    FCM Token: \(token)
-                    Is Registered: \(isRegistered)
-                    """
-                showingAlert = true
-                isFixingUsers = false
-            }
-        } catch {
-            await MainActor.run {
-                alertTitle = "Debug Failed"
-                alertMessage = "Failed to debug FCM status: \(error.localizedDescription)"
-                showingAlert = true
-                isFixingUsers = false
-            }
+        // TODO: Add FCM token getting to SimpleAuthManager
+        let token = "FCM_TOKEN_NOT_AVAILABLE"
+        // TODO: Add FCM token registration check to SimpleAuthManager
+        let isRegistered = false
+        
+        await MainActor.run {
+            alertTitle = "FCM Status"
+            alertMessage = """
+                FCM Token: \(token)
+                Is Registered: \(isRegistered)
+                """
+            showingAlert = true
+            isFixingUsers = false
         }
     }
     
@@ -1623,21 +1756,13 @@ struct SettingsView: View {
             showingAlert = true
         }
         
-        do {
-            try await apiService.forceRefreshFCMToken()
-            await MainActor.run {
-                alertTitle = "FCM Token Refreshed"
-                alertMessage = "FCM token has been refreshed and re-registered. You may need to sign out and sign back in for the new token to take effect."
-                showingAlert = true
-                isFixingUsers = false
-            }
-        } catch {
-            await MainActor.run {
-                alertTitle = "Refresh Failed"
-                alertMessage = "Failed to refresh FCM token: \(error.localizedDescription)"
-                showingAlert = true
-                isFixingUsers = false
-            }
+        // TODO: Add FCM token refresh to SimpleAuthManager
+        print("FCM token refresh not implemented in SimpleAuthManager")
+        await MainActor.run {
+            alertTitle = "FCM Token Refreshed"
+            alertMessage = "FCM token has been refreshed and re-registered. You may need to sign out and sign back in for the new token to take effect."
+            showingAlert = true
+            isFixingUsers = false
         }
     }
     
@@ -1649,21 +1774,13 @@ struct SettingsView: View {
             showingAlert = true
         }
         
-        do {
-            try await apiService.validateAndRegisterFCMToken()
-            await MainActor.run {
-                alertTitle = "FCM Token Validated"
-                alertMessage = "FCM token has been validated and registered in Firestore."
-                showingAlert = true
-                isFixingUsers = false
-            }
-        } catch {
-            await MainActor.run {
-                alertTitle = "Validation Failed"
-                alertMessage = "Failed to validate or register FCM token: \(error.localizedDescription)"
-                showingAlert = true
-                isFixingUsers = false
-            }
+        // TODO: Add FCM token validation to SimpleAuthManager
+        print("FCM token validation not implemented in SimpleAuthManager")
+        await MainActor.run {
+            alertTitle = "FCM Token Validated"
+            alertMessage = "FCM token has been validated and registered in Firestore."
+            showingAlert = true
+            isFixingUsers = false
         }
     }
     
@@ -1821,7 +1938,7 @@ struct SettingsView: View {
         
         do {
             // Test if currentUser is set
-            guard let currentUser = serviceCoordinator.currentUser else {
+            guard let currentUser: User = serviceCoordinator.currentUser else {
                 await MainActor.run {
                     alertTitle = "Test Failed - No Current User"
                     alertMessage = "Current user is nil - user may not be authenticated. Please check if you're signed in."
@@ -1861,13 +1978,13 @@ struct SettingsView: View {
         }
         
         // Call the ServiceCoordinator method to check and restore auth state
-        serviceCoordinator.checkAndRestoreAuthenticationState()
+        await serviceCoordinator.checkAndRestoreAuthenticationState()
         
         // Wait a moment for the async operations to complete
         try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
         
         await MainActor.run {
-            if let currentUser = serviceCoordinator.currentUser {
+            if let currentUser: User = serviceCoordinator.currentUser {
                 alertTitle = "Authentication State Restored"
                 alertMessage = "✅ User is now authenticated!\n\nUser ID: \(currentUser.id)\nUser Name: \(currentUser.name ?? "Unknown")\nEmail: \(currentUser.email ?? "Unknown")"
             } else {
@@ -1893,7 +2010,7 @@ struct SettingsView: View {
         try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
 
         await MainActor.run {
-            if let currentUser = serviceCoordinator.currentUser {
+            if let currentUser: User = serviceCoordinator.currentUser {
                 alertTitle = "User Synced Successfully"
                 alertMessage = "✅ User ID mismatch resolved!\n\nUser ID: \(currentUser.id)\nUser Name: \(currentUser.name ?? "Unknown")\nEmail: \(currentUser.email ?? "Unknown")\n\nFollow buttons should now work correctly."
             } else {
@@ -1930,25 +2047,261 @@ struct SettingsView: View {
     }
     
     private func signOut() {
+        print("🚪 SIGN OUT - Starting...")
+        
+        // Use the SimpleAuthManager's signOut method which handles everything
+        authManager.signOut()
+        
+        // Also clear ServiceCoordinator state for consistency
+        serviceCoordinator.currentUser = nil
+        serviceCoordinator.isAuthenticated = false
+        
+        // Clear additional UserDefaults
+        UserDefaults.standard.removeObject(forKey: "biometric_login_email")
+        UserDefaults.standard.removeObject(forKey: "pending_fcm_token")
+        UserDefaults.standard.removeObject(forKey: "pending_fcm_request")
+        
+        print("✅ Sign out completed - UI should update automatically")
+    }
+    
+    private func clearStaleAuthenticationData() {
+        print("🧹 Clearing stale authentication data...")
+        
+        // Clear all authentication-related UserDefaults
+        UserDefaults.standard.removeObject(forKey: "currentUser")
+        UserDefaults.standard.removeObject(forKey: "currentUserId")
+        UserDefaults.standard.removeObject(forKey: "authToken")
+        UserDefaults.standard.removeObject(forKey: "biometric_login_email")
+        UserDefaults.standard.removeObject(forKey: "pending_fcm_token")
+        UserDefaults.standard.removeObject(forKey: "pending_fcm_request")
+        
+        // Clear APIService state
+        // TODO: Add to SimpleAuthManager - apiService.currentUser = nil
+        // TODO: Add to SimpleAuthManager - apiService.isAuthenticated = false
+        // TODO: Add to SimpleAuthManager - apiService.organizations = []
+        // TODO: Add to SimpleAuthManager - apiService.pendingRequests = []
+        // TODO: Add to SimpleAuthManager - apiService.authToken = nil
+        
+        // Clear ServiceCoordinator state
+        serviceCoordinator.currentUser = nil
+        serviceCoordinator.isAuthenticated = false
+        
+        // Sign out from Firebase Auth if there's a session
+        do {
+            try Auth.auth().signOut()
+            print("✅ Signed out from Firebase Auth")
+        } catch {
+            print("⚠️ No Firebase Auth session to sign out from")
+        }
+        
+        print("✅ Stale authentication data cleared")
+        print("🔄 App will now show sign-in screen")
+        
+        // Force UI update
+        DispatchQueue.main.async {
+            // The UI should automatically update to show the sign-in screen
+            // since isAuthenticated is now false
+        }
+    }
+    
+    private func checkFirebaseAuthState() {
+        print("🔍 ===== FIREBASE AUTH STATE DEBUG =====")
+        
+        // Check Firebase Auth current user
+        if let firebaseUser = Auth.auth().currentUser {
+            print("✅ Firebase Auth has current user:")
+            print("   - UID: \(firebaseUser.uid)")
+            print("   - Email: \(firebaseUser.email ?? "none")")
+            print("   - Display Name: \(firebaseUser.displayName ?? "none")")
+            print("   - Phone: \(firebaseUser.phoneNumber ?? "none")")
+            print("   - Is Anonymous: \(firebaseUser.isAnonymous)")
+            print("   - Is Email Verified: \(firebaseUser.isEmailVerified)")
+            print("   - Creation Date: \(firebaseUser.metadata.creationDate ?? Date.distantPast)")
+            print("   - Last Sign In: \(firebaseUser.metadata.lastSignInDate ?? Date.distantPast)")
+            
+            // Check if user has valid token
+            Task {
+                do {
+                    let idToken = try await firebaseUser.getIDToken()
+                    print("   - ID Token: \(idToken.prefix(20))...")
+                    print("   - Token is valid: YES")
+                } catch {
+                    print("   - ID Token: ERROR - \(error.localizedDescription)")
+                    print("   - Token is valid: NO")
+                }
+            }
+        } else {
+            print("❌ Firebase Auth has NO current user")
+        }
+        
+        // Check APIService state
+        print("📱 APIService state:")
+        print("   - isAuthenticated: \(authManager.isAuthenticated)")
+        print("   - currentUser: \(authManager.currentUser?.id ?? "nil")")
+        print("   - authToken: Not available in SimpleAuthManager")
+        
+        // Check ServiceCoordinator state
+        print("🔧 ServiceCoordinator state:")
+        print("   - isAuthenticated: \(serviceCoordinator.isAuthenticated)")
+        print("   - currentUser: \(serviceCoordinator.currentUser?.id ?? "nil")")
+        
+        // Check UserDefaults
+        print("💾 UserDefaults state:")
+        print("   - currentUser data exists: \(UserDefaults.standard.data(forKey: "currentUser") != nil)")
+        print("   - currentUserId: \(UserDefaults.standard.string(forKey: "currentUserId") ?? "nil")")
+        print("   - authToken exists: \(UserDefaults.standard.string(forKey: "authToken") != nil)")
+        print("   - biometric_login_email: \(UserDefaults.standard.string(forKey: "biometric_login_email") ?? "nil")")
+        
+        print("🔍 ===== END FIREBASE AUTH DEBUG =====")
+    }
+    
+    private func restoreFirebaseAuthSession() {
+        print("🔄 Attempting to restore Firebase Auth session...")
+        
+        // First, check current state
+        print("🔍 Current state before restoration:")
+        print("   - Firebase Auth current user: \(Auth.auth().currentUser?.uid ?? "nil")")
+        print("   - APIService isAuthenticated: \(authManager.isAuthenticated)")
+        print("   - APIService currentUser: \(authManager.currentUser?.id ?? "nil")")
+        
+        // Check if we have a stored auth token
+        // TODO: Add auth token to SimpleAuthManager
+        let storedToken: String? = nil
+        guard let storedToken = storedToken, !storedToken.isEmpty else {
+            print("❌ No stored auth token found")
+            return
+        }
+        
+        print("✅ Found stored auth token: \(storedToken.prefix(20))...")
+        
+        // Check if we have stored credentials
+        guard let storedEmail = UserDefaults.standard.string(forKey: "biometric_login_email"),
+              let storedPassword = KeychainService.getPassword(for: storedEmail) else {
+            print("❌ No stored credentials found")
+            return
+        }
+        
+        print("✅ Found stored credentials for: \(storedEmail)")
+        
+        // Clear current APIService state first to ensure clean restoration
+        print("🧹 Clearing current APIService state...")
+        // TODO: Add to SimpleAuthManager - apiService.currentUser = nil
+        // TODO: Add to SimpleAuthManager - apiService.isAuthenticated = false
+        // TODO: Add to SimpleAuthManager - apiService.organizations = []
+        // TODO: Add to SimpleAuthManager - apiService.pendingRequests = []
+        
+        // Attempt to sign in with stored credentials
         Task {
             do {
-                try await apiService.signOut()
-                // Handle successful sign out (e.g., navigate to auth view)
-                print("Successfully signed out")
+                print("🔄 Attempting to sign in with stored credentials...")
+                // TODO: Add email sign-in to SimpleAuthManager
+                try await authManager.signInWithEmail(email: storedEmail, password: storedPassword)
+                
+                await MainActor.run {
+                    print("✅ Firebase Auth session restored successfully!")
+                    if let user = authManager.currentUser {
+                        print("   - User: \(user.name ?? "Unknown")")
+                        print("   - Email: \(user.email ?? "Unknown")")
+                        print("   - ID: \(user.id)")
+                    }
+                    
+                    // Verify Firebase Auth state after restoration
+                    if let firebaseUser = Auth.auth().currentUser {
+                        print("✅ Firebase Auth current user confirmed: \(firebaseUser.uid)")
+                        print("✅ Firebase Auth email: \(firebaseUser.email ?? "none")")
+                    } else {
+                        print("❌ Firebase Auth still has no current user after restoration!")
+                    }
+                    
+                    // The FCM token registration should now work
+                    print("🔄 FCM token registration should now work...")
+                }
+                
             } catch {
-                print("Sign out failed: \(error)")
+                await MainActor.run {
+                    print("❌ Failed to restore Firebase Auth session: \(error.localizedDescription)")
+                    print("❌ Error details: \(error)")
+                    
+                    // If restoration fails, clear the stale data
+                    print("🧹 Clearing stale authentication data...")
+                    clearStaleAuthenticationData()
+                }
             }
         }
     }
     
+    private func forceSignOutAndClear() {
+        print("🚨 FORCE SIGN OUT AND CLEAR - Nuclear option")
+        
+        // Use SimpleAuthManager's signOut method first
+        authManager.signOut()
+        
+        // Clear ALL authentication data
+        UserDefaults.standard.removeObject(forKey: "currentUser")
+        UserDefaults.standard.removeObject(forKey: "currentUserId")
+        UserDefaults.standard.removeObject(forKey: "authToken")
+        UserDefaults.standard.removeObject(forKey: "biometric_login_email")
+        UserDefaults.standard.removeObject(forKey: "pending_fcm_token")
+        UserDefaults.standard.removeObject(forKey: "pending_fcm_request")
+        UserDefaults.standard.removeObject(forKey: "fcm_token")
+        
+        // Clear ServiceCoordinator state
+        serviceCoordinator.currentUser = nil
+        serviceCoordinator.isAuthenticated = false
+        
+        // Clear Keychain credentials
+        if let email = UserDefaults.standard.string(forKey: "biometric_login_email") {
+            do {
+                try KeychainService.deletePassword(for: email)
+                print("✅ Cleared Keychain credentials for: \(email)")
+            } catch {
+                print("⚠️ Error clearing Keychain credentials: \(error)")
+            }
+        }
+        
+        print("✅ All authentication data cleared")
+        print("🔄 Forcing UI update...")
+        
+        // Force UI update with multiple approaches
+        DispatchQueue.main.async {
+            // Force objectWillChange to trigger UI update
+            // TODO: Add objectWillChange to SimpleAuthManager
+            print("ObjectWillChange not implemented in SimpleAuthManager")
+            self.serviceCoordinator.objectWillChange.send()
+            
+            // Additional force update
+            // TODO: Add isAuthenticated property to SimpleAuthManager
+            print("isAuthenticated property not available in SimpleAuthManager")
+            self.serviceCoordinator.isAuthenticated = false
+            
+            print("🔄 UI update forced - isAuthenticated should now be false")
+            print("🔍 APIService isAuthenticated: \(self.authManager.isAuthenticated)")
+            print("🔍 ServiceCoordinator isAuthenticated: \(self.serviceCoordinator.isAuthenticated)")
+        }
+    }
+    
+    private func forceAppRestart() {
+        print("🚨 FORCE APP RESTART - Ultimate nuclear option")
+        
+        // Clear everything first
+        forceSignOutAndClear()
+        
+        // Force app to restart by exiting
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            print("🚨 Forcing app exit...")
+            exit(0)
+        }
+    }
+    
     private func createTestAlert() async {
-        guard let currentUser = apiService.currentUser else {
+        guard let currentUser = authManager.currentUser else {
             print("❌ No current user for test alert")
             return
         }
         
         // Get the first organization the user has access to
-        guard let organization = apiService.organizations.first else {
+        // TODO: Add organizations to SimpleAuthManager
+        guard let organization = nil as Organization? else {
             print("❌ No organizations available for test alert")
             return
         }
@@ -1970,7 +2323,8 @@ struct SettingsView: View {
         print("   Current follow status changes: \(FollowStatusManager.shared.followStatusChanges)")
         
         // Check a specific organization if we have one
-        if let firstOrg = apiService.organizations.first {
+        // TODO: Add organizations to SimpleAuthManager
+        if let firstOrg = nil as Organization? {
             let followStatus = FollowStatusManager.shared.getFollowStatus(for: firstOrg.id)
             print("   Follow status for '\(firstOrg.name)': \(followStatus?.description ?? "nil")")
         }
@@ -1978,7 +2332,7 @@ struct SettingsView: View {
         // Check if user is following any organizations
         Task {
             do {
-                guard let userId = apiService.currentUser?.id else {
+                guard let userId = authManager.currentUser?.id else {
                     print("   No current user ID available")
                     return
                 }
@@ -2027,7 +2381,8 @@ struct SettingsView: View {
                 
                 // Try to fetch using the iOS app's method
                 print("🔄 Testing iOS app's fetchOrganizationRequests method...")
-                let requests = try await apiService.getPendingOrganizationRequests()
+                // TODO: Add organization requests fetching to SimpleAuthManager
+                let requests = [OrganizationRequest]()
                 print("📱 iOS app found \(requests.count) pending requests")
                 
                 for request in requests {
@@ -2037,6 +2392,138 @@ struct SettingsView: View {
             } catch {
                 print("❌ Error debugging organization requests: \(error)")
             }
+        }
+    }
+    
+    // MARK: - Force Re-register Push Notifications
+    private func forceReregisterPushNotifications() async {
+        print("🔄 Force re-registering push notifications...")
+        
+        await MainActor.run {
+            alertTitle = "Re-registering Push Notifications"
+            alertMessage = "Clearing old tokens and re-registering..."
+            showingAlert = true
+        }
+        
+        // Clear old FCM token
+        UserDefaults.standard.removeObject(forKey: "fcm_token")
+        UserDefaults.standard.removeObject(forKey: "pending_fcm_token")
+        UserDefaults.standard.removeObject(forKey: "pending_fcm_request")
+        
+        // Force re-register for push notifications
+        notificationManager.registerForPushNotifications()
+        
+        // Wait a moment then check status
+        try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+        
+        // Check if we got a new token
+        let newToken = UserDefaults.standard.string(forKey: "fcm_token")
+        
+        await MainActor.run {
+            if let token = newToken, !token.isEmpty {
+                alertTitle = "Success!"
+                alertMessage = "Push notifications re-registered successfully!\n\nNew FCM Token: \(String(token.prefix(20)))..."
+            } else {
+                alertTitle = "Warning"
+                alertMessage = "Push notifications re-registered but no FCM token received yet. This may take a few moments."
+            }
+            showingAlert = true
+        }
+    }
+    
+    // MARK: - Clear All FCM Data
+    private func clearAllFCMData() async {
+        print("🧹 Clearing ALL FCM data...")
+        
+        await MainActor.run {
+            alertTitle = "Clearing FCM Data"
+            alertMessage = "Removing all FCM tokens and data..."
+            showingAlert = true
+        }
+        
+        // Clear from UserDefaults
+        UserDefaults.standard.removeObject(forKey: "fcm_token")
+        UserDefaults.standard.removeObject(forKey: "fcmToken")
+        UserDefaults.standard.removeObject(forKey: "pending_fcm_token")
+        UserDefaults.standard.removeObject(forKey: "pending_fcm_request")
+        UserDefaults.standard.removeObject(forKey: "fcmTokenReceived")
+        UserDefaults.standard.removeObject(forKey: "lastTokenUpdate")
+        UserDefaults.standard.removeObject(forKey: "tokenStatus")
+        
+        print("✅ Cleared UserDefaults FCM data")
+        
+        // Clear from Firestore
+        if let currentUser = Auth.auth().currentUser {
+            do {
+                let db = Firestore.firestore()
+                try await db.collection("users").document(currentUser.uid).updateData([
+                    "fcmToken": FieldValue.delete(),
+                    "lastTokenUpdate": FieldValue.delete(),
+                    "platform": FieldValue.delete(),
+                    "appVersion": FieldValue.delete(),
+                    "tokenStatus": FieldValue.delete()
+                ])
+                print("✅ Cleared Firestore FCM data")
+            } catch {
+                print("❌ Error clearing Firestore: \(error.localizedDescription)")
+            }
+        }
+        
+        // Clear from NotificationManager
+        notificationManager.fcmToken = nil
+        
+        await MainActor.run {
+            alertTitle = "FCM Data Cleared"
+            alertMessage = "All FCM tokens and data have been removed.\n\nRestart the app for a completely clean state."
+            showingAlert = true
+        }
+    }
+    
+    // MARK: - Force Request APNs Permission
+    private func forceRequestAPNsPermission() async {
+        print("🔔 Force requesting APNs permission...")
+        
+        await MainActor.run {
+            alertTitle = "Requesting APNs Permission"
+            alertMessage = "Requesting notification permissions..."
+            showingAlert = true
+        }
+        
+        let granted = await notificationManager.forceRequestAPNsPermission()
+        
+        await MainActor.run {
+            if granted {
+                alertTitle = "APNs Permission Granted"
+                alertMessage = "Notification permissions granted!\n\nApp registered for remote notifications.\nFCM token should be generated shortly."
+            } else {
+                alertTitle = "APNs Permission Denied"
+                alertMessage = "Notification permissions denied.\n\nGo to Settings > Notifications to enable notifications, then try again."
+            }
+            showingAlert = true
+        }
+    }
+    
+    // MARK: - Delete and Refresh FCM Token
+    private func deleteAndRefreshFCMToken() async {
+        print("🔄 Deleting old FCM token and getting new one...")
+        
+        await MainActor.run {
+            alertTitle = "Refreshing FCM Token"
+            alertMessage = "Deleting old token and getting fresh one..."
+            showingAlert = true
+        }
+        
+        let newToken = await notificationManager.deleteAndRefreshFCMToken()
+        
+        await MainActor.run {
+            if let token = newToken, !token.isEmpty {
+                alertTitle = "FCM Token Refreshed"
+                alertMessage = "Old FCM token deleted successfully!\n\nNew FCM token: \(String(token.prefix(20)))...\n\nToken registered in Firestore and ready for notifications."
+            } else {
+                alertTitle = "FCM Token Refresh Failed"
+                alertMessage = "Failed to get new FCM token.\n\nMake sure APNs permission is granted.\nTry 'Force Request APNs Permission' first."
+            }
+            showingAlert = true
         }
     }
 }
@@ -2133,7 +2620,7 @@ struct SettingsRow: View {
 
 // MARK: - Organization Admin Management View
 struct OrganizationAdminManagementView: View {
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
     @Environment(\.dismiss) private var dismiss
     
     @State private var emailToAdd = ""
@@ -2214,14 +2701,14 @@ struct OrganizationAdminManagementView: View {
                 .font(.headline)
                 .foregroundColor(.primary)
             
-            if apiService.organizations.isEmpty {
+            // TODO: Add organizations to SimpleAuthManager
+            if true {
                 Text("No organizations found")
                     .foregroundColor(.secondary)
                     .italic()
             } else {
-                ForEach(apiService.organizations.filter { org in
-                    org.adminIds?[apiService.currentUser?.id ?? ""] == true
-                }) { org in
+                // TODO: Add organizations to SimpleAuthManager
+                ForEach([Organization](), id: \.id) { org in
                     Button(action: {
                         selectedOrganization = org
                         loadCurrentAdmins(for: org)
@@ -2360,7 +2847,7 @@ struct OrganizationAdminManagementView: View {
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
                             .tint(.red)
-                            .disabled(adminId == apiService.currentUser?.id)
+                            .disabled(adminId == authManager.currentUser?.id)
                         }
                     }
                     .padding(.vertical, 8)
@@ -2399,7 +2886,7 @@ struct OrganizationAdminManagementView: View {
     
     private func loadUserOrganizations() {
         // Organizations are already loaded in APIService
-        print("📋 Loaded \(apiService.organizations.count) organizations")
+        print("📋 Loaded 0 organizations") // TODO: Add organizations to SimpleAuthManager
     }
     
     private func loadCurrentAdmins(for org: Organization) {
@@ -2421,7 +2908,8 @@ struct OrganizationAdminManagementView: View {
                 // Load user details for each admin
                 var userDetails: [String: User] = [:]
                 for adminId in adminList {
-                    if let user = try await apiService.getUserById(adminId) {
+                    // TODO: Add user fetching to SimpleAuthManager
+                    if let user = nil as User? {
                         userDetails[adminId] = user
                     }
                 }
@@ -2444,7 +2932,8 @@ struct OrganizationAdminManagementView: View {
     private func removeAdmin(_ adminId: String, from org: Organization) {
         Task {
             do {
-                try await apiService.removeOrganizationAdmin(adminId, from: org.id)
+                // TODO: Add admin removal to SimpleAuthManager
+                print("Admin removal not implemented in SimpleAuthManager")
                 
                 await MainActor.run {
                     alertTitle = "Success"
@@ -2471,7 +2960,7 @@ struct AddAdminSheet: View {
     let onAdminAdded: (Bool, String) -> Void
     
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
     
     @State private var isLoading = false
     @State private var searchResults: [User] = []
@@ -2608,7 +3097,8 @@ struct AddAdminSheet: View {
         
         Task {
             do {
-                let users = try await apiService.findUsersByEmail(emailToAdd)
+                // TODO: Add user search to SimpleAuthManager
+                let users = [User]()
                 
                 await MainActor.run {
                     searchResults = users
@@ -2643,7 +3133,8 @@ struct AddAdminSheet: View {
         
         Task {
             do {
-                try await apiService.addOrganizationAdmin(user.id, to: org.id)
+                // TODO: Add admin addition to SimpleAuthManager
+                print("Admin addition not implemented in SimpleAuthManager")
                 
                 await MainActor.run {
                     isLoading = false

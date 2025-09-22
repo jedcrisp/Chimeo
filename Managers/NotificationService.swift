@@ -156,20 +156,16 @@ class iOSNotificationService: ObservableObject {
     
     // MARK: - Utility Methods
     private func getCurrentUserId() -> String? {
-        // First try to get current user from Firebase Auth
+        // Only return user ID if Firebase Auth has a current user
+        // This ensures FCM tokens are only registered for authenticated users
         if let firebaseUser = Auth.auth().currentUser {
             print("✅ Found Firebase Auth user for FCM: \(firebaseUser.uid)")
             return firebaseUser.uid
         }
         
-        // Fallback: Try to get current user from UserDefaults
-        if let data = UserDefaults.standard.data(forKey: "currentUser"),
-           let user = try? JSONDecoder().decode(User.self, from: data) {
-            print("✅ Found UserDefaults user for FCM: \(user.id)")
-            return user.id
-        }
-        
-        print("❌ No current user found for FCM token registration")
+        // If no Firebase Auth user, don't register FCM tokens
+        // This prevents registering tokens for stale/unauthenticated users
+        print("❌ No Firebase Auth user found - skipping FCM token registration")
         return nil
     }
     

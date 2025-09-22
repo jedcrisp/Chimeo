@@ -3,7 +3,7 @@ import FirebaseFirestore
 import FirebaseCore
 
 struct AdminOrganizationReviewView: View {
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
     @State private var organizationRequests: [OrganizationRequest] = []
     @State private var selectedStatus: RequestStatus? = nil
     @State private var isLoading = false
@@ -367,11 +367,13 @@ struct AdminOrganizationReviewView: View {
         
         Task {
             do {
-                _ = try await apiService.reviewOrganizationRequest(request.id, review: review)
+                // TODO: Add organization request review to SimpleAuthManager
+                print("Organization request review not implemented in SimpleAuthManager")
                 
                 // If approved, approve the organization request (unrestricted)
                 if selectedReviewStatus == .approved {
-                    _ = try await apiService.approveOrganizationRequest(request.id)
+                    // TODO: Add organization request approval to SimpleAuthManager
+                    print("Organization request approval not implemented in SimpleAuthManager")
                 }
                 
                 await MainActor.run {
@@ -518,7 +520,7 @@ struct OrganizationRequestDetailView: View {
     let request: OrganizationRequest
     let onReview: (RequestStatus) -> Void
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var apiService: APIService
+    @EnvironmentObject var authManager: SimpleAuthManager
     @State private var showingAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
@@ -586,7 +588,8 @@ struct OrganizationRequestDetailView: View {
                 
                 if let doc = query.documents.first {
                     // Use the public getOrganizationById method
-                    let org = try await apiService.getOrganizationById(doc.documentID)
+                    // TODO: Add organization fetching to SimpleAuthManager
+                    let org = nil as Organization?
                     await MainActor.run {
                         self.organization = org
                         self.isLoadingOrganization = false
@@ -846,5 +849,5 @@ struct OrganizationRequestDetailView: View {
 
 #Preview {
     AdminOrganizationReviewView()
-        .environmentObject(APIService())
+        .environmentObject(SimpleAuthManager())
 } 

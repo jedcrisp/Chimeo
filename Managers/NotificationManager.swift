@@ -106,8 +106,10 @@ class NotificationManager: NSObject, ObservableObject {
                     print("📱 Registered for remote notifications (APNS)")
                 }
                 
-                // Request FCM token
-                self?.requestFCMToken()
+                // Wait a moment for APNS token to be set, then request FCM token
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    self?.requestFCMToken()
+                }
             } else {
                 print("❌ Notification permissions denied")
             }
@@ -173,38 +175,23 @@ class NotificationManager: NSObject, ObservableObject {
     
     // MARK: - Centralized User ID Resolution
     private func getCurrentUserId() -> String? {
-        print("🔍 DEBUG: Checking for user ID...")
+        print("🔍 NotificationManager.getCurrentUserId: Checking for user ID...")
         
-        // First try Firebase Auth
+        // First try Firebase Auth (most reliable)
         if let firebaseUser = Auth.auth().currentUser {
             print("✅ Found Firebase Auth user: \(firebaseUser.uid)")
             return firebaseUser.uid
         }
         
         // Then try UserDefaults
-        if let data = UserDefaults.standard.data(forKey: "currentUser"),
-           let user = try? JSONDecoder().decode(User.self, from: data) {
-            print("✅ Found UserDefaults user: \(user.id)")
-            return user.id
+        if let defaultsUserId = UserDefaults.standard.string(forKey: "currentUserId"), !defaultsUserId.isEmpty {
+            print("✅ Found user ID from UserDefaults: \(defaultsUserId)")
+            return defaultsUserId
         }
         
-        // Try to get user ID from UserDefaults directly
-        if let userId = UserDefaults.standard.string(forKey: "currentUserId"), !userId.isEmpty {
-            print("✅ Found UserDefaults user ID: \(userId)")
-            return userId
-        }
+        // If no user found, don't register FCM tokens
+        print("❌ No user found - skipping FCM token registration")
         
-        // Debug: Check what's actually in UserDefaults
-        let allKeys = UserDefaults.standard.dictionaryRepresentation().keys
-        let userKeys = allKeys.filter { $0.contains("user") || $0.contains("User") || $0.contains("current") }
-        print("🔍 DEBUG: User-related keys in UserDefaults: \(userKeys)")
-        
-        // Check specific keys
-        print("🔍 DEBUG: currentUserId = \(UserDefaults.standard.string(forKey: "currentUserId") ?? "nil")")
-        print("🔍 DEBUG: currentUser data exists = \(UserDefaults.standard.data(forKey: "currentUser") != nil)")
-        print("🔍 DEBUG: Firebase Auth current user = \(Auth.auth().currentUser?.uid ?? "nil")")
-        
-        print("❌ No user ID found from any source")
         return nil
     }
     
@@ -600,8 +587,92 @@ class NotificationManager: NSObject, ObservableObject {
         }
     }
     
+    // MARK: - Comprehensive Notification System Test
+    func testNotificationSystem() {
+        print("🧪 ===== COMPREHENSIVE NOTIFICATION SYSTEM TEST =====")
+        
+        // 1. Test local notification
+        print("📱 1. Testing local notification...")
+        testLocalNotification()
+        
+        // 2. Test FCM token registration
+        print("📱 2. Testing FCM token registration...")
+        testFCMTokenRegistration()
+        
+        // 3. Debug system status
+        print("📱 3. Debugging system status...")
+        debugPushNotificationSystem()
+        
+        // 4. Check following status
+        print("📱 4. Checking following status...")
+        Task {
+            await checkFollowingStatus()
+        }
+        
+        // 5. Test push notification sending
+        print("📱 5. Testing push notification sending...")
+        testPushNotificationSending()
+        
+        print("🧪 ===== END COMPREHENSIVE TEST =====")
+    }
+    
+    // MARK: - Test Push Notification Sending
+    func testPushNotificationSending() {
+        print("🧪 Testing push notification sending...")
+        
+        // Check if we have a valid FCM token
+        guard let token = fcmToken, !token.isEmpty else {
+            print("❌ No FCM token available for testing")
+            return
+        }
+        
+        print("✅ FCM token available: \(token.prefix(20))...")
+        
+        // Check if user is authenticated
+        guard let userId = getCurrentUserId() else {
+            print("❌ No user ID available for testing")
+            return
+        }
+        
+        print("✅ User ID available: \(userId)")
+        
+        // Test sending a notification to ourselves
+        Task {
+            do {
+                let db = Firestore.firestore()
+                
+                // Create a test notification document
+                let testNotificationData: [String: Any] = [
+                    "title": "🧪 Test Push Notification",
+                    "body": "This is a test notification to verify push notifications are working",
+                    "userId": userId,
+                    "fcmToken": token,
+                    "timestamp": FieldValue.serverTimestamp(),
+                    "type": "test",
+                    "data": [
+                        "test": "true",
+                        "timestamp": Date().timeIntervalSince1970
+                    ]
+                ]
+                
+                // Add to a test collection
+                try await db.collection("testNotifications").addDocument(data: testNotificationData)
+                print("✅ Test notification document created in Firestore")
+                
+                // Also try to send via FCM directly (this would require Firebase Functions)
+                print("📱 Note: To send actual push notifications, you need Firebase Functions deployed")
+                print("📱 The test notification document has been created in Firestore")
+                
+            } catch {
+                print("❌ Error creating test notification: \(error)")
+            }
+        }
+    }
+    
     // MARK: - Permission Request with Completion Handler
     func requestPermissions(completion: @escaping (Bool) -> Void) {
+        print("🔔 Requesting notification permissions...")
+        
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound, .criticalAlert]) { granted, error in
             DispatchQueue.main.async {
                 self.isAuthorized = granted
@@ -610,7 +681,159 @@ class NotificationManager: NSObject, ObservableObject {
             }
             
             if let error = error {
-                print("Notification permission error: \(error)")
+                print("❌ Notification permission error: \(error)")
+            } else if granted {
+                print("✅ Notification permissions granted")
+            } else {
+                print("❌ Notification permissions denied")
+            }
+        }
+    }
+    
+    // MARK: - Force Request APNs Permission
+    func forceRequestAPNsPermission() async -> Bool {
+        print("🔄 Force requesting APNs permission...")
+        
+        return await withCheckedContinuation { continuation in
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+                DispatchQueue.main.async {
+                    self.isAuthorized = granted
+                    self.checkAuthorizationStatus()
+                    
+                    if let error = error {
+                        print("❌ APNs permission error: \(error)")
+                    } else if granted {
+                        print("✅ APNs permissions granted")
+                        // Immediately register for remote notifications
+                        UIApplication.shared.registerForRemoteNotifications()
+                    } else {
+                        print("❌ APNs permissions denied")
+                    }
+                    
+                    continuation.resume(returning: granted)
+                }
+            }
+        }
+    }
+    
+    // MARK: - Delete and Refresh FCM Token
+    func deleteAndRefreshFCMToken() async -> String? {
+        print("🔄 Deleting old FCM token and getting new one...")
+        
+        return await withCheckedContinuation { continuation in
+            // First, clear all local FCM data
+            UserDefaults.standard.removeObject(forKey: "fcm_token")
+            UserDefaults.standard.removeObject(forKey: "fcmToken")
+            UserDefaults.standard.removeObject(forKey: "pending_fcm_token")
+            UserDefaults.standard.removeObject(forKey: "pending_fcm_request")
+            
+            // Clear from NotificationManager
+            self.fcmToken = nil
+            
+            // Delete the token from Firebase
+            Messaging.messaging().deleteToken { error in
+                if let error = error {
+                    print("❌ Error deleting token: \(error)")
+                    continuation.resume(returning: nil)
+                } else {
+                    print("✅ Old token deleted from Firebase")
+                    
+                    // Wait a moment for the deletion to propagate
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        // Force re-register for APNs to get a fresh token
+                        UIApplication.shared.registerForRemoteNotifications()
+                        
+                        // Wait a bit more for APNs token to be set
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            // Now get the new FCM token
+                            Messaging.messaging().token { token, error in
+                                if let error = error {
+                                    print("❌ Error getting new token: \(error)")
+                                    continuation.resume(returning: nil)
+                                } else if let token = token, !token.isEmpty {
+                                    print("🎯 New FCM token: \(token)")
+                                    
+                                    // Update local state
+                                    DispatchQueue.main.async {
+                                        self.fcmToken = token
+                                        UserDefaults.standard.set(token, forKey: "fcm_token")
+                                        
+                                        // Register token in Firestore
+                                        Task {
+                                            await self.registerFCMTokenWithUser(token)
+                                        }
+                                    }
+                                    
+                                    continuation.resume(returning: token)
+                                } else {
+                                    print("❌ No new token received")
+                                    continuation.resume(returning: nil)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Force New APNs Token
+    func forceNewAPNsToken() async -> String? {
+        print("🔄 Forcing new APNs token...")
+        
+        return await withCheckedContinuation { continuation in
+            // Step 1: Clear all FCM data
+            UserDefaults.standard.removeObject(forKey: "fcm_token")
+            UserDefaults.standard.removeObject(forKey: "fcmToken")
+            UserDefaults.standard.removeObject(forKey: "pending_fcm_token")
+            UserDefaults.standard.removeObject(forKey: "pending_fcm_request")
+            self.fcmToken = nil
+            
+            // Step 2: Delete FCM token from Firebase
+            Messaging.messaging().deleteToken { error in
+                if let error = error {
+                    print("❌ Error deleting FCM token: \(error)")
+                } else {
+                    print("✅ FCM token deleted from Firebase")
+                }
+                
+                // Step 3: Unregister from APNs completely
+                DispatchQueue.main.async {
+                    UIApplication.shared.unregisterForRemoteNotifications()
+                    print("📱 Unregistered from APNs")
+                    
+                    // Step 4: Wait and re-register for APNs
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        UIApplication.shared.registerForRemoteNotifications()
+                        print("📱 Re-registered for APNs")
+                        
+                        // Step 5: Wait for new APNs token and get FCM token
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                            Messaging.messaging().token { token, error in
+                                if let error = error {
+                                    print("❌ Error getting new FCM token: \(error)")
+                                    continuation.resume(returning: nil)
+                                } else if let token = token, !token.isEmpty {
+                                    print("🎯 New FCM token after APNs reset: \(token)")
+                                    
+                                    DispatchQueue.main.async {
+                                        self.fcmToken = token
+                                        UserDefaults.standard.set(token, forKey: "fcm_token")
+                                        
+                                        Task {
+                                            await self.registerFCMTokenWithUser(token)
+                                        }
+                                    }
+                                    
+                                    continuation.resume(returning: token)
+                                } else {
+                                    print("❌ No new FCM token received")
+                                    continuation.resume(returning: nil)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

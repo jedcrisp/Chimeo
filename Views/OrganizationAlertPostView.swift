@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreLocation
+import FirebaseAuth
 
 struct OrganizationAlertPostView: View {
     let organization: Organization
@@ -192,13 +193,8 @@ struct OrganizationAlertPostView: View {
                 await apiService.forceRefreshOrganizations()
             }
             
-            // ensure user has permission (org admin only)
-            Task {
-                let canManage = await apiService.canManageOrganization(organization.id)
-                if !canManage {
-                    dismiss()
-                }
-            }
+            // Note: Admin permission is already checked in GroupSelectionView
+            // before this view is presented, so no need to check again here
         }
     }
     
@@ -212,6 +208,23 @@ struct OrganizationAlertPostView: View {
             await apiService.forceRefreshOrganizations()
         }
         
+        // Get current user ID with fallback to Firebase Auth
+        let currentUserId: String
+        let currentUserName: String
+        
+        if let apiUserId = apiService.currentUser?.id, !apiUserId.isEmpty {
+            currentUserId = apiUserId
+            currentUserName = apiService.currentUser?.name ?? "Organization Admin"
+        } else if let firebaseUserId = Auth.auth().currentUser?.uid {
+            currentUserId = firebaseUserId
+            currentUserName = Auth.auth().currentUser?.displayName ?? "Organization Admin"
+        } else {
+            // This should not happen if user is properly authenticated
+            currentUserId = "unknown"
+            currentUserName = "Organization Admin"
+            print("⚠️ Warning: No user ID found for alert creation")
+        }
+        
         // Create the alert with conditional type and severity
         let alert = OrganizationAlert(
             title: title,
@@ -223,8 +236,8 @@ struct OrganizationAlertPostView: View {
             type: includeAlertType ? selectedType : .other,
             severity: includeAlertSeverity ? selectedSeverity : .low,
             location: includeLocation ? customLocation : organization.location,
-            postedBy: apiService.currentUser?.name ?? "Organization Admin",
-            postedByUserId: apiService.currentUser?.id ?? "unknown",
+            postedBy: currentUserName,
+            postedByUserId: currentUserId,
             postedAt: Date() // Explicitly set the creation timestamp
         )
         

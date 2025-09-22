@@ -15,6 +15,7 @@ class ServiceCoordinator: ObservableObject {
     // MARK: - Service Instances
     let userService: UserManagementService
     let authService: AuthenticationService
+    let simpleAuthManager: SimpleAuthManager
     let organizationService: OrganizationService
     let groupService: OrganizationGroupService
     let alertService: OrganizationAlertService
@@ -24,6 +25,7 @@ class ServiceCoordinator: ObservableObject {
     let notificationService: iOSNotificationService
     let followingService: OrganizationFollowingService
     let developmentService: DevelopmentService
+    let apiService: APIService
     
     // MARK: - Published Properties (for backward compatibility)
     @Published var isAuthenticated = false
@@ -32,9 +34,13 @@ class ServiceCoordinator: ObservableObject {
     @Published var organizations: [Organization] = []
     @Published var pendingRequests: [OrganizationRequest] = []
     
+    // MARK: - Combine
     private var cancellables = Set<AnyCancellable>()
     
-    init() {
+    init(simpleAuthManager: SimpleAuthManager) {
+        // Store the SimpleAuthManager reference
+        self.simpleAuthManager = simpleAuthManager
+        
         // Check if Firebase is available before initializing Firebase-dependent services
         let isFirebaseAvailable = FirebaseApp.app() != nil
         
@@ -52,6 +58,7 @@ class ServiceCoordinator: ObservableObject {
             self.userProfileService = UserProfileService()
             self.followingService = OrganizationFollowingService()
             self.developmentService = DevelopmentService()
+            self.apiService = APIService()
         } else {
             print("❌ Firebase not available - initializing limited services")
             // Initialize only non-Firebase services
@@ -66,6 +73,7 @@ class ServiceCoordinator: ObservableObject {
             self.userProfileService = UserProfileService()
             self.followingService = OrganizationFollowingService()
             self.developmentService = DevelopmentService()
+            self.apiService = APIService()
         }
         
         print("🔍 ServiceCoordinator initialized")
@@ -91,8 +99,56 @@ class ServiceCoordinator: ObservableObject {
         
         print("✅ ServiceCoordinator setup complete")
         
+        // Set up automatic authentication state synchronization
+        setupAuthenticationStateSync()
+        
         // Don't automatically restore authentication - force login
         print("🔐 ServiceCoordinator: Forcing login - not restoring authentication state")
+    }
+    
+    // MARK: - Authentication State Synchronization
+    private func setupAuthenticationStateSync() {
+        print("🔄 Setting up automatic authentication state synchronization...")
+        
+        // Subscribe to SimpleAuthManager's published properties
+        simpleAuthManager.$isAuthenticated
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isAuthenticated in
+                print("🔄 SimpleAuthManager isAuthenticated changed to: \(isAuthenticated)")
+                self?.isAuthenticated = isAuthenticated
+                
+                // If not authenticated, clear current user
+                if !isAuthenticated {
+                    self?.currentUser = nil
+                    print("🔄 Cleared currentUser due to authentication state change")
+                }
+                
+                // Sync APIService with the current state
+                self?.syncAPIServiceWithAuth()
+            }
+            .store(in: &cancellables)
+        
+        simpleAuthManager.$currentUser
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] currentUser in
+                print("🔄 SimpleAuthManager currentUser changed to: \(currentUser?.id ?? "NIL")")
+                self?.currentUser = currentUser
+                
+                // Update isAuthenticated based on whether we have a current user
+                if let user = currentUser {
+                    self?.isAuthenticated = true
+                    print("🔄 Set isAuthenticated to true due to currentUser change")
+                } else {
+                    self?.isAuthenticated = false
+                    print("🔄 Set isAuthenticated to false due to currentUser change")
+                }
+                
+                // Sync APIService with the current state
+                self?.syncAPIServiceWithAuth()
+            }
+            .store(in: &cancellables)
+        
+        print("✅ Authentication state synchronization setup complete")
     }
     
     // MARK: - Authentication Methods (delegate to AuthenticationService)
@@ -126,8 +182,10 @@ class ServiceCoordinator: ObservableObject {
     }
     
     // MARK: - Authentication State Management
-    func checkAndRestoreAuthenticationState() {
+    func checkAndRestoreAuthenticationState() async {
         print("🔍 ServiceCoordinator: Checking authentication state...")
+        print("   ServiceCoordinator instance: \(ObjectIdentifier(self))")
+        print("   SimpleAuthManager instance: \(ObjectIdentifier(simpleAuthManager))")
         
         // First, check if we have a currentUser in the coordinator
         if let coordinatorUser = currentUser {
@@ -137,19 +195,51 @@ class ServiceCoordinator: ObservableObject {
             return
         }
         
-        // Check if authService has a current user
-        if let authServiceUser = authService.currentUser {
-            print("✅ AuthService has currentUser: \(authServiceUser.id)")
-            print("   Email: \(authServiceUser.email ?? "none")")
-            print("   Name: \(authServiceUser.name ?? "none")")
+        // Check if SimpleAuthManager has a current user
+        print("🔍 Checking SimpleAuthManager...")
+        print("   SimpleAuthManager isAuthenticated: \(simpleAuthManager.isAuthenticated)")
+        print("   SimpleAuthManager currentUser: \(simpleAuthManager.currentUser?.id ?? "NIL")")
+        print("   SimpleAuthManager currentUser email: \(simpleAuthManager.currentUser?.email ?? "NIL")")
+        
+        // Also check Firebase Auth directly
+        if let firebaseUser = Auth.auth().currentUser {
+            print("   Firebase Auth current user: \(firebaseUser.uid)")
+            print("   Firebase Auth email: \(firebaseUser.email ?? "NIL")")
+            
+            // If Firebase Auth has a user but SimpleAuthManager doesn't, trigger a manual check
+            if simpleAuthManager.currentUser == nil {
+                print("🔄 Firebase Auth has user but SimpleAuthManager doesn't - triggering manual check...")
+                simpleAuthManager.checkAndRestoreAuthState()
+                
+                // Wait a moment for the authentication state to be restored
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                
+                // Check again after the delay
+                print("🔍 Re-checking SimpleAuthManager after manual check...")
+                print("   SimpleAuthManager isAuthenticated: \(simpleAuthManager.isAuthenticated)")
+                print("   SimpleAuthManager currentUser: \(simpleAuthManager.currentUser?.id ?? "NIL")")
+            }
+        } else {
+            print("   Firebase Auth: No current user")
+        }
+        
+        if let simpleAuthUser = simpleAuthManager.currentUser {
+            print("✅ SimpleAuthManager has currentUser: \(simpleAuthUser.id)")
+            print("   Email: \(simpleAuthUser.email ?? "none")")
+            print("   Name: \(simpleAuthUser.name ?? "none")")
             
             // Update coordinator state
-            DispatchQueue.main.async {
-                self.currentUser = authServiceUser
-                self.isAuthenticated = true
-                print("✅ Authentication state restored from AuthService for user: \(authServiceUser.name ?? "Unknown")")
-            }
-            return
+               await MainActor.run {
+                   self.currentUser = simpleAuthUser
+                   self.isAuthenticated = self.simpleAuthManager.isAuthenticated
+                   print("✅ Authentication state restored from SimpleAuthManager for user: \(simpleAuthUser.name ?? "Unknown")")
+               }
+               
+               // Sync APIService with the current state
+               syncAPIServiceWithAuth()
+               return
+        } else {
+            print("❌ SimpleAuthManager has no currentUser")
         }
         
         // Check if Firebase Auth has a current user
@@ -188,22 +278,82 @@ class ServiceCoordinator: ObservableObject {
                 displayName: firebaseUser.displayName ?? "User"
             )
             
-            // Update coordinator state
-            DispatchQueue.main.async {
-                self.currentUser = restoredUser
-                self.isAuthenticated = true
-                print("✅ Authentication state restored from Firebase Auth for user: \(restoredUser.name ?? "Unknown")")
-            }
-            return
+               // Update coordinator state
+               await MainActor.run {
+                   self.currentUser = restoredUser
+                   self.isAuthenticated = true
+                   print("✅ Authentication state restored from Firebase Auth for user: \(restoredUser.name ?? "Unknown")")
+               }
+               
+               // Sync APIService with the current state
+               syncAPIServiceWithAuth()
+               return
         }
         
-        // If we get here, no user is authenticated anywhere
-        print("❌ No user found in any service - user needs to sign in")
-        DispatchQueue.main.async {
-            self.currentUser = nil
-            self.isAuthenticated = false
-            print("✅ Coordinator state cleared - no authenticated user")
+        // Additional fallback: Try to get user ID from UserDefaults and fetch from Firestore
+        if let userId = UserDefaults.standard.string(forKey: "currentUserId"), !userId.isEmpty {
+            print("🔍 Found user ID in UserDefaults, fetching user from Firestore: \(userId)")
+            
+            Task {
+                do {
+                    let db = Firestore.firestore()
+                    let userDoc = try await db.collection("users").document(userId).getDocument()
+                    
+                    if userDoc.exists, let userData = userDoc.data() {
+                        let restoredUser = User(
+                            id: userId,
+                            email: userData["email"] as? String ?? "unknown@example.com",
+                            name: userData["name"] as? String ?? "User",
+                            phone: userData["phone"] as? String,
+                            homeLocation: nil,
+                            workLocation: nil,
+                            schoolLocation: nil,
+                            alertRadius: userData["alertRadius"] as? Double ?? 10.0,
+                            preferences: UserPreferences(
+                                incidentTypes: [.weather, .road, .other],
+                                criticalAlertsOnly: false,
+                                pushNotifications: true,
+                                quietHoursEnabled: false,
+                                quietHoursStart: nil,
+                                quietHoursEnd: nil
+                            ),
+                            createdAt: (userData["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                            isAdmin: userData["isAdmin"] as? Bool ?? false,
+                            displayName: userData["customDisplayName"] as? String ?? userData["name"] as? String ?? "User",
+                            isOrganizationAdmin: userData["isOrganizationAdmin"] as? Bool,
+                            organizations: userData["organizations"] as? [String],
+                            updatedAt: (userData["updatedAt"] as? Timestamp)?.dateValue(),
+                            needsPasswordSetup: userData["needsPasswordSetup"] as? Bool,
+                            needsPasswordChange: userData["needsPasswordChange"] as? Bool,
+                            firebaseAuthId: userId
+                        )
+                        
+                        await MainActor.run {
+                            self.currentUser = restoredUser
+                            self.isAuthenticated = true
+                            print("✅ Authentication state restored from UserDefaults + Firestore for user: \(restoredUser.name ?? "Unknown")")
+                        }
+                        
+                        // Sync APIService with the current state
+                        syncAPIServiceWithAuth()
+                        return
+                    }
+                } catch {
+                    print("⚠️ Error fetching user from Firestore with UserDefaults ID: \(error)")
+                }
+            }
         }
+        
+           // If we get here, no user is authenticated anywhere
+           print("❌ No user found in any service - user needs to sign in")
+           await MainActor.run {
+               self.currentUser = nil
+               self.isAuthenticated = false
+               print("✅ Coordinator state cleared - no authenticated user")
+           }
+           
+           // Sync APIService with the current state
+           syncAPIServiceWithAuth()
     }
     
     // MARK: - Manual User State Management
@@ -213,7 +363,7 @@ class ServiceCoordinator: ObservableObject {
         print("   Email: \(user.email ?? "none")")
         print("   Name: \(user.name ?? "none")")
         
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.currentUser = user
             self.isAuthenticated = true
             print("✅ Current user manually set successfully")
@@ -310,7 +460,7 @@ class ServiceCoordinator: ObservableObject {
         print("🔍 ServiceCoordinator.followOrganization called for org: \(organizationId)")
         
         // Check and restore authentication state first
-        checkAndRestoreAuthenticationState()
+        await checkAndRestoreAuthenticationState()
         
         print("   Current user: \(currentUser?.id ?? "NIL")")
         print("   Current user name: \(currentUser?.name ?? "NIL")")
@@ -332,7 +482,7 @@ class ServiceCoordinator: ObservableObject {
         print("🔍 ServiceCoordinator.unfollowOrganization called for org: \(organizationId)")
         
         // Check and restore authentication state first
-        checkAndRestoreAuthenticationState()
+        await checkAndRestoreAuthenticationState()
         
         print("   Current user: \(currentUser?.id ?? "NIL")")
         print("   Current user name: \(currentUser?.name ?? "NIL")")
@@ -398,7 +548,32 @@ class ServiceCoordinator: ObservableObject {
     }
     
     func getFollowingOrganizationAlerts() async throws -> [OrganizationAlert] {
-        return try await alertService.getFollowingOrganizationAlerts()
+        return try await apiService.getFollowingOrganizationAlerts()
+    }
+    
+    func fetchFollowedOrganizations() async throws -> [Organization] {
+        return try await apiService.fetchFollowedOrganizations()
+    }
+    
+    func getAllAlerts() async throws -> [OrganizationAlert] {
+        return try await apiService.getAllAlerts()
+    }
+    
+    func createTestAlert(organizationId: String) async throws {
+        return try await apiService.createTestAlert(organizationId: organizationId)
+    }
+    
+    func updateGroupPreference(organizationId: String, groupId: String, isEnabled: Bool) async throws {
+        return try await apiService.updateGroupPreference(organizationId: organizationId, groupId: groupId, isEnabled: isEnabled)
+    }
+    
+    func fetchUserGroupPreferences() async throws -> [String: Bool] {
+        return try await apiService.fetchUserGroupPreferences()
+    }
+    
+    func syncAPIServiceWithAuth() {
+        print("🔄 ServiceCoordinator: Syncing APIService with SimpleAuthManager...")
+        apiService.updateCurrentUser(from: simpleAuthManager)
     }
     
     // MARK: - File Upload Methods (delegate to FileUploadService)

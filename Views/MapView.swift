@@ -19,7 +19,6 @@ struct MapAnnotationItem: Identifiable {
 struct MapView: View {
     @EnvironmentObject var locationManager: LocationManager
     @EnvironmentObject var authManager: SimpleAuthManager
-    @StateObject private var serviceCoordinator = ServiceCoordinator()
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 33.2148, longitude: -97.1331), // Denton, TX area (better fallback)
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
@@ -46,7 +45,6 @@ struct MapView: View {
     @State private var showingCalendar = false
     @State private var isOrganizationAdmin = false
 
-    
     var body: some View {
         NavigationView {
             ZStack {

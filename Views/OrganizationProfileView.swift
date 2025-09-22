@@ -74,6 +74,13 @@ struct OrganizationProfileView: View {
         print("   Is admin: \(isOrganizationAdmin)")
         print("   Private groups: \(groups.filter { $0.isPrivate }.count)")
         
+        // Debug each group individually
+        for group in groups {
+            print("   📋 Group: \(group.name)")
+            print("      - isPrivate: \(group.isPrivate)")
+            print("      - will be shown: \(filteredGroups.contains { $0.id == group.id })")
+        }
+        
         return filteredGroups
     }
     
@@ -1060,7 +1067,7 @@ struct OrganizationProfileView: View {
                 let fetchedGroups = try await groupService.getOrganizationGroups(organizationId: organization.id)
                 print("🔍 Fetched \(fetchedGroups.count) groups:")
                 for group in fetchedGroups {
-                    print("   - \(group.name) (ID: \(group.id))")
+                    print("   - \(group.name) (ID: \(group.id), isPrivate: \(group.isPrivate))")
                 }
                 
                 await MainActor.run {

@@ -118,18 +118,6 @@ struct OrganizationProfileView: View {
                 .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 16) {
-                    // Refresh button to get accurate data
-                    Button(action: refreshOrganizationData) {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundColor(.blue)
-                    }
-                    
-                    // Fix follower count button (for debugging)
-                    Button(action: fixFollowerCount) {
-                        Image(systemName: "wrench.and.screwdriver")
-                            .foregroundColor(.orange)
-                    }
-                    
                     // Add Group button for org admins
                     if isOrganizationAdmin {
                         Button(action: { 
@@ -208,14 +196,6 @@ struct OrganizationProfileView: View {
                         
                 }
                     
-                    // Fix follower count button (show when count is negative or when there might be a discrepancy)
-                    if currentOrganization.followerCount < 0 || currentOrganization.followerCount > 100 {
-                        Button(action: fixFollowerCount) {
-                            Image(systemName: "wrench.and.screwdriver.fill")
-                                .foregroundColor(.orange)
-                        }
-                        .help("Fix follower count discrepancy")
-                    }
                     
 
                 }
@@ -1077,36 +1057,6 @@ struct OrganizationProfileView: View {
         }
     }
     
-    private func fixFollowerCount() {
-        print("🔧 Fixing follower count for organization: \(organization.id)")
-        
-        Task {
-            do {
-                // TODO: Add follower count fixing to SimpleAuthManager
-                print("Follower count fixing not implemented in SimpleAuthManager")
-                
-                // Refresh the organization data
-                do {
-                    // TODO: Add organization fetching to SimpleAuthManager
-                    if let updatedOrg = nil as Organization? {
-                        await MainActor.run {
-                            self.currentOrganization = updatedOrg
-                            print("✅ Follower count fixed: \(updatedOrg.followerCount)")
-                        }
-                    }
-                } catch {
-                    print("❌ Failed to get organization by ID: \(error)")
-                }
-            } catch {
-                print("❌ Failed to fix follower count: \(error)")
-                // Show error to user
-                await MainActor.run {
-                    // You could add an alert here to show the error to the user
-                    print("🚨 Error fixing follower count: \(error.localizedDescription)")
-                }
-            }
-        }
-    }
     
     private func fetchActualFollowerCount() {
         print("🔍 Fetching actual follower count for organization: \(organization.id)")

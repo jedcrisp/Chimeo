@@ -38,20 +38,31 @@ struct MyAlertsView: View {
         let groups = organizationGroups[organizationId] ?? []
         let isAdmin = organizationAdminStatus[organizationId] ?? false
         
-        return groups.filter { group in
+        let filteredGroups = groups.filter { group in
             // If user is organization admin, show all groups
             if isAdmin {
+                print("🔐 Admin user - showing group: \(group.name) (private: \(group.isPrivate))")
                 return true
             }
             
             // If group is not private, show it to everyone
             if !group.isPrivate {
+                print("🌐 Public group - showing group: \(group.name)")
                 return true
             }
             
             // If group is private, hide from non-admin users
+            print("🔒 Private group hidden from non-admin: \(group.name)")
             return false
         }
+        
+        print("🔍 MyAlertsView group filtering for org \(organizationId):")
+        print("   Total groups: \(groups.count)")
+        print("   Visible groups: \(filteredGroups.count)")
+        print("   Is admin: \(isAdmin)")
+        print("   Private groups: \(groups.filter { $0.isPrivate }.count)")
+        
+        return filteredGroups
     }
     
     var body: some View {

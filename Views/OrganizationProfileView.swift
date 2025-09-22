@@ -49,22 +49,32 @@ struct OrganizationProfileView: View {
     
     // Filter groups based on privacy and admin status
     private var visibleGroups: [OrganizationGroup] {
-        return groups.filter { group in
+        let filteredGroups = groups.filter { group in
             // If user is organization admin, show all groups
             if isOrganizationAdmin {
+                print("🔐 Admin user - showing group: \(group.name) (private: \(group.isPrivate))")
                 return true
             }
             
             // If group is not private, show it to everyone
             if !group.isPrivate {
+                print("🌐 Public group - showing group: \(group.name)")
                 return true
             }
             
             // If group is private, only show if user is a member
-            // For now, we'll hide private groups from non-admin users
-            // TODO: Implement proper group membership checking
+            // For now, we'll hide all private groups from non-admin users
+            print("🔒 Private group hidden from non-admin: \(group.name)")
             return false
         }
+        
+        print("🔍 Group filtering result:")
+        print("   Total groups: \(groups.count)")
+        print("   Visible groups: \(filteredGroups.count)")
+        print("   Is admin: \(isOrganizationAdmin)")
+        print("   Private groups: \(groups.filter { $0.isPrivate }.count)")
+        
+        return filteredGroups
     }
     
     var body: some View {

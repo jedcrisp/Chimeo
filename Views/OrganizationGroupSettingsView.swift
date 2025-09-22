@@ -4,7 +4,7 @@ import FirebaseFirestore
 struct OrganizationGroupSettingsView: View {
     let organization: Organization
     @EnvironmentObject var authManager: SimpleAuthManager
-    @StateObject private var invitationService = GroupInvitationService()
+    @State private var invitationService = GroupInvitationService()
     @State private var groupsArePrivate: Bool
     @State private var allowPublicGroupJoin: Bool
     @State private var isLoading = false
@@ -116,7 +116,7 @@ struct OrganizationGroupSettingsView: View {
 struct OrganizationInvitationManagementView: View {
     let organization: Organization
     @EnvironmentObject var authManager: SimpleAuthManager
-    @StateObject private var invitationService = GroupInvitationService()
+    @State private var invitationService = GroupInvitationService()
     @State private var invitations: [GroupInvitation] = []
     @State private var isLoading = false
     @State private var errorMessage: String?

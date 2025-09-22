@@ -3,7 +3,7 @@ import FirebaseFirestore
 
 struct GroupInvitationView: View {
     @EnvironmentObject var authManager: SimpleAuthManager
-    @StateObject private var invitationService = GroupInvitationService()
+    @State private var invitationService = GroupInvitationService()
     @State private var invitations: [GroupInvitation] = []
     @State private var isLoading = false
     @State private var errorMessage: String?

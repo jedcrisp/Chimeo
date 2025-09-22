@@ -19,6 +19,7 @@ struct MapAnnotationItem: Identifiable {
 struct MapView: View {
     @EnvironmentObject var locationManager: LocationManager
     @EnvironmentObject var authManager: SimpleAuthManager
+    @StateObject private var serviceCoordinator = ServiceCoordinator()
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 33.2148, longitude: -97.1331), // Denton, TX area (better fallback)
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
@@ -40,6 +41,10 @@ struct MapView: View {
     @State private var mapSearchText = ""
     @State private var mapSearchResults: [Organization] = []
     @State private var showingSearchSheet = false
+    
+    // Calendar functionality for org admins
+    @State private var showingCalendar = false
+    @State private var isOrganizationAdmin = false
 
     
     var body: some View {
@@ -236,6 +241,9 @@ struct MapView: View {
                     
                     // Check and fix logo URLs for organizations that might have photos but no logo URL set
                     await checkAndFixOrganizationLogos()
+                    
+                    // Check if user is an organization admin
+                    await checkAdminStatus()
                 }
             } else {
                 print("⚠️ User not authenticated, skipping data load")
@@ -262,6 +270,9 @@ struct MapView: View {
                     loadData()
                 }
             }
+        }
+        .sheet(isPresented: $showingCalendar) {
+            CalendarView()
         }
     }
     
@@ -306,6 +317,17 @@ struct MapView: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.secondary)
                             .font(.system(size: 16))
+                    }
+                }
+                
+                // Calendar button for organization admins
+                if isOrganizationAdmin {
+                    Button(action: {
+                        showingCalendar = true
+                    }) {
+                        Image(systemName: "calendar")
+                            .foregroundColor(.blue)
+                            .font(.system(size: 16, weight: .medium))
                     }
                 }
             }
@@ -1624,6 +1646,41 @@ struct SimpleWeatherInfoView: View {
                         dismiss()
                     }
                 }
+            }
+        }
+    }
+    
+    // MARK: - Admin Status Checking
+    private func checkAdminStatus() async {
+        guard let userId = authManager.currentUser?.id else {
+            await MainActor.run {
+                self.isOrganizationAdmin = false
+            }
+            return
+        }
+        
+        do {
+            // Check if user is admin of any organization
+            let db = Firestore.firestore()
+            let orgsSnapshot = try await db.collection("organizations").getDocuments()
+            
+            var isAdmin = false
+            for orgDoc in orgsSnapshot.documents {
+                let orgData = orgDoc.data()
+                if let adminIds = orgData["adminIds"] as? [String], adminIds.contains(userId) {
+                    isAdmin = true
+                    break
+                }
+            }
+            
+            await MainActor.run {
+                self.isOrganizationAdmin = isAdmin
+                print("🔐 User admin status: \(isAdmin ? "Admin" : "Not admin")")
+            }
+        } catch {
+            print("❌ Error checking admin status: \(error)")
+            await MainActor.run {
+                self.isOrganizationAdmin = false
             }
         }
     }

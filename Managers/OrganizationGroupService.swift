@@ -59,7 +59,9 @@ class OrganizationGroupService: ObservableObject {
             "isActive": group.isActive,
             "createdAt": FieldValue.serverTimestamp(),
             "updatedAt": FieldValue.serverTimestamp(),
-            "memberCount": 0
+            "memberCount": 0,
+            "isPrivate": group.isPrivate,
+            "allowPublicJoin": group.allowPublicJoin
         ]
         
         print("   📝 Creating group in subcollection: organizations/\(organizationId)/groups/\(group.name)")
@@ -208,6 +210,8 @@ class OrganizationGroupService: ObservableObject {
         let memberCount = data["memberCount"] as? Int ?? 0
         let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
         let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
+        let isPrivate = data["isPrivate"] as? Bool ?? false
+        let allowPublicJoin = data["allowPublicJoin"] as? Bool ?? true
         
         return OrganizationGroup(
             id: id,
@@ -217,7 +221,9 @@ class OrganizationGroupService: ObservableObject {
             isActive: isActive,
             memberCount: memberCount,
             createdAt: createdAt,
-            updatedAt: updatedAt
+            updatedAt: updatedAt,
+            isPrivate: isPrivate,
+            allowPublicJoin: allowPublicJoin
         )
     }
     

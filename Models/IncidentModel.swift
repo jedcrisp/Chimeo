@@ -708,7 +708,11 @@ struct OrganizationGroup: Identifiable, Codable, Hashable {
     let createdAt: Date
     let updatedAt: Date
     
-    init(id: String = UUID().uuidString, name: String, description: String? = nil, organizationId: String, isActive: Bool = true, memberCount: Int = 0, createdAt: Date = Date(), updatedAt: Date = Date()) {
+    // Privacy settings
+    let isPrivate: Bool
+    let allowPublicJoin: Bool
+    
+    init(id: String = UUID().uuidString, name: String, description: String? = nil, organizationId: String, isActive: Bool = true, memberCount: Int = 0, createdAt: Date = Date(), updatedAt: Date = Date(), isPrivate: Bool = false, allowPublicJoin: Bool = true) {
         self.id = id
         self.name = name
         self.description = description
@@ -717,6 +721,8 @@ struct OrganizationGroup: Identifiable, Codable, Hashable {
         self.memberCount = memberCount
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.isPrivate = isPrivate
+        self.allowPublicJoin = allowPublicJoin
     }
 }
 

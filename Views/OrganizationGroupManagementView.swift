@@ -195,6 +195,24 @@ struct GroupRowView: View {
                     }
                     .foregroundColor(.secondary)
                     
+                    if group.isPrivate {
+                        HStack(spacing: 4) {
+                            Image(systemName: "lock.fill")
+                                .font(.caption)
+                            Text("Private")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.orange)
+                    } else {
+                        HStack(spacing: 4) {
+                            Image(systemName: "globe")
+                                .font(.caption)
+                            Text("Public")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.green)
+                    }
+                    
                     HStack(spacing: 4) {
                         Image(systemName: "calendar")
                             .font(.caption)
@@ -226,6 +244,8 @@ struct EditGroupView: View {
     
     @State private var groupName: String
     @State private var groupDescription: String
+    @State private var isPrivate: Bool
+    @State private var allowPublicJoin: Bool
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showingErrorAlert = false
@@ -236,6 +256,8 @@ struct EditGroupView: View {
         self.onSave = onSave
         self._groupName = State(initialValue: group.name)
         self._groupDescription = State(initialValue: group.description ?? "")
+        self._isPrivate = State(initialValue: group.isPrivate)
+        self._allowPublicJoin = State(initialValue: group.allowPublicJoin)
     }
     
     var body: some View {
@@ -245,6 +267,23 @@ struct EditGroupView: View {
                     TextField("Group Name", text: $groupName)
                     TextField("Description (Optional)", text: $groupDescription, axis: .vertical)
                         .lineLimit(3...6)
+                }
+                
+                Section(header: Text("Privacy Settings")) {
+                    Toggle("Make Group Private", isOn: $isPrivate)
+                        .onChange(of: isPrivate) { _, newValue in
+                            if !newValue {
+                                allowPublicJoin = true
+                            }
+                        }
+                    
+                    if isPrivate {
+                        Toggle("Allow Public Join", isOn: $allowPublicJoin)
+                        
+                        Text("When a group is private, members must be manually invited by organization admins.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
             .navigationTitle("Edit Group")
@@ -288,7 +327,9 @@ struct EditGroupView: View {
                     organizationId: organization.id,
                     isActive: group.isActive,
                     createdAt: group.createdAt,
-                    updatedAt: Date()
+                    updatedAt: Date(),
+                    isPrivate: isPrivate,
+                    allowPublicJoin: allowPublicJoin
                 )
                 
                 try await apiService.updateOrganizationGroup(updatedGroup)
@@ -316,6 +357,8 @@ struct CreateGroupView: View {
     @EnvironmentObject var apiService: APIService
     @State private var groupName = ""
     @State private var groupDescription = ""
+    @State private var isPrivate = false
+    @State private var allowPublicJoin = true
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showingErrorAlert = false
@@ -327,6 +370,23 @@ struct CreateGroupView: View {
                     TextField("Group Name", text: $groupName)
                     TextField("Description (Optional)", text: $groupDescription, axis: .vertical)
                         .lineLimit(3...6)
+                }
+                
+                Section(header: Text("Privacy Settings")) {
+                    Toggle("Make Group Private", isOn: $isPrivate)
+                        .onChange(of: isPrivate) { _, newValue in
+                            if !newValue {
+                                allowPublicJoin = true
+                            }
+                        }
+                    
+                    if isPrivate {
+                        Toggle("Allow Public Join", isOn: $allowPublicJoin)
+                        
+                        Text("When a group is private, members must be manually invited by organization admins.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 Section(footer: Text("Groups help organize your alerts and allow users to choose which types of notifications they want to receive.")) {
@@ -374,7 +434,9 @@ struct CreateGroupView: View {
         let newGroup = OrganizationGroup(
             name: groupName,
             description: groupDescription.isEmpty ? nil : groupDescription,
-            organizationId: organization.id
+            organizationId: organization.id,
+            isPrivate: isPrivate,
+            allowPublicJoin: allowPublicJoin
         )
         
         Task {

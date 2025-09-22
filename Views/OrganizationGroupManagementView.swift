@@ -12,6 +12,8 @@ struct OrganizationGroupManagementView: View {
     @State private var editingGroup: OrganizationGroup?
     @State private var editGroupName = ""
     @State private var editGroupDescription = ""
+    @State private var showingCreateErrorAlert = false
+    @State private var showingEditErrorAlert = false
     
     var body: some View {
         NavigationView {
@@ -91,15 +93,17 @@ struct OrganizationGroupManagementView: View {
                 }
             }
             .sheet(isPresented: $showingEditGroup) {
-                EditGroupView(
-                    group: editingGroup!,
-                    organization: organization,
-                    onSave: { updatedGroup in
-                        if let index = groups.firstIndex(where: { $0.id == updatedGroup.id }) {
-                            groups[index] = updatedGroup
+                if let editingGroup = editingGroup {
+                    EditGroupView(
+                        group: editingGroup,
+                        organization: organization,
+                        onSave: { updatedGroup in
+                            if let index = groups.firstIndex(where: { $0.id == updatedGroup.id }) {
+                                groups[index] = updatedGroup
+                            }
                         }
-                    }
-                )
+                    )
+                }
             }
             .alert("Error", isPresented: $showingErrorAlert) {
                 Button("OK") {
@@ -260,9 +264,10 @@ struct EditGroupView: View {
                     .disabled(isLoading || groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-            .alert("Error", isPresented: .constant(errorMessage != nil)) {
+            .alert("Error", isPresented: $showingCreateErrorAlert) {
                 Button("OK") {
                     errorMessage = nil
+                    showingCreateErrorAlert = false
                 }
             } message: {
                 if let errorMessage = errorMessage {
@@ -296,6 +301,7 @@ struct EditGroupView: View {
             } catch {
                 await MainActor.run {
                     errorMessage = "Failed to update group: \(error.localizedDescription)"
+                    showingEditErrorAlert = true
                     isLoading = false
                 }
             }
@@ -347,9 +353,10 @@ struct CreateGroupView: View {
                     }
                 }
             }
-            .alert("Error", isPresented: .constant(errorMessage != nil)) {
+            .alert("Error", isPresented: $showingEditErrorAlert) {
                 Button("OK") {
                     errorMessage = nil
+                    showingEditErrorAlert = false
                 }
             } message: {
                 if let errorMessage = errorMessage {
@@ -385,6 +392,7 @@ struct CreateGroupView: View {
                 print("❌ Error creating group: \(error)")
                 await MainActor.run {
                     errorMessage = "Failed to create group: \(error.localizedDescription)"
+                    showingCreateErrorAlert = true
                     isLoading = false
                 }
             }

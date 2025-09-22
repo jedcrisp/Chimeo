@@ -262,24 +262,28 @@ class OrganizationGroupService: ObservableObject {
         let db = Firestore.firestore()
         let snapshot = try await db.collection("groupInvitations")
             .whereField("invitedUserId", isEqualTo: userId)
-            .order(by: "createdAt", descending: true)
             .getDocuments()
         
-        return snapshot.documents.compactMap { document in
+        let invitations = snapshot.documents.compactMap { document in
             try? document.data(as: GroupInvitation.self)
         }
+        
+        // Sort manually to avoid needing a composite index
+        return invitations.sorted { $0.createdAt > $1.createdAt }
     }
     
     func getOrganizationInvitations(organizationId: String) async throws -> [GroupInvitation] {
         let db = Firestore.firestore()
         let snapshot = try await db.collection("groupInvitations")
             .whereField("organizationId", isEqualTo: organizationId)
-            .order(by: "createdAt", descending: true)
             .getDocuments()
         
-        return snapshot.documents.compactMap { document in
+        let invitations = snapshot.documents.compactMap { document in
             try? document.data(as: GroupInvitation.self)
         }
+        
+        // Sort manually to avoid needing a composite index
+        return invitations.sorted { $0.createdAt > $1.createdAt }
     }
     
     func respondToInvitation(invitationId: String, status: InvitationStatus) async throws {

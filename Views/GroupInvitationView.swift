@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseFirestore
 
 struct GroupInvitationView: View {
     @EnvironmentObject var authManager: SimpleAuthManager
@@ -62,7 +63,7 @@ struct GroupInvitationView: View {
             }
         }
         .refreshable {
-            await loadInvitations()
+            loadInvitations()
         }
     }
     

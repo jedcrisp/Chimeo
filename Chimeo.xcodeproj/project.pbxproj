@@ -49,6 +49,9 @@
 		F46AE55A2E80DBA3000211D5 /* NotificationDebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE5582E80DBA2000211D5 /* NotificationDebugView.swift */; };
 		F46AE55C2E80DD53000211D5 /* OrganizationFollowingTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE55B2E80DD53000211D5 /* OrganizationFollowingTestView.swift */; };
 		F46AE55E2E80DF78000211D5 /* PushNotificationTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE55D2E80DF78000211D5 /* PushNotificationTestView.swift */; };
+		F46AE5622E80F0A2000211D5 /* GroupInvitationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE55F2E80F0A2000211D5 /* GroupInvitationView.swift */; };
+		F46AE5632E80F0A2000211D5 /* OrganizationGroupSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE5612E80F0A2000211D5 /* OrganizationGroupSettingsView.swift */; };
+		F46AE5642E80F0A2000211D5 /* InviteUserToGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F46AE5602E80F0A2000211D5 /* InviteUserToGroupView.swift */; };
 		F4B2618D2E7CF7CE00592CFE /* AdminPlatformStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261672E7CF7CE00592CFE /* AdminPlatformStatsView.swift */; };
 		F4B2618E2E7CF7CE00592CFE /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B2616C2E7CF7CE00592CFE /* AuthView.swift */; };
 		F4B2618F2E7CF7CE00592CFE /* NotificationPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261772E7CF7CE00592CFE /* NotificationPreferencesView.swift */; };
@@ -179,6 +182,9 @@
 		F46AE5582E80DBA2000211D5 /* NotificationDebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationDebugView.swift; sourceTree = "<group>"; };
 		F46AE55B2E80DD53000211D5 /* OrganizationFollowingTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizationFollowingTestView.swift; sourceTree = "<group>"; };
 		F46AE55D2E80DF78000211D5 /* PushNotificationTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationTestView.swift; sourceTree = "<group>"; };
+		F46AE55F2E80F0A2000211D5 /* GroupInvitationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupInvitationView.swift; sourceTree = "<group>"; };
+		F46AE5602E80F0A2000211D5 /* InviteUserToGroupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteUserToGroupView.swift; sourceTree = "<group>"; };
+		F46AE5612E80F0A2000211D5 /* OrganizationGroupSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizationGroupSettingsView.swift; sourceTree = "<group>"; };
 		F4B261642E7CF7CE00592CFE /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		F4B261652E7CF7CE00592CFE /* AdminOrganizationManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminOrganizationManagementView.swift; sourceTree = "<group>"; };
 		F4B261662E7CF7CE00592CFE /* AdminOrganizationReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminOrganizationReviewView.swift; sourceTree = "<group>"; };
@@ -367,6 +373,9 @@
 		7966DE422E5013CA00AB33F7 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				F46AE55F2E80F0A2000211D5 /* GroupInvitationView.swift */,
+				F46AE5602E80F0A2000211D5 /* InviteUserToGroupView.swift */,
+				F46AE5612E80F0A2000211D5 /* OrganizationGroupSettingsView.swift */,
 				F46AE55D2E80DF78000211D5 /* PushNotificationTestView.swift */,
 				F46AE55B2E80DD53000211D5 /* OrganizationFollowingTestView.swift */,
 				F46AE5572E80DBA2000211D5 /* GroupNotificationTestView.swift */,
@@ -689,6 +698,9 @@
 				F4B261D32E7CF7DF00592CFE /* IncidentService.swift in Sources */,
 				F4B261D42E7CF7DF00592CFE /* UserManagementService.swift in Sources */,
 				F46AE55C2E80DD53000211D5 /* OrganizationFollowingTestView.swift in Sources */,
+				F46AE5622E80F0A2000211D5 /* GroupInvitationView.swift in Sources */,
+				F46AE5632E80F0A2000211D5 /* OrganizationGroupSettingsView.swift in Sources */,
+				F46AE5642E80F0A2000211D5 /* InviteUserToGroupView.swift in Sources */,
 				F4B261D52E7CF7DF00592CFE /* UserProfileService.swift in Sources */,
 				F4B261D62E7CF7DF00592CFE /* WeatherNotificationManager.swift in Sources */,
 				F46AE54C2E80B410000211D5 /* SimpleAuthManager.swift in Sources */,

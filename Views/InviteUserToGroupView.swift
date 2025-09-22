@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseFirestore
 
 struct InviteUserToGroupView: View {
     let organization: Organization

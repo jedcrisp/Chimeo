@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseFirestore
 
 struct OrganizationGroupSettingsView: View {
     let organization: Organization
@@ -172,7 +173,7 @@ struct OrganizationInvitationManagementView: View {
             }
         }
         .refreshable {
-            await loadInvitations()
+            loadInvitations()
         }
     }
     

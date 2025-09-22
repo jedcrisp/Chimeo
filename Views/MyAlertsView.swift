@@ -43,33 +43,18 @@ struct MyAlertsView: View {
         let filteredGroups = groups.filter { group in
             // If user is organization admin, show all groups
             if isAdmin {
-                print("🔐 Admin user - showing group: \(group.name) (private: \(group.isPrivate))")
                 return true
             }
             
             // If group is not private, show it to everyone
             if !group.isPrivate {
-                print("🌐 Public group - showing group: \(group.name)")
                 return true
             }
             
             // If group is private, only show if user is a member
             let isMember = userGroupIds.contains(group.id)
-            if isMember {
-                print("👥 Private group - user is member: \(group.name)")
-                return true
-            } else {
-                print("🔒 Private group hidden - user not member: \(group.name)")
-                return false
-            }
+            return isMember
         }
-        
-        print("🔍 MyAlertsView group filtering for org \(organizationId):")
-        print("   Total groups: \(groups.count)")
-        print("   Visible groups: \(filteredGroups.count)")
-        print("   Is admin: \(isAdmin)")
-        print("   User group memberships: \(userGroupIds)")
-        print("   Private groups: \(groups.filter { $0.isPrivate }.count)")
         
         return filteredGroups
     }
@@ -239,7 +224,6 @@ struct MyAlertsView: View {
         for organization in organizations {
             do {
                 // Fetch real groups from API
-                print("📡 Fetching groups for organization: \(organization.name)")
                 let groups = try await serviceCoordinator.getOrganizationGroups(organizationId: organization.id)
                 
                 await MainActor.run {
@@ -257,16 +241,9 @@ struct MyAlertsView: View {
                 do {
                     let savedPrefs = try await serviceCoordinator.fetchUserGroupPreferences()
                     await MainActor.run {
-                        print("🔄 Loading group preferences from server...")
-                        print("   Received \(savedPrefs.count) preferences: \(savedPrefs)")
-                        
                         for (groupId, enabled) in savedPrefs {
                             self.groupPreferences[groupId] = enabled
-                            print("   Set group \(groupId): \(enabled ? "enabled" : "disabled")")
                         }
-                        
-                        print("✅ Loaded \(savedPrefs.count) group preferences from server")
-                        print("   Final groupPreferences: \(self.groupPreferences)")
                     }
                 } catch {
                     print("❌ Error loading group preferences: \(error)")
@@ -317,7 +294,6 @@ struct MyAlertsView: View {
                 
                 await MainActor.run {
                     self.groupMemberships[organization.id] = memberGroupIds
-                    print("👥 Loaded group memberships for \(organization.name): \(memberGroupIds)")
                 }
             } catch {
                 print("❌ Error loading group memberships for \(organization.name): \(error)")
@@ -445,7 +421,6 @@ struct OrganizationCard: View {
                             group: group,
                             isEnabled: groupPreferences[group.id] ?? true,
                             onToggle: { isEnabled in
-                                print("🔄 Toggling group '\(group.name)' (ID: \(group.id)) to \(isEnabled ? "enabled" : "disabled")")
                                 groupPreferences[group.id] = isEnabled
                                 
                                 Task { 
@@ -460,17 +435,12 @@ struct OrganizationCard: View {
                                                 groupId: group.id,
                                                 isEnabled: isEnabled
                                             )
-                                            print("✅ Successfully updated group preference: \(group.name) = \(isEnabled)")
-                                        } else {
-                                            print("❌ Could not find organization for group \(group.name)")
                                         }
                                     } catch {
                                         print("❌ Error updating group preference: \(error)")
-                                        print("   Error details: \(error.localizedDescription)")
                                         // Revert the local change on error
                                         await MainActor.run {
                                             groupPreferences[group.id] = !isEnabled
-                                            print("   Reverted local state for group \(group.name)")
                                         }
                                     }
                                 }

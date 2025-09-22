@@ -56,12 +56,19 @@ struct MainTabView: View {
                 }
                 .tag(4)
             
+            GroupInvitationView()
+                .tabItem {
+                    Image(systemName: "envelope")
+                    Text("Invitations")
+                }
+                .tag(5)
+            
             SettingsTabView()
                 .tabItem {
                     Image(systemName: "gear")
                     Text("Settings")
                 }
-                .tag(5)
+                .tag(6)
         }
     }
     
@@ -74,12 +81,19 @@ struct MainTabView: View {
                 }
                 .tag(3)
             
+            GroupInvitationView()
+                .tabItem {
+                    Image(systemName: "envelope")
+                    Text("Invitations")
+                }
+                .tag(4)
+            
             SettingsTabView()
                 .tabItem {
                     Image(systemName: "gear")
                     Text("Settings")
                 }
-                .tag(4)
+                .tag(5)
         }
     }
     

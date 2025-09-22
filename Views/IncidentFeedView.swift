@@ -20,6 +20,17 @@ struct IncidentFeedView: View {
     @State private var showingErrorAlert = false
     @State private var errorMessage = ""
     
+    // Check if user has organization admin access
+    private var hasOrganizationAdminAccess: Bool {
+        // Check if user is admin of any organization
+        if let currentUser = authManager.currentUser {
+            return currentUser.isOrganizationAdmin == true || 
+                   currentUser.isAdmin == true ||
+                   !(currentUser.organizations?.isEmpty ?? true)
+        }
+        return false
+    }
+    
     var body: some View {
         NavigationView {
                     VStack(spacing: 0) {
@@ -29,23 +40,25 @@ struct IncidentFeedView: View {
             // Clean Alerts Feed
             alertsFeed
                 
-                // Floating Action Button for posting alerts
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        showingGroupSelection = true
-                    }) {
-                        Image(systemName: "plus")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .frame(width: 56, height: 56)
-                            .background(Color.green)
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                // Floating Action Button for posting alerts (only for org admins)
+                if hasOrganizationAdminAccess {
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            showingGroupSelection = true
+                        }) {
+                            Image(systemName: "plus")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .frame(width: 56, height: 56)
+                                .background(Color.green)
+                                .clipShape(Circle())
+                                .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
                     }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 20)
                 }
             }
             .navigationTitle("Alerts")

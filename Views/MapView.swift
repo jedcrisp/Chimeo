@@ -123,12 +123,15 @@ struct MapView: View {
     private var mapAnnotations: [MapAnnotationItem] {
         var annotations: [MapAnnotationItem] = []
         
+        print("🗺️ Creating map annotations for \(organizations.count) organizations")
+        
         // Add user location annotation (blue dot)
         if let userLocation = locationManager.currentLocation {
             annotations.append(MapAnnotationItem(
                 coordinate: userLocation.coordinate,
                 type: .userLocation
             ))
+            print("📍 Added user location annotation")
         }
         
         // Create pins for organizations
@@ -146,6 +149,7 @@ struct MapView: View {
                     coordinate: coordinate,
                     type: .organization(org)
                 ))
+                print("📍 Added pin for \(org.name) at \(coordinate.latitude), \(coordinate.longitude)")
             } else {
                 // Check if we have address data that can be geocoded
                 // Try to get address from the nested location object first
@@ -179,6 +183,7 @@ struct MapView: View {
             }
         }
         
+        print("🗺️ Total map annotations created: \(annotations.count)")
         return annotations
     }
     
@@ -393,7 +398,7 @@ struct MapView: View {
             .padding(.vertical, 16)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemBackground))
+                    .fill(.ultraThinMaterial)
                     .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
             )
             .overlay(
@@ -520,14 +525,53 @@ struct MapView: View {
         
         Task {
             do {
-                // TODO: Add incident and organization fetching to SimpleAuthManager
-                let incidentsTask = Task { return [Incident]() }
-                let organizationsTask = Task { return [Organization]() }
+                // Load organizations from Firestore
+                let db = Firestore.firestore()
+                let organizationsSnapshot = try await db.collection("organizations").getDocuments()
                 
-                let (fetchedIncidents, fetchedOrganizations) = await (incidentsTask.value, organizationsTask.value)
+                var fetchedOrganizations: [Organization] = []
+                for document in organizationsSnapshot.documents {
+                    do {
+                        // Use the custom decoder to properly parse all fields including private groups
+                        let organization = try document.data(as: Organization.self)
+                        fetchedOrganizations.append(organization)
+                    } catch {
+                        print("❌ Failed to decode organization \(document.documentID): \(error)")
+                        // Fallback to manual creation for backward compatibility
+                        let data = document.data()
+                        let organization = Organization(
+                            id: document.documentID,
+                            name: data["name"] as? String ?? "Unknown Organization",
+                            type: data["type"] as? String ?? "business",
+                            description: data["description"] as? String ?? "",
+                            verified: data["verified"] as? Bool ?? false,
+                            followerCount: data["followerCount"] as? Int ?? 0,
+                            logoURL: data["logoURL"] as? String,
+                            website: data["website"] as? String,
+                            phone: data["phone"] as? String,
+                            email: data["email"] as? String,
+                            address: data["address"] as? String,
+                            city: data["city"] as? String,
+                            state: data["state"] as? String,
+                            zipCode: data["zipCode"] as? String,
+                            location: Location(
+                                latitude: data["latitude"] as? Double ?? 0.0,
+                                longitude: data["longitude"] as? Double ?? 0.0,
+                                address: data["address"] as? String,
+                                city: data["city"] as? String,
+                                state: data["state"] as? String,
+                                zipCode: data["zipCode"] as? String
+                            ),
+                            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                            updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date(),
+                            groupsArePrivate: data["groupsArePrivate"] as? Bool ?? false,
+                            allowPublicGroupJoin: data["allowPublicGroupJoin"] as? Bool ?? true
+                        )
+                        fetchedOrganizations.append(organization)
+                    }
+                }
                 
                 await MainActor.run {
-                    self.incidents = fetchedIncidents
                     self.organizations = fetchedOrganizations
                     self.isLoading = false
                     

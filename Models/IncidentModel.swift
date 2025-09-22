@@ -196,6 +196,10 @@ struct Organization: Identifiable, Codable, Hashable {
     let createdAt: Date?
     let updatedAt: Date?
     
+    // Private groups settings
+    let groupsArePrivate: Bool
+    let allowPublicGroupJoin: Bool
+    
     // Direct access to address fields (flat in Firestore)
     let address: String?
     let city: String?
@@ -219,6 +223,8 @@ struct Organization: Identifiable, Codable, Hashable {
         case adminIds
         case createdAt
         case updatedAt
+        case groupsArePrivate
+        case allowPublicGroupJoin
         // Map flat address fields to nested location
         case address
         case city
@@ -226,7 +232,7 @@ struct Organization: Identifiable, Codable, Hashable {
         case zipCode
     }
     
-    init(id: String = UUID().uuidString, name: String, type: String, description: String? = nil, location: Location, verified: Bool = false, followerCount: Int = 0, logoURL: String? = nil, website: String? = nil, phone: String? = nil, email: String? = nil, groups: [OrganizationGroup]? = nil, adminIds: [String: Bool]? = nil, createdAt: Date? = nil, updatedAt: Date? = nil, address: String? = nil, city: String? = nil, state: String? = nil, zipCode: String? = nil) {
+    init(id: String = UUID().uuidString, name: String, type: String, description: String? = nil, location: Location, verified: Bool = false, followerCount: Int = 0, logoURL: String? = nil, website: String? = nil, phone: String? = nil, email: String? = nil, groups: [OrganizationGroup]? = nil, adminIds: [String: Bool]? = nil, createdAt: Date? = nil, updatedAt: Date? = nil, groupsArePrivate: Bool = false, allowPublicGroupJoin: Bool = true, address: String? = nil, city: String? = nil, state: String? = nil, zipCode: String? = nil) {
         self.id = id
         self.name = name
         self.type = type
@@ -242,6 +248,8 @@ struct Organization: Identifiable, Codable, Hashable {
         self.adminIds = adminIds
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+        self.groupsArePrivate = groupsArePrivate
+        self.allowPublicGroupJoin = allowPublicGroupJoin
         self.address = address
         self.city = city
         self.state = state
@@ -267,6 +275,10 @@ struct Organization: Identifiable, Codable, Hashable {
         self.adminIds = try container.decodeIfPresent([String: Bool].self, forKey: .adminIds)
         self.createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
         self.updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+        
+        // Decode private groups settings
+        self.groupsArePrivate = try container.decodeIfPresent(Bool.self, forKey: .groupsArePrivate) ?? false
+        self.allowPublicGroupJoin = try container.decodeIfPresent(Bool.self, forKey: .allowPublicGroupJoin) ?? true
         
         // Decode flat address fields
         self.address = try container.decodeIfPresent(String.self, forKey: .address)
@@ -315,6 +327,8 @@ struct Organization: Identifiable, Codable, Hashable {
         try container.encodeIfPresent(adminIds, forKey: .adminIds)
         try container.encodeIfPresent(createdAt, forKey: .createdAt)
         try container.encodeIfPresent(updatedAt, forKey: .updatedAt)
+        try container.encode(groupsArePrivate, forKey: .groupsArePrivate)
+        try container.encode(allowPublicGroupJoin, forKey: .allowPublicGroupJoin)
         
         // Encode location as nested object
         try container.encode(location, forKey: .location)
@@ -804,5 +818,91 @@ struct UserGroupPreferences: Codable {
         self.alertsEnabled = alertsEnabled
         self.createdAt = createdAt
         self.updatedAt = updatedAt
+    }
+}
+
+// MARK: - Group Invitation
+struct GroupInvitation: Identifiable, Codable {
+    let id: String
+    let organizationId: String
+    let organizationName: String
+    let groupId: String
+    let groupName: String
+    let invitedUserId: String
+    let invitedUserEmail: String?
+    let invitedUserName: String?
+    let invitedByUserId: String
+    let invitedByName: String
+    let status: InvitationStatus
+    let message: String?
+    let createdAt: Date
+    let expiresAt: Date
+    let respondedAt: Date?
+    
+    init(id: String = UUID().uuidString, organizationId: String, organizationName: String, groupId: String, groupName: String, invitedUserId: String, invitedUserEmail: String? = nil, invitedUserName: String? = nil, invitedByUserId: String, invitedByName: String, status: InvitationStatus = .pending, message: String? = nil, createdAt: Date = Date(), expiresAt: Date? = nil, respondedAt: Date? = nil) {
+        self.id = id
+        self.organizationId = organizationId
+        self.organizationName = organizationName
+        self.groupId = groupId
+        self.groupName = groupName
+        self.invitedUserId = invitedUserId
+        self.invitedUserEmail = invitedUserEmail
+        self.invitedUserName = invitedUserName
+        self.invitedByUserId = invitedByUserId
+        self.invitedByName = invitedByName
+        self.status = status
+        self.message = message
+        self.createdAt = createdAt
+        self.expiresAt = expiresAt ?? Calendar.current.date(byAdding: .day, value: 7, to: createdAt) ?? createdAt
+        self.respondedAt = respondedAt
+    }
+    
+    var isExpired: Bool {
+        return Date() > expiresAt
+    }
+    
+    var daysUntilExpiry: Int {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.day], from: Date(), to: expiresAt)
+        return components.day ?? 0
+    }
+}
+
+// MARK: - Invitation Status
+enum InvitationStatus: String, CaseIterable, Codable {
+    case pending = "pending"
+    case accepted = "accepted"
+    case declined = "declined"
+    case expired = "expired"
+    case cancelled = "cancelled"
+    
+    var displayName: String {
+        switch self {
+        case .pending: return "Pending"
+        case .accepted: return "Accepted"
+        case .declined: return "Declined"
+        case .expired: return "Expired"
+        case .cancelled: return "Cancelled"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .pending: return .orange
+        case .accepted: return .green
+        case .declined: return .red
+        case .expired: return .gray
+        case .cancelled: return .gray
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .pending: return "clock"
+        case .accepted: return "checkmark.circle"
+        case .declined: return "xmark.circle"
+        case .expired: return "clock.badge.exclamationmark"
+        case .cancelled: return "minus.circle"
+        }
     }
 } 

@@ -1075,12 +1075,20 @@ class APIService: ObservableObject {
         let name = data["name"] as? String ?? "Unknown Group"
         let description = data["description"] as? String ?? "No description available"
         let organizationId = data["organizationId"] as? String ?? ""
+        let isActive = data["isActive"] as? Bool ?? true
+        let memberCount = data["memberCount"] as? Int ?? 0
+        let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+        let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
         
         return OrganizationGroup(
             id: id,
             name: name,
             description: description,
-            organizationId: organizationId
+            organizationId: organizationId,
+            isActive: isActive,
+            memberCount: memberCount,
+            createdAt: createdAt,
+            updatedAt: updatedAt
         )
     }
     

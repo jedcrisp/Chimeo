@@ -7,6 +7,7 @@ struct OrganizationGroupManagementView: View {
     @State private var isLoading = false
     @State private var showingCreateGroup = false
     @State private var errorMessage: String?
+    @State private var showingErrorAlert = false
     @State private var showingEditGroup = false
     @State private var editingGroup: OrganizationGroup?
     @State private var editGroupName = ""
@@ -69,6 +70,12 @@ struct OrganizationGroupManagementView: View {
             .navigationTitle("Manage Groups")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    NavigationLink(destination: OrganizationGroupSettingsView(organization: organization)) {
+                        Image(systemName: "gearshape")
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingCreateGroup = true }) {
                         Image(systemName: "plus")
@@ -94,9 +101,10 @@ struct OrganizationGroupManagementView: View {
                     }
                 )
             }
-            .alert("Error", isPresented: .constant(errorMessage != nil)) {
+            .alert("Error", isPresented: $showingErrorAlert) {
                 Button("OK") {
                     errorMessage = nil
+                    showingErrorAlert = false
                 }
             } message: {
                 if let errorMessage = errorMessage {
@@ -107,19 +115,25 @@ struct OrganizationGroupManagementView: View {
     }
     
     private func loadGroups() {
+        print("🔧 OrganizationGroupManagementView: Loading groups for organization: \(organization.id)")
         isLoading = true
         
         Task {
             do {
+                print("🔧 OrganizationGroupManagementView: Starting API call...")
                 let fetchedGroups = try await apiService.getOrganizationGroups(organizationId: organization.id)
+                print("🔧 OrganizationGroupManagementView: API call completed, got \(fetchedGroups.count) groups")
+                
                 await MainActor.run {
                     self.groups = fetchedGroups
                     self.isLoading = false
+                    print("🔧 OrganizationGroupManagementView: Groups updated in UI")
                 }
             } catch {
                 print("❌ Error loading groups: \(error)")
                 await MainActor.run {
                     self.errorMessage = "Failed to load groups: \(error.localizedDescription)"
+                    self.showingErrorAlert = true
                     self.isLoading = false
                 }
             }
@@ -145,6 +159,7 @@ struct OrganizationGroupManagementView: View {
             } catch {
                 await MainActor.run {
                     errorMessage = "Failed to delete group: \(error.localizedDescription)"
+                    showingErrorAlert = true
                 }
             }
         }

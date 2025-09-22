@@ -16,6 +16,7 @@ struct MyAlertsView: View {
     @State private var groupsErrorMessage = ""
     @State private var searchText = ""
     @State private var organizationGroups: [String: [OrganizationGroup]] = [:]
+    @State private var organizationAdminStatus: [String: Bool] = [:]
     
     private var filteredOrganizations: [Organization] {
         var filtered = followedOrganizations
@@ -32,7 +33,26 @@ struct MyAlertsView: View {
         return filtered
     }
     
-
+    // Filter groups based on privacy and admin status
+    private func visibleGroups(for organizationId: String) -> [OrganizationGroup] {
+        let groups = organizationGroups[organizationId] ?? []
+        let isAdmin = organizationAdminStatus[organizationId] ?? false
+        
+        return groups.filter { group in
+            // If user is organization admin, show all groups
+            if isAdmin {
+                return true
+            }
+            
+            // If group is not private, show it to everyone
+            if !group.isPrivate {
+                return true
+            }
+            
+            // If group is private, hide from non-admin users
+            return false
+        }
+    }
     
     var body: some View {
         NavigationView {
@@ -130,7 +150,7 @@ struct MyAlertsView: View {
             ForEach(filteredOrganizations) { organization in
                 OrganizationCard(
                     organization: organization,
-                    groups: organizationGroups[organization.id] ?? [],
+                    groups: visibleGroups(for: organization.id),
                     groupPreferences: $groupPreferences,
                     isExpanded: expandedOrganizations.contains(organization.id),
                     onToggleExpanded: {
@@ -181,6 +201,7 @@ struct MyAlertsView: View {
                 // Groups are hidden by default - user must click to expand
             }
             await loadOrganizationGroups(for: followed)
+            await checkAdminStatus(for: followed)
             await MainActor.run { self.isLoading = false }
         } catch {
             print("❌ Error loading followed organizations: \(error)")
@@ -233,6 +254,22 @@ struct MyAlertsView: View {
                 print("❌ Error loading groups for \(organization.name): \(error)")
                 await MainActor.run {
                     self.organizationGroups[organization.id] = []
+                }
+            }
+        }
+    }
+    
+    private func checkAdminStatus(for organizations: [Organization]) async {
+        for organization in organizations {
+            do {
+                let isAdmin = try await serviceCoordinator.isAdminOfOrganization(organization.id)
+                await MainActor.run {
+                    self.organizationAdminStatus[organization.id] = isAdmin
+                }
+            } catch {
+                print("❌ Error checking admin status for \(organization.name): \(error)")
+                await MainActor.run {
+                    self.organizationAdminStatus[organization.id] = false
                 }
             }
         }

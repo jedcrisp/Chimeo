@@ -47,6 +47,26 @@ struct OrganizationProfileView: View {
         self._currentOrganization = State(initialValue: organization)
     }
     
+    // Filter groups based on privacy and admin status
+    private var visibleGroups: [OrganizationGroup] {
+        return groups.filter { group in
+            // If user is organization admin, show all groups
+            if isOrganizationAdmin {
+                return true
+            }
+            
+            // If group is not private, show it to everyone
+            if !group.isPrivate {
+                return true
+            }
+            
+            // If group is private, only show if user is a member
+            // For now, we'll hide private groups from non-admin users
+            // TODO: Implement proper group membership checking
+            return false
+        }
+    }
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -530,7 +550,7 @@ struct OrganizationProfileView: View {
                 
                 StatCard(
                     title: isOrganizationAdmin ? "Groups" : "Groups",
-                    value: "\(groups.count)",
+                    value: "\(visibleGroups.count)",
                     icon: "person.3.fill",
                     color: .green,
                     isClickable: isOrganizationAdmin && currentOrganization.verified,
@@ -556,7 +576,7 @@ struct OrganizationProfileView: View {
                 
 
                 
-                if isOrganizationAdmin && !groups.isEmpty {
+                if isOrganizationAdmin && !visibleGroups.isEmpty {
                     HStack {
                         Image(systemName: "hand.tap.fill")
                             .foregroundColor(.blue)
@@ -582,7 +602,7 @@ struct OrganizationProfileView: View {
                         .foregroundColor(.secondary)
                 }
                 .padding()
-            } else if groups.isEmpty {
+            } else if visibleGroups.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: "person.3")
                         .font(.system(size: 50))
@@ -601,7 +621,7 @@ struct OrganizationProfileView: View {
                 .padding()
             } else {
                 VStack(spacing: 0) {
-                    ForEach(groups) { group in
+                    ForEach(visibleGroups) { group in
                         GroupToggleRow(
                             group: group,
                             isEnabled: userGroupPreferences[group.id] ?? true,

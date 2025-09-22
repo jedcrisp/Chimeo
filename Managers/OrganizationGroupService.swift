@@ -242,11 +242,14 @@ class OrganizationGroupService: ObservableObject {
     ) async throws -> String {
         let db = Firestore.firestore()
         
-        // Create a new document reference to get the document ID first
-        let docRef = db.collection("groupInvitations").document()
+        // Create invitation in organization's subcollection
+        let docRef = db.collection("organizations")
+            .document(organizationId)
+            .collection("groupInvitations")
+            .document()
         let documentId = docRef.documentID
         
-        print("📝 Creating invitation with document ID: \(documentId)")
+        print("📝 Creating invitation in organization subcollection: \(organizationId)/groupInvitations/\(documentId)")
         
         // Create invitation with the Firestore document ID
         let invitation = GroupInvitation(
@@ -270,22 +273,38 @@ class OrganizationGroupService: ObservableObject {
     
     func getUserInvitations(userId: String) async throws -> [GroupInvitation] {
         let db = Firestore.firestore()
-        let snapshot = try await db.collection("groupInvitations")
-            .whereField("invitedUserId", isEqualTo: userId)
-            .getDocuments()
         
-        let invitations = snapshot.documents.compactMap { document in
-            try? document.data(as: GroupInvitation.self)
+        // First, get all organizations to query their groupInvitations subcollections
+        let orgsSnapshot = try await db.collection("organizations").getDocuments()
+        var allInvitations: [GroupInvitation] = []
+        
+        for orgDoc in orgsSnapshot.documents {
+            let orgId = orgDoc.documentID
+            let orgName = orgDoc.data()["name"] as? String ?? "Unknown Organization"
+            
+            // Query groupInvitations subcollection for this organization
+            let invitationsSnapshot = try await db.collection("organizations")
+                .document(orgId)
+                .collection("groupInvitations")
+                .whereField("invitedUserId", isEqualTo: userId)
+                .getDocuments()
+            
+            let orgInvitations = invitationsSnapshot.documents.compactMap { document in
+                try? document.data(as: GroupInvitation.self)
+            }
+            
+            allInvitations.append(contentsOf: orgInvitations)
         }
         
         // Sort manually to avoid needing a composite index
-        return invitations.sorted { $0.createdAt > $1.createdAt }
+        return allInvitations.sorted { $0.createdAt > $1.createdAt }
     }
     
     func getOrganizationInvitations(organizationId: String) async throws -> [GroupInvitation] {
         let db = Firestore.firestore()
-        let snapshot = try await db.collection("groupInvitations")
-            .whereField("organizationId", isEqualTo: organizationId)
+        let snapshot = try await db.collection("organizations")
+            .document(organizationId)
+            .collection("groupInvitations")
             .getDocuments()
         
         let invitations = snapshot.documents.compactMap { document in
@@ -296,17 +315,20 @@ class OrganizationGroupService: ObservableObject {
         return invitations.sorted { $0.createdAt > $1.createdAt }
     }
     
-    func respondToInvitation(invitationId: String, status: InvitationStatus) async throws {
+    func respondToInvitation(invitationId: String, organizationId: String, status: InvitationStatus) async throws {
         let db = Firestore.firestore()
         
-        print("📝 Responding to invitation: \(invitationId) with status: \(status.rawValue)")
+        print("📝 Responding to invitation: \(invitationId) in organization: \(organizationId) with status: \(status.rawValue)")
         
-        // First, check if the document exists
-        let docRef = db.collection("groupInvitations").document(invitationId)
+        // First, check if the document exists in the organization's subcollection
+        let docRef = db.collection("organizations")
+            .document(organizationId)
+            .collection("groupInvitations")
+            .document(invitationId)
         let docSnapshot = try await docRef.getDocument()
         
         if !docSnapshot.exists {
-            print("❌ Invitation document does not exist: \(invitationId)")
+            print("❌ Invitation document does not exist: \(invitationId) in organization: \(organizationId)")
             throw NSError(domain: "InvitationError", code: 404, userInfo: [NSLocalizedDescriptionKey: "Invitation not found or has been deleted"])
         }
         
@@ -320,13 +342,15 @@ class OrganizationGroupService: ObservableObject {
         
         // If accepted, add user to the group
         if status == .accepted {
-            try await addUserToGroup(invitationId: invitationId)
+            try await addUserToGroup(invitationId: invitationId, organizationId: organizationId)
         }
     }
     
-    func cancelInvitation(invitationId: String) async throws {
+    func cancelInvitation(invitationId: String, organizationId: String) async throws {
         let db = Firestore.firestore()
-        try await db.collection("groupInvitations")
+        try await db.collection("organizations")
+            .document(organizationId)
+            .collection("groupInvitations")
             .document(invitationId)
             .updateData([
                 "status": InvitationStatus.cancelled.rawValue,
@@ -334,10 +358,12 @@ class OrganizationGroupService: ObservableObject {
             ])
     }
     
-    private func addUserToGroup(invitationId: String) async throws {
+    private func addUserToGroup(invitationId: String, organizationId: String) async throws {
         let db = Firestore.firestore()
-        // Get the invitation details
-        let invitationDoc = try await db.collection("groupInvitations")
+        // Get the invitation details from the organization's subcollection
+        let invitationDoc = try await db.collection("organizations")
+            .document(organizationId)
+            .collection("groupInvitations")
             .document(invitationId)
             .getDocument()
         

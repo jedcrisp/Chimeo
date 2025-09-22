@@ -202,7 +202,7 @@ struct OrganizationInvitationManagementView: View {
     private func cancelInvitation(_ invitation: GroupInvitation) {
         Task {
             do {
-                try await groupService.cancelInvitation(invitationId: invitation.id)
+                try await groupService.cancelInvitation(invitationId: invitation.id, organizationId: invitation.organizationId)
                 await MainActor.run {
                     // Remove the invitation from the list
                     invitations.removeAll { $0.id == invitation.id }

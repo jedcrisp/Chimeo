@@ -99,7 +99,7 @@ struct GroupInvitationView: View {
     private func respondToInvitation(_ invitation: GroupInvitation, status: InvitationStatus) {
         Task {
             do {
-                try await groupService.respondToInvitation(invitationId: invitation.id, status: status)
+                try await groupService.respondToInvitation(invitationId: invitation.id, organizationId: invitation.organizationId, status: status)
                 await MainActor.run {
                     // Remove the invitation from the list
                     invitations.removeAll { $0.id == invitation.id }

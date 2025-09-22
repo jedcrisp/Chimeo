@@ -41,9 +41,6 @@ struct MapView: View {
     @State private var mapSearchResults: [Organization] = []
     @State private var showingSearchSheet = false
     
-    // Calendar functionality for org admins
-    @State private var showingCalendar = false
-    @State private var isOrganizationAdmin = false
 
     var body: some View {
         NavigationView {
@@ -241,10 +238,6 @@ struct MapView: View {
                     await checkAndFixOrganizationLogos()
                 }
                 
-                // Check if user is an organization admin
-                Task {
-                    await checkAdminStatus()
-                }
             } else {
                 print("⚠️ User not authenticated, skipping data load")
             }
@@ -269,44 +262,6 @@ struct MapView: View {
                 Task {
                     loadData()
                 }
-            }
-        }
-        .sheet(isPresented: $showingCalendar) {
-            CalendarView()
-        }
-    }
-    
-    // MARK: - Admin Status Checking
-    private func checkAdminStatus() async {
-        guard let userId = authManager.currentUser?.id else {
-            await MainActor.run {
-                self.isOrganizationAdmin = false
-            }
-            return
-        }
-        
-        do {
-            // Check if user is admin of any organization
-            let db = Firestore.firestore()
-            let orgsSnapshot = try await db.collection("organizations").getDocuments()
-            
-            var isAdmin = false
-            for orgDoc in orgsSnapshot.documents {
-                let orgData = orgDoc.data()
-                if let adminIds = orgData["adminIds"] as? [String], adminIds.contains(userId) {
-                    isAdmin = true
-                    break
-                }
-            }
-            
-            await MainActor.run {
-                self.isOrganizationAdmin = isAdmin
-                print("🔐 User admin status: \(isAdmin ? "Admin" : "Not admin")")
-            }
-        } catch {
-            print("❌ Error checking admin status: \(error)")
-            await MainActor.run {
-                self.isOrganizationAdmin = false
             }
         }
     }
@@ -355,16 +310,6 @@ struct MapView: View {
                     }
                 }
                 
-                // Calendar button for organization admins
-                if isOrganizationAdmin {
-                    Button(action: {
-                        showingCalendar = true
-                    }) {
-                        Image(systemName: "calendar")
-                            .foregroundColor(.blue)
-                            .font(.system(size: 16, weight: .medium))
-                    }
-                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)

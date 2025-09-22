@@ -1421,6 +1421,8 @@ class APIService: ObservableObject {
             "description": group.description ?? "",
             "organizationId": organizationId,
             "isActive": group.isActive,
+            "isPrivate": group.isPrivate,
+            "allowPublicJoin": group.allowPublicJoin,
             "createdAt": FieldValue.serverTimestamp(),
             "updatedAt": FieldValue.serverTimestamp()
         ]

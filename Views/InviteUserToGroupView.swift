@@ -132,7 +132,7 @@ struct InviteUserToGroupView: View {
         let db = Firestore.firestore()
         let snapshot = try await db.collection("users")
             .whereField("email", isEqualTo: email)
-            .limit(1)
+            .limit(to: 1)
             .getDocuments()
         
         guard let document = snapshot.documents.first else {

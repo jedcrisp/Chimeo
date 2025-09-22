@@ -2,11 +2,11 @@ import Foundation
 import FirebaseFirestore
 import FirebaseAuth
 
-class GroupInvitationService: ObservableObject {
+public class GroupInvitationService: ObservableObject {
     private let db = Firestore.firestore()
     
     // MARK: - Send Invitation
-    func sendGroupInvitation(
+    public func sendGroupInvitation(
         organizationId: String,
         organizationName: String,
         groupId: String,
@@ -36,7 +36,7 @@ class GroupInvitationService: ObservableObject {
     }
     
     // MARK: - Get User Invitations
-    func getUserInvitations(userId: String) async throws -> [GroupInvitation] {
+    public func getUserInvitations(userId: String) async throws -> [GroupInvitation] {
         let snapshot = try await db.collection("groupInvitations")
             .whereField("invitedUserId", isEqualTo: userId)
             .order(by: "createdAt", descending: true)
@@ -48,7 +48,7 @@ class GroupInvitationService: ObservableObject {
     }
     
     // MARK: - Get Organization Invitations
-    func getOrganizationInvitations(organizationId: String) async throws -> [GroupInvitation] {
+    public func getOrganizationInvitations(organizationId: String) async throws -> [GroupInvitation] {
         let snapshot = try await db.collection("groupInvitations")
             .whereField("organizationId", isEqualTo: organizationId)
             .order(by: "createdAt", descending: true)
@@ -60,7 +60,7 @@ class GroupInvitationService: ObservableObject {
     }
     
     // MARK: - Respond to Invitation
-    func respondToInvitation(invitationId: String, status: InvitationStatus) async throws {
+    public func respondToInvitation(invitationId: String, status: InvitationStatus) async throws {
         let updateData: [String: Any] = [
             "status": status.rawValue,
             "respondedAt": FieldValue.serverTimestamp()
@@ -77,7 +77,7 @@ class GroupInvitationService: ObservableObject {
     }
     
     // MARK: - Cancel Invitation
-    func cancelInvitation(invitationId: String) async throws {
+    public func cancelInvitation(invitationId: String) async throws {
         try await db.collection("groupInvitations")
             .document(invitationId)
             .updateData([

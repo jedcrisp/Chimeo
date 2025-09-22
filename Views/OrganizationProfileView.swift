@@ -206,55 +206,6 @@ struct OrganizationProfileView: View {
                             )
                         }
                         
-                        // Debug Admin Access button for org admins
-                        Button(action: { 
-                            print("🔍 Debug Admin Access button tapped")
-                            debugAdminAccess()
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "ladybug.fill")
-                                .font(.system(size: 20))
-                                Text("Debug")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                            }
-                            .foregroundColor(.orange)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.orange.opacity(0.1))
-                            )
-                        }
-                        
-
-                    
-                    // Debug: Show current admin status
-                    VStack(spacing: 4) {
-                        Text("Admin: \(isOrganizationAdmin ? "YES" : "NO")")
-                            .font(.caption)
-                            .foregroundColor(isOrganizationAdmin ? .green : .red)
-                        
-                        // Show current user ID for debugging
-                        if let currentUserId = authManager.currentUser?.id {
-                            Text("User ID: \(String(currentUserId.prefix(8)))...")
-                                .font(.caption2)
-                                .foregroundColor(.gray)
-                        }
-                        
-                        // Show organization admin IDs for debugging
-                        if let adminIds = organization.adminIds {
-                            Text("Org Admin IDs: \(adminIds.keys.map { String($0.prefix(8)) + "..." }.joined(separator: ", "))")
-                                .font(.caption2)
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(isOrganizationAdmin ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
-                    )
                 }
                     
                     // Fix follower count button (show when count is negative or when there might be a discrepancy)
@@ -267,22 +218,6 @@ struct OrganizationProfileView: View {
                     }
                     
 
-                    
-                    // Debug admin access button
-                    Button(action: debugAdminAccess) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "info.circle")
-                            Text("Debug Admin")
-                        }
-                        .foregroundColor(.blue)
-                    }
-                    .help("Debug admin access details")
-                    
-                    // Show current admin status
-                    Text("Admin Status: \(isOrganizationAdmin ? "YES" : "NO")")
-                        .font(.caption)
-                        .foregroundColor(isOrganizationAdmin ? .green : .red)
-                        .padding(.top, 4)
                 }
             }
         }
@@ -1320,51 +1255,6 @@ struct OrganizationProfileView: View {
     
 
     
-    private func debugAdminAccess() {
-        Task {
-            print("🔍 Debugging admin access for organization: \(organization.name)")
-            print("   Organization ID: \(organization.id)")
-            print("   Current user ID: \(authManager.currentUser?.id ?? "nil")")
-            print("   Current user email: \(authManager.currentUser?.email ?? "nil")")
-            print("   Organization admin IDs: \(organization.adminIds ?? [:])")
-            
-            // Check if there's a user document with the current email
-            if let currentEmail = authManager.currentUser?.email {
-                print("🔍 Looking for user document with email: \(currentEmail)")
-                do {
-                    let db = Firestore.firestore()
-                    let userQuery = try await db.collection("users")
-                        .whereField("email", isEqualTo: currentEmail)
-                        .getDocuments()
-                    
-                    if !userQuery.documents.isEmpty {
-                        for doc in userQuery.documents {
-                            let userData = doc.data()
-                            print("   📋 Found user document:")
-                            print("      - Document ID: \(doc.documentID)")
-                            print("      - User ID in data: \(userData["id"] ?? "nil")")
-                            print("      - Email: \(userData["email"] ?? "nil")")
-                            print("      - Name: \(userData["name"] ?? "nil")")
-                            print("      - Is Admin: \(userData["isAdmin"] ?? "nil")")
-                            print("      - Is Organization Admin: \(userData["isOrganizationAdmin"] ?? "nil")")
-                        }
-                    } else {
-                        print("   ❌ No user document found with email: \(currentEmail)")
-                    }
-                } catch {
-                    print("   ❌ Error querying user documents: \(error)")
-                }
-            }
-            
-            // Call the API service debug function
-            do {
-                // TODO: Add organizations listing to SimpleAuthManager
-                print("Organizations listing not implemented in SimpleAuthManager")
-            } catch {
-                print("❌ Error debugging admin access: \(error)")
-            }
-        }
-    }
     
 
     

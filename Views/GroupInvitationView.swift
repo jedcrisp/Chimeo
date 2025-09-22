@@ -77,11 +77,16 @@ struct GroupInvitationView: View {
         Task {
             do {
                 let fetchedInvitations = try await groupService.getUserInvitations(userId: userId)
+                print("📋 Loaded \(fetchedInvitations.count) invitations:")
+                for invitation in fetchedInvitations {
+                    print("   - \(invitation.groupName) (ID: \(invitation.id))")
+                }
                 await MainActor.run {
                     self.invitations = fetchedInvitations
                     self.isLoading = false
                 }
             } catch {
+                print("❌ Error loading invitations: \(error)")
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
                     self.showingErrorAlert = true

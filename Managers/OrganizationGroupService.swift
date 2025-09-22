@@ -288,14 +288,25 @@ class OrganizationGroupService: ObservableObject {
     
     func respondToInvitation(invitationId: String, status: InvitationStatus) async throws {
         let db = Firestore.firestore()
+        
+        print("📝 Responding to invitation: \(invitationId) with status: \(status.rawValue)")
+        
+        // First, check if the document exists
+        let docRef = db.collection("groupInvitations").document(invitationId)
+        let docSnapshot = try await docRef.getDocument()
+        
+        if !docSnapshot.exists {
+            print("❌ Invitation document does not exist: \(invitationId)")
+            throw NSError(domain: "InvitationError", code: 404, userInfo: [NSLocalizedDescriptionKey: "Invitation not found or has been deleted"])
+        }
+        
         let updateData: [String: Any] = [
             "status": status.rawValue,
             "respondedAt": FieldValue.serverTimestamp()
         ]
         
-        try await db.collection("groupInvitations")
-            .document(invitationId)
-            .updateData(updateData)
+        try await docRef.updateData(updateData)
+        print("✅ Successfully updated invitation status")
         
         // If accepted, add user to the group
         if status == .accepted {

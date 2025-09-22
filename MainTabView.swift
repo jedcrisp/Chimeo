@@ -134,12 +134,54 @@ struct MainTabView: View {
             // Request location permissions when app launches
             locationManager.requestLocationPermission()
             print("🎉 Chimeo app loaded successfully!")
+            print("🔍 MainTabView: isCreatorAccount = \(isCreatorAccount)")
+            print("🔍 MainTabView: isOrganizationAdmin = \(isOrganizationAdmin)")
             
             // Check if user is an organization admin
             Task {
                 await checkAdminStatus()
             }
         }
+        .overlay(
+            // Debug overlay to show admin status
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("Admin: \(isOrganizationAdmin ? "YES" : "NO")")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(isOrganizationAdmin ? Color.green : Color.red)
+                            .cornerRadius(8)
+                        
+                        Text("Creator: \(isCreatorAccount ? "YES" : "NO")")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(isCreatorAccount ? Color.blue : Color.gray)
+                            .cornerRadius(8)
+                        
+                        Button("Check Admin") {
+                            Task {
+                                await checkAdminStatus()
+                            }
+                        }
+                        .font(.caption2)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange)
+                        .cornerRadius(8)
+                    }
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 100) // Above tab bar
+                }
+            }
+        )
     }
     
     // MARK: - Admin Status Checking

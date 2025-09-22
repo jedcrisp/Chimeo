@@ -448,20 +448,30 @@ struct MapView: View {
                     do {
                         // Use the custom decoder to properly parse all fields including private groups
                         let organization = try document.data(as: Organization.self)
+                        print("📍 Loaded organization: \(organization.name)")
+                        print("   Coordinates: \(organization.location.latitude), \(organization.location.longitude)")
+                        print("   Address: \(organization.location.address ?? "none")")
                         fetchedOrganizations.append(organization)
                     } catch {
                         print("❌ Failed to decode organization \(document.documentID): \(error)")
                         // Fallback to manual creation for backward compatibility
                         let data = document.data()
+                        let lat = data["latitude"] as? Double ?? 0.0
+                        let lng = data["longitude"] as? Double ?? 0.0
+                        let address = data["address"] as? String
+                        print("📍 Manual creation for: \(data["name"] as? String ?? "Unknown")")
+                        print("   Raw coordinates: \(lat), \(lng)")
+                        print("   Raw address: \(address ?? "none")")
+                        
                         let organization = Organization(
                             id: document.documentID,
                             name: data["name"] as? String ?? "Unknown Organization",
                             type: data["type"] as? String ?? "business",
                             description: data["description"] as? String ?? "",
                             location: Location(
-                                latitude: data["latitude"] as? Double ?? 0.0,
-                                longitude: data["longitude"] as? Double ?? 0.0,
-                                address: data["address"] as? String,
+                                latitude: lat,
+                                longitude: lng,
+                                address: address,
                                 city: data["city"] as? String,
                                 state: data["state"] as? String,
                                 zipCode: data["zipCode"] as? String
@@ -492,15 +502,8 @@ struct MapView: View {
                     print("🗺️ Map loaded \(fetchedOrganizations.count) organizations")
                 }
                 
-                // Validate coordinates for all organizations (outside of MainActor.run)
-                // Temporarily disabled to prevent freezing
-                // await validateOrganizationCoordinates()
-                
-                // Also try to update any organizations that might be missing coordinates
-                // await updateExistingOrganizationCoordinates()
-                
-                // Log final state after validation
-                // await logOrganizationCoordinateState()
+                // Geocode addresses to get proper coordinates for pins
+                await geocodeAddressesToCoordinates()
             } catch {
                 await MainActor.run {
                     self.isLoading = false

@@ -136,7 +136,9 @@ struct OrganizationInvitationManagementView: View {
         .navigationTitle("Group Invitations")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            loadInvitations()
+            Task {
+                await loadInvitations()
+            }
         }
         .alert("Error", isPresented: $showingErrorAlert) {
             Button("OK") { }
@@ -173,11 +175,11 @@ struct OrganizationInvitationManagementView: View {
             }
         }
         .refreshable {
-            loadInvitations()
+            await loadInvitations()
         }
     }
     
-    private func loadInvitations() {
+    private func loadInvitations() async {
         isLoading = true
         
         Task {
@@ -291,6 +293,7 @@ struct AdminInvitationRowView: View {
         name: "Test Organization",
         type: "business",
         location: Location(latitude: 0, longitude: 0),
+        verified: false,
         groupsArePrivate: true,
         allowPublicGroupJoin: false
     ))

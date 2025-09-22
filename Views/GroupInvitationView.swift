@@ -23,9 +23,11 @@ struct GroupInvitationView: View {
             }
             .navigationTitle("Group Invitations")
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear {
-                loadInvitations()
+        .onAppear {
+            Task {
+                await loadInvitations()
             }
+        }
             .alert("Error", isPresented: $showingErrorAlert) {
                 Button("OK") { }
             } message: {
@@ -63,11 +65,11 @@ struct GroupInvitationView: View {
             }
         }
         .refreshable {
-            loadInvitations()
+            await loadInvitations()
         }
     }
     
-    private func loadInvitations() {
+    private func loadInvitations() async {
         guard let userId = authManager.currentUser?.id else { return }
         
         isLoading = true

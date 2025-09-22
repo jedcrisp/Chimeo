@@ -392,6 +392,19 @@ class OrganizationGroupService: ObservableObject {
         try await updateGroupMemberCount(organizationId: invitation.organizationId, groupId: invitation.groupId)
     }
     
+    func isUserGroupMember(organizationId: String, groupId: String, userId: String) async throws -> Bool {
+        let db = Firestore.firestore()
+        let memberDoc = try await db.collection("organizations")
+            .document(organizationId)
+            .collection("groups")
+            .document(groupId)
+            .collection("members")
+            .document(userId)
+            .getDocument()
+        
+        return memberDoc.exists && (memberDoc.data()?["isActive"] as? Bool ?? false)
+    }
+    
     private func updateGroupMemberCount(organizationId: String, groupId: String) async throws {
         let db = Firestore.firestore()
         let membersSnapshot = try await db.collection("organizations")

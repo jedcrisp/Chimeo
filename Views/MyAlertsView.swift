@@ -17,6 +17,7 @@ struct MyAlertsView: View {
     @State private var searchText = ""
     @State private var organizationGroups: [String: [OrganizationGroup]] = [:]
     @State private var organizationAdminStatus: [String: Bool] = [:]
+    @State private var groupMemberships: [String: Set<String>] = [:] // organizationId -> Set of groupIds user is member of
     
     private var filteredOrganizations: [Organization] {
         var filtered = followedOrganizations
@@ -33,10 +34,11 @@ struct MyAlertsView: View {
         return filtered
     }
     
-    // Filter groups based on privacy and admin status
+    // Filter groups based on privacy, admin status, and membership
     private func visibleGroups(for organizationId: String) -> [OrganizationGroup] {
         let groups = organizationGroups[organizationId] ?? []
         let isAdmin = organizationAdminStatus[organizationId] ?? false
+        let userGroupIds = groupMemberships[organizationId] ?? Set<String>()
         
         let filteredGroups = groups.filter { group in
             // If user is organization admin, show all groups
@@ -51,15 +53,22 @@ struct MyAlertsView: View {
                 return true
             }
             
-            // If group is private, hide from non-admin users
-            print("🔒 Private group hidden from non-admin: \(group.name)")
-            return false
+            // If group is private, only show if user is a member
+            let isMember = userGroupIds.contains(group.id)
+            if isMember {
+                print("👥 Private group - user is member: \(group.name)")
+                return true
+            } else {
+                print("🔒 Private group hidden - user not member: \(group.name)")
+                return false
+            }
         }
         
         print("🔍 MyAlertsView group filtering for org \(organizationId):")
         print("   Total groups: \(groups.count)")
         print("   Visible groups: \(filteredGroups.count)")
         print("   Is admin: \(isAdmin)")
+        print("   User group memberships: \(userGroupIds)")
         print("   Private groups: \(groups.filter { $0.isPrivate }.count)")
         
         return filteredGroups
@@ -213,6 +222,7 @@ struct MyAlertsView: View {
             }
             await loadOrganizationGroups(for: followed)
             await checkAdminStatus(for: followed)
+            await loadGroupMemberships(for: followed)
             await MainActor.run { self.isLoading = false }
         } catch {
             print("❌ Error loading followed organizations: \(error)")
@@ -281,6 +291,38 @@ struct MyAlertsView: View {
                 print("❌ Error checking admin status for \(organization.name): \(error)")
                 await MainActor.run {
                     self.organizationAdminStatus[organization.id] = false
+                }
+            }
+        }
+    }
+    
+    private func loadGroupMemberships(for organizations: [Organization]) async {
+        guard let userId = authManager.currentUser?.id else { return }
+        
+        for organization in organizations {
+            do {
+                let groups = organizationGroups[organization.id] ?? []
+                var memberGroupIds = Set<String>()
+                
+                for group in groups {
+                    let isMember = try await serviceCoordinator.isUserGroupMember(
+                        organizationId: organization.id,
+                        groupId: group.id,
+                        userId: userId
+                    )
+                    if isMember {
+                        memberGroupIds.insert(group.id)
+                    }
+                }
+                
+                await MainActor.run {
+                    self.groupMemberships[organization.id] = memberGroupIds
+                    print("👥 Loaded group memberships for \(organization.name): \(memberGroupIds)")
+                }
+            } catch {
+                print("❌ Error loading group memberships for \(organization.name): \(error)")
+                await MainActor.run {
+                    self.groupMemberships[organization.id] = Set<String>()
                 }
             }
         }

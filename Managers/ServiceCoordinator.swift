@@ -530,6 +530,10 @@ class ServiceCoordinator: ObservableObject {
         return try await groupService.getOrganizationGroups(organizationId: organizationId)
     }
     
+    func isUserGroupMember(organizationId: String, groupId: String, userId: String) async throws -> Bool {
+        return try await groupService.isUserGroupMember(organizationId: organizationId, groupId: groupId, userId: userId)
+    }
+    
     // MARK: - Alert Management Methods (delegate to OrganizationAlertService)
     func postOrganizationAlert(_ alert: OrganizationAlert) async throws {
         try await alertService.postOrganizationAlert(alert)

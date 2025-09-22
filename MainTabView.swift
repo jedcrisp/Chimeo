@@ -140,6 +140,10 @@ struct MainTabView: View {
             // Check if user is an organization admin
             Task {
                 await checkAdminStatus()
+                // If not admin, try to add user as admin to their organization
+                if !isOrganizationAdmin {
+                    await addUserAsAdminToOrganization()
+                }
             }
         }
         .overlay(
@@ -207,15 +211,15 @@ struct MainTabView: View {
             for orgDoc in orgsSnapshot.documents {
                 let orgData = orgDoc.data()
                 let orgName = orgData["name"] as? String ?? "Unknown"
-                if let adminIds = orgData["adminIds"] as? [String] {
+                if let adminIds = orgData["adminIds"] as? [String: Bool] {
                     print("🔐 MainTabView: Organization '\(orgName)' has admin IDs: \(adminIds)")
-                    if adminIds.contains(userId) {
+                    if adminIds[userId] == true {
                         print("🔐 MainTabView: ✅ User is admin of '\(orgName)'")
                         isAdmin = true
                         break
                     }
                 } else {
-                    print("🔐 MainTabView: Organization '\(orgName)' has no adminIds field")
+                    print("🔐 MainTabView: Organization '\(orgName)' has no adminIds field or wrong format")
                 }
             }
             
@@ -228,6 +232,49 @@ struct MainTabView: View {
             await MainActor.run {
                 self.isOrganizationAdmin = false
             }
+        }
+    }
+    
+    // MARK: - Add User as Admin
+    private func addUserAsAdminToOrganization() async {
+        guard let userId = authManager.currentUser?.id else {
+            print("🔐 MainTabView: No user ID for adding as admin")
+            return
+        }
+        
+        print("🔐 MainTabView: Attempting to add user as admin to organization...")
+        
+        do {
+            let db = Firestore.firestore()
+            let orgsSnapshot = try await db.collection("organizations").getDocuments()
+            
+            for orgDoc in orgsSnapshot.documents {
+                let orgData = orgDoc.data()
+                let orgName = orgData["name"] as? String ?? "Unknown"
+                
+                // Check if this organization has no adminIds or empty adminIds
+                let currentAdminIds = orgData["adminIds"] as? [String: Bool] ?? [:]
+                
+                if currentAdminIds.isEmpty {
+                    print("🔐 MainTabView: Adding user as admin to '\(orgName)'")
+                    
+                    // Add user as admin
+                    try await db.collection("organizations").document(orgDoc.documentID).updateData([
+                        "adminIds": [userId: true]
+                    ])
+                    
+                    print("🔐 MainTabView: ✅ Successfully added user as admin to '\(orgName)'")
+                    
+                    // Update local admin status
+                    await MainActor.run {
+                        self.isOrganizationAdmin = true
+                    }
+                    
+                    break // Only add to one organization
+                }
+            }
+        } catch {
+            print("❌ MainTabView: Error adding user as admin: \(error)")
         }
     }
 }

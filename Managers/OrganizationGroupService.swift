@@ -240,7 +240,17 @@ class OrganizationGroupService: ObservableObject {
         invitedByUserId: String,
         invitedByName: String
     ) async throws -> String {
+        let db = Firestore.firestore()
+        
+        // Create a new document reference to get the document ID first
+        let docRef = db.collection("groupInvitations").document()
+        let documentId = docRef.documentID
+        
+        print("📝 Creating invitation with document ID: \(documentId)")
+        
+        // Create invitation with the Firestore document ID
         let invitation = GroupInvitation(
+            id: documentId,  // Use Firestore document ID as the model ID
             organizationId: organizationId,
             organizationName: organizationName,
             groupId: groupId,
@@ -253,9 +263,9 @@ class OrganizationGroupService: ObservableObject {
             message: message
         )
         
-        let db = Firestore.firestore()
-        let docRef = try await db.collection("groupInvitations").addDocument(data: invitation.toFirestoreData())
-        return docRef.documentID
+        try await docRef.setData(invitation.toFirestoreData())
+        print("✅ Invitation created successfully with ID: \(documentId)")
+        return documentId
     }
     
     func getUserInvitations(userId: String) async throws -> [GroupInvitation] {

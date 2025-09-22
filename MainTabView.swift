@@ -12,6 +12,7 @@ struct MainTabView: View {
     @State private var showingPasswordSetup = false
     @State private var showingPasswordChange = false
     @State private var isOrganizationAdmin = false
+    @State private var forceShowCalendar = false
     
     private var isCreatorAccount: Bool {
         authManager.currentUser?.email == "jed@onetrack-consulting.com"
@@ -66,13 +67,21 @@ struct MainTabView: View {
                 .tag(5)
             
             // Calendar tab for organization admins
-            if isOrganizationAdmin {
+            if isOrganizationAdmin || forceShowCalendar {
                 CalendarView()
                     .tabItem {
                         Image(systemName: "calendar")
                         Text("Calendar")
                     }
                     .tag(7)
+            } else {
+                // Debug: Show why calendar tab is not showing
+                Text("No Calendar - Admin: \(isOrganizationAdmin)")
+                    .tabItem {
+                        Image(systemName: "questionmark.circle")
+                        Text("Debug")
+                    }
+                    .tag(99)
             }
             
             SettingsTabView()
@@ -101,13 +110,21 @@ struct MainTabView: View {
                 .tag(4)
             
             // Calendar tab for organization admins
-            if isOrganizationAdmin {
+            if isOrganizationAdmin || forceShowCalendar {
                 CalendarView()
                     .tabItem {
                         Image(systemName: "calendar")
                         Text("Calendar")
                     }
                     .tag(6)
+            } else {
+                // Debug: Show why calendar tab is not showing
+                Text("No Calendar - Admin: \(isOrganizationAdmin)")
+                    .tabItem {
+                        Image(systemName: "questionmark.circle")
+                        Text("Debug")
+                    }
+                    .tag(98)
             }
             
             SettingsTabView()
@@ -180,6 +197,16 @@ struct MainTabView: View {
                         .padding(.vertical, 4)
                         .background(Color.orange)
                         .cornerRadius(8)
+                        
+                        Button("Force Calendar") {
+                            forceShowCalendar.toggle()
+                        }
+                        .font(.caption2)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(forceShowCalendar ? Color.green : Color.purple)
+                        .cornerRadius(8)
                     }
                     .padding(.trailing, 16)
                     .padding(.bottom, 100) // Above tab bar
@@ -226,6 +253,7 @@ struct MainTabView: View {
             await MainActor.run {
                 self.isOrganizationAdmin = isAdmin
                 print("🔐 MainTabView: User admin status: \(isAdmin ? "Admin" : "Not admin")")
+                print("🔐 MainTabView: isOrganizationAdmin state updated to: \(self.isOrganizationAdmin)")
             }
         } catch {
             print("❌ MainTabView: Error checking admin status: \(error)")
@@ -268,6 +296,7 @@ struct MainTabView: View {
                     // Update local admin status
                     await MainActor.run {
                         self.isOrganizationAdmin = true
+                        print("🔐 MainTabView: isOrganizationAdmin set to true after adding user as admin")
                     }
                     
                     break // Only add to one organization

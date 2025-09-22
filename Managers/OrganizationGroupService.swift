@@ -280,7 +280,6 @@ class OrganizationGroupService: ObservableObject {
         
         for orgDoc in orgsSnapshot.documents {
             let orgId = orgDoc.documentID
-            let orgName = orgDoc.data()["name"] as? String ?? "Unknown Organization"
             
             // Query groupInvitations subcollection for this organization
             let invitationsSnapshot = try await db.collection("organizations")
@@ -445,23 +444,6 @@ class OrganizationGroupService: ObservableObject {
         try await updateGroupMemberCount(organizationId: organizationId, groupId: groupId)
     }
     
-    func isUserGroupMember(organizationId: String, groupId: String, userId: String) async throws -> Bool {
-        let db = Firestore.firestore()
-        let memberDoc = try await db.collection("organizations")
-            .document(organizationId)
-            .collection("groups")
-            .document(groupId)
-            .collection("members")
-            .document(userId)
-            .getDocument()
-        
-        guard let data = memberDoc.data(),
-              let isActive = data["isActive"] as? Bool else {
-            return false
-        }
-        
-        return isActive
-    }
     
     func getGroupMembers(organizationId: String, groupId: String) async throws -> [[String: Any]] {
         let db = Firestore.firestore()

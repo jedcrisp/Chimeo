@@ -239,8 +239,10 @@ struct MapView: View {
                     
                     // Check and fix logo URLs for organizations that might have photos but no logo URL set
                     await checkAndFixOrganizationLogos()
-                    
-                    // Check if user is an organization admin
+                }
+                
+                // Check if user is an organization admin
+                Task {
                     await checkAdminStatus()
                 }
             } else {
@@ -271,6 +273,41 @@ struct MapView: View {
         }
         .sheet(isPresented: $showingCalendar) {
             CalendarView()
+        }
+    }
+    
+    // MARK: - Admin Status Checking
+    private func checkAdminStatus() async {
+        guard let userId = authManager.currentUser?.id else {
+            await MainActor.run {
+                self.isOrganizationAdmin = false
+            }
+            return
+        }
+        
+        do {
+            // Check if user is admin of any organization
+            let db = Firestore.firestore()
+            let orgsSnapshot = try await db.collection("organizations").getDocuments()
+            
+            var isAdmin = false
+            for orgDoc in orgsSnapshot.documents {
+                let orgData = orgDoc.data()
+                if let adminIds = orgData["adminIds"] as? [String], adminIds.contains(userId) {
+                    isAdmin = true
+                    break
+                }
+            }
+            
+            await MainActor.run {
+                self.isOrganizationAdmin = isAdmin
+                print("🔐 User admin status: \(isAdmin ? "Admin" : "Not admin")")
+            }
+        } catch {
+            print("❌ Error checking admin status: \(error)")
+            await MainActor.run {
+                self.isOrganizationAdmin = false
+            }
         }
     }
     
@@ -905,12 +942,8 @@ struct MapView: View {
             print("      Location struct: \(org.location)")
             print("      Location type: \(type(of: org.location))")
             
-            // Check if location is actually a Location struct
-            if let _ = org.location as? Location {
-                print("      ✅ Location is Location struct")
-            } else {
-                print("      ❌ Location is NOT Location struct - it's: \(type(of: org.location))")
-            }
+            // Location is already a Location struct, no need to cast
+            print("      ✅ Location is Location struct")
             
             // Check flat address fields
             print("      Flat address: '\(org.address ?? "nil")'")
@@ -1644,41 +1677,6 @@ struct SimpleWeatherInfoView: View {
                         dismiss()
                     }
                 }
-            }
-        }
-    }
-    
-    // MARK: - Admin Status Checking
-    private func checkAdminStatus() async {
-        guard let userId = authManager.currentUser?.id else {
-            await MainActor.run {
-                self.isOrganizationAdmin = false
-            }
-            return
-        }
-        
-        do {
-            // Check if user is admin of any organization
-            let db = Firestore.firestore()
-            let orgsSnapshot = try await db.collection("organizations").getDocuments()
-            
-            var isAdmin = false
-            for orgDoc in orgsSnapshot.documents {
-                let orgData = orgDoc.data()
-                if let adminIds = orgData["adminIds"] as? [String], adminIds.contains(userId) {
-                    isAdmin = true
-                    break
-                }
-            }
-            
-            await MainActor.run {
-                self.isOrganizationAdmin = isAdmin
-                print("🔐 User admin status: \(isAdmin ? "Admin" : "Not admin")")
-            }
-        } catch {
-            print("❌ Error checking admin status: \(error)")
-            await MainActor.run {
-                self.isOrganizationAdmin = false
             }
         }
     }

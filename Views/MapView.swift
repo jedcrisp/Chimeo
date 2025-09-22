@@ -187,89 +187,6 @@ struct MapView: View {
         return annotations
     }
     
-    // MARK: - Test Data
-    private func addTestOrganizations() {
-        print("🧪 Adding test organizations with logos for debugging")
-        
-        let testOrganizations = [
-            Organization(
-                id: "test-org-1",
-                name: "Test Church",
-                type: "church",
-                description: "A test church organization",
-                location: Location(
-                    latitude: 33.2148,
-                    longitude: -97.1331,
-                    address: "123 Main St",
-                    city: "Denton",
-                    state: "TX",
-                    zipCode: "76201"
-                ),
-                verified: true,
-                followerCount: 150,
-                logoURL: "https://via.placeholder.com/100x100/4A90E2/FFFFFF?text=CH",
-                website: "https://testchurch.com",
-                phone: "555-0123",
-                email: "info@testchurch.com",
-                groups: nil,
-                adminIds: [:],
-                createdAt: Date(),
-                updatedAt: Date()
-            ),
-            Organization(
-                id: "test-org-2",
-                name: "Test School",
-                type: "school",
-                description: "A test school organization",
-                location: Location(
-                    latitude: 33.2248,
-                    longitude: -97.1431,
-                    address: "456 School Ave",
-                    city: "Denton",
-                    state: "TX",
-                    zipCode: "76202"
-                ),
-                verified: true,
-                followerCount: 300,
-                logoURL: "https://via.placeholder.com/100x100/7ED321/FFFFFF?text=SC",
-                website: "https://testschool.edu",
-                phone: "555-0456",
-                email: "info@testschool.edu",
-                groups: nil,
-                adminIds: [:],
-                createdAt: Date(),
-                updatedAt: Date()
-            ),
-            Organization(
-                id: "test-org-3",
-                name: "Test Business",
-                type: "business",
-                description: "A test business organization",
-                location: Location(
-                    latitude: 33.2048,
-                    longitude: -97.1231,
-                    address: "789 Business Blvd",
-                    city: "Denton",
-                    state: "TX",
-                    zipCode: "76203"
-                ),
-                verified: false,
-                followerCount: 75,
-                logoURL: "https://via.placeholder.com/100x100/F5A623/FFFFFF?text=BS",
-                website: "https://testbusiness.com",
-                phone: "555-0789",
-                email: "info@testbusiness.com",
-                groups: nil,
-                adminIds: [:],
-                createdAt: Date(),
-                updatedAt: Date()
-            )
-        ]
-        
-        // Add test organizations to the existing organizations array
-        organizations.append(contentsOf: testOrganizations)
-        print("✅ Added \(testOrganizations.count) test organizations with logos")
-    }
     
     // MARK: - Subviews
     private var mapContent: some View {
@@ -293,9 +210,6 @@ struct MapView: View {
         .onAppear {
             // Single, lightweight onAppear block
             print("🗺️ Map view appeared")
-            
-            // Add test organizations with logos for debugging
-            addTestOrganizations()
             
             // Start location updates to show user location
             locationManager.startLocationUpdates()

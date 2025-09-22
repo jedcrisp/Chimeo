@@ -317,7 +317,7 @@ struct MapView: View {
             if authManager.isAuthenticated {
                 // Load basic data only
                 Task {
-                    await loadData()
+                    loadData()
                     
                     // Check and fix logo URLs for organizations that might have photos but no logo URL set
                     await checkAndFixOrganizationLogos()
@@ -344,7 +344,7 @@ struct MapView: View {
             if isAuthenticated {
                 print("🔐 User authenticated, loading map data")
                 Task {
-                    await loadData()
+                    loadData()
                 }
             }
         }
@@ -558,14 +558,14 @@ struct MapView: View {
                             website: data["website"] as? String,
                             phone: data["phone"] as? String,
                             email: data["email"] as? String,
-                            address: data["address"] as? String,
-                            city: data["city"] as? String,
-                            state: data["state"] as? String,
-                            zipCode: data["zipCode"] as? String,
                             createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
                             updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date(),
                             groupsArePrivate: data["groupsArePrivate"] as? Bool ?? false,
-                            allowPublicGroupJoin: data["allowPublicGroupJoin"] as? Bool ?? true
+                            allowPublicGroupJoin: data["allowPublicGroupJoin"] as? Bool ?? true,
+                            address: data["address"] as? String,
+                            city: data["city"] as? String,
+                            state: data["state"] as? String,
+                            zipCode: data["zipCode"] as? String
                         )
                         fetchedOrganizations.append(organization)
                     }
@@ -599,7 +599,7 @@ struct MapView: View {
     private func refreshData() {
         // Call loadData directly without wrapping in MainActor.run
         Task {
-            await loadData()
+            loadData()
         }
     }
     

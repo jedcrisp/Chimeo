@@ -15,21 +15,30 @@ struct InviteUserToGroupView: View {
     @State private var errorMessage: String?
     @State private var showingErrorAlert = false
     @State private var showingSuccessAlert = false
+    @State private var groups: [OrganizationGroup] = []
+    @State private var isLoadingGroups = false
     
     var body: some View {
         NavigationView {
             Form {
                 Section("Select Group") {
-                    if let groups = organization.groups, !groups.isEmpty {
+                    if isLoadingGroups {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Loading groups...")
+                                .foregroundColor(.secondary)
+                        }
+                    } else if groups.isEmpty {
+                        Text("No groups available")
+                            .foregroundColor(.secondary)
+                    } else {
                         Picker("Group", selection: $selectedGroup) {
                             Text("Select a group").tag(nil as OrganizationGroup?)
                             ForEach(groups) { group in
                                 Text(group.name).tag(group as OrganizationGroup?)
                             }
                         }
-                    } else {
-                        Text("No groups available")
-                            .foregroundColor(.secondary)
                     }
                 }
                 
@@ -76,6 +85,31 @@ struct InviteUserToGroupView: View {
                 }
             } message: {
                 Text("Invitation sent successfully!")
+            }
+            .onAppear {
+                loadGroups()
+            }
+        }
+    }
+    
+    private func loadGroups() {
+        isLoadingGroups = true
+        
+        Task {
+            do {
+                let fetchedGroups = try await groupService.getOrganizationGroups(organizationId: organization.id)
+                await MainActor.run {
+                    self.groups = fetchedGroups
+                    self.isLoadingGroups = false
+                    print("📋 Loaded \(fetchedGroups.count) groups for invitation")
+                }
+            } catch {
+                print("❌ Error loading groups for invitation: \(error)")
+                await MainActor.run {
+                    self.isLoadingGroups = false
+                    self.errorMessage = "Failed to load groups: \(error.localizedDescription)"
+                    self.showingErrorAlert = true
+                }
             }
         }
     }

@@ -544,6 +544,14 @@ struct MapView: View {
                             name: data["name"] as? String ?? "Unknown Organization",
                             type: data["type"] as? String ?? "business",
                             description: data["description"] as? String ?? "",
+                            location: Location(
+                                latitude: data["latitude"] as? Double ?? 0.0,
+                                longitude: data["longitude"] as? Double ?? 0.0,
+                                address: data["address"] as? String,
+                                city: data["city"] as? String,
+                                state: data["state"] as? String,
+                                zipCode: data["zipCode"] as? String
+                            ),
                             verified: data["verified"] as? Bool ?? false,
                             followerCount: data["followerCount"] as? Int ?? 0,
                             logoURL: data["logoURL"] as? String,
@@ -554,14 +562,6 @@ struct MapView: View {
                             city: data["city"] as? String,
                             state: data["state"] as? String,
                             zipCode: data["zipCode"] as? String,
-                            location: Location(
-                                latitude: data["latitude"] as? Double ?? 0.0,
-                                longitude: data["longitude"] as? Double ?? 0.0,
-                                address: data["address"] as? String,
-                                city: data["city"] as? String,
-                                state: data["state"] as? String,
-                                zipCode: data["zipCode"] as? String
-                            ),
                             createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
                             updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date(),
                             groupsArePrivate: data["groupsArePrivate"] as? Bool ?? false,
@@ -604,15 +604,11 @@ struct MapView: View {
     }
     
     private func refreshOrganizations() async {
-        do {
-            // TODO: Add organization fetching to SimpleAuthManager
-            let fetchedOrganizations = [Organization]()
-            await MainActor.run {
-                self.organizations = fetchedOrganizations
-                print("🗺️ Map organizations refreshed: \(fetchedOrganizations.count) organizations")
-            }
-        } catch {
-            print("❌ Failed to refresh organizations on map: \(error)")
+        // TODO: Add organization fetching to SimpleAuthManager
+        let fetchedOrganizations = [Organization]()
+        await MainActor.run {
+            self.organizations = fetchedOrganizations
+            print("🗺️ Map organizations refreshed: \(fetchedOrganizations.count) organizations")
         }
     }
     
@@ -640,17 +636,10 @@ struct MapView: View {
             return
         }
         
-        do {
-            // TODO: Add organization search to SimpleAuthManager
-            let searchResults = [Organization]()
-            await MainActor.run {
-                mapSearchResults = searchResults
-            }
-        } catch {
-            print("❌ Failed to search organizations on map: \(error)")
-            await MainActor.run {
-                mapSearchResults = []
-            }
+        // TODO: Add organization search to SimpleAuthManager
+        let searchResults = [Organization]()
+        await MainActor.run {
+            mapSearchResults = searchResults
         }
     }
     
@@ -790,7 +779,7 @@ struct MapView: View {
         if !invalidOrgs.isEmpty {
             print("🔄 Found \(invalidOrgs.count) organizations with invalid coordinates, attempting to update...")
             
-            for (index, org) in invalidOrgs.enumerated() {
+            for (_, org) in invalidOrgs.enumerated() {
                 let fullAddress = org.location.fullAddress
                 if fullAddress.isEmpty { continue }
                 
@@ -971,7 +960,7 @@ struct MapView: View {
             print("      Location type: \(type(of: org.location))")
             
             // Check if location is actually a Location struct
-            if let location = org.location as? Location {
+            if let _ = org.location as? Location {
                 print("      ✅ Location is Location struct")
             } else {
                 print("      ❌ Location is NOT Location struct - it's: \(type(of: org.location))")

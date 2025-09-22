@@ -124,6 +124,7 @@ struct MapView: View {
         var annotations: [MapAnnotationItem] = []
         
         print("🗺️ Creating map annotations for \(organizations.count) organizations")
+        print("🗺️ Organizations array: \(organizations.map { "\($0.name) (\($0.location.latitude), \($0.location.longitude))" })")
         
         // Add user location annotation (blue dot)
         if let userLocation = locationManager.currentLocation {
@@ -424,10 +425,13 @@ struct MapView: View {
             return
         }
         
-        guard let location = locationManager.currentLocation else { 
-            print("No location available yet")
-            return 
-        }
+        print("🗺️ Starting loadData() - Location: \(locationManager.currentLocation != nil ? "Available" : "Not available"), Auth: \(authManager.isAuthenticated ? "Authenticated" : "Not authenticated")")
+        
+        // Load organizations even without location - we'll geocode them
+        // guard let location = locationManager.currentLocation else { 
+        //     print("No location available yet")
+        //     return 
+        // }
         
         // Add safety check for authentication
         guard authManager.isAuthenticated else {
@@ -500,6 +504,11 @@ struct MapView: View {
                     self.isLoading = false
                     
                     print("🗺️ Map loaded \(fetchedOrganizations.count) organizations")
+                    
+                    // Debug each organization's coordinates
+                    for org in fetchedOrganizations {
+                        print("   📍 \(org.name): lat=\(org.location.latitude), lng=\(org.location.longitude), address=\(org.address ?? "none")")
+                    }
                 }
                 
                 // Geocode addresses to get proper coordinates for pins

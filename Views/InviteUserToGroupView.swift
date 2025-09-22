@@ -4,7 +4,7 @@ import FirebaseFirestore
 struct InviteUserToGroupView: View {
     let organization: Organization
     @EnvironmentObject var authManager: SimpleAuthManager
-    @State private var invitationService = GroupInvitationService()
+    @StateObject private var groupService = OrganizationGroupService()
     @Environment(\.dismiss) private var dismiss
     
     @State private var selectedGroup: OrganizationGroup?
@@ -101,7 +101,7 @@ struct InviteUserToGroupView: View {
                 let userId = try await findUserByEmail(userEmail)
                 
                 // Send the invitation
-                _ = try await invitationService.sendGroupInvitation(
+                _ = try await groupService.sendGroupInvitation(
                     organizationId: organization.id,
                     organizationName: organization.name,
                     groupId: group.id,

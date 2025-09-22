@@ -3,7 +3,7 @@ import FirebaseFirestore
 
 struct GroupInvitationView: View {
     @EnvironmentObject var authManager: SimpleAuthManager
-    @State private var invitationService = GroupInvitationService()
+    @StateObject private var groupService = OrganizationGroupService()
     @State private var invitations: [GroupInvitation] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -74,7 +74,7 @@ struct GroupInvitationView: View {
         
         Task {
             do {
-                let fetchedInvitations = try await invitationService.getUserInvitations(userId: userId)
+                let fetchedInvitations = try await groupService.getUserInvitations(userId: userId)
                 await MainActor.run {
                     self.invitations = fetchedInvitations
                     self.isLoading = false
@@ -92,7 +92,7 @@ struct GroupInvitationView: View {
     private func respondToInvitation(_ invitation: GroupInvitation, status: InvitationStatus) {
         Task {
             do {
-                try await invitationService.respondToInvitation(invitationId: invitation.id, status: status)
+                try await groupService.respondToInvitation(invitationId: invitation.id, status: status)
                 await MainActor.run {
                     // Remove the invitation from the list
                     invitations.removeAll { $0.id == invitation.id }

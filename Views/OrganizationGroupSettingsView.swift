@@ -4,7 +4,7 @@ import FirebaseFirestore
 struct OrganizationGroupSettingsView: View {
     let organization: Organization
     @EnvironmentObject var authManager: SimpleAuthManager
-    @State private var invitationService = GroupInvitationService()
+    @StateObject private var groupService = OrganizationGroupService()
     @State private var groupsArePrivate: Bool
     @State private var allowPublicGroupJoin: Bool
     @State private var isLoading = false
@@ -84,7 +84,7 @@ struct OrganizationGroupSettingsView: View {
     }
     
     private func updateGroupPrivacySettings() {
-        guard let userId = authManager.currentUser?.id else { return }
+        guard authManager.currentUser?.id != nil else { return }
         
         isLoading = true
         
@@ -116,7 +116,7 @@ struct OrganizationGroupSettingsView: View {
 struct OrganizationInvitationManagementView: View {
     let organization: Organization
     @EnvironmentObject var authManager: SimpleAuthManager
-    @State private var invitationService = GroupInvitationService()
+    @StateObject private var groupService = OrganizationGroupService()
     @State private var invitations: [GroupInvitation] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -182,7 +182,7 @@ struct OrganizationInvitationManagementView: View {
         
         Task {
             do {
-                let fetchedInvitations = try await invitationService.getOrganizationInvitations(organizationId: organization.id)
+                let fetchedInvitations = try await groupService.getOrganizationInvitations(organizationId: organization.id)
                 await MainActor.run {
                     self.invitations = fetchedInvitations
                     self.isLoading = false
@@ -200,7 +200,7 @@ struct OrganizationInvitationManagementView: View {
     private func cancelInvitation(_ invitation: GroupInvitation) {
         Task {
             do {
-                try await invitationService.cancelInvitation(invitationId: invitation.id)
+                try await groupService.cancelInvitation(invitationId: invitation.id)
                 await MainActor.run {
                     // Remove the invitation from the list
                     invitations.removeAll { $0.id == invitation.id }

@@ -400,6 +400,15 @@ class CalendarService: ObservableObject {
     func getTodaysEvents() -> [CalendarEvent] {
         return getEventsForDate(Date())
     }
+    
+    // MARK: - Scheduled Alert Fetching (for specific dates)
+    
+    func getScheduledAlertsForDate(_ date: Date) -> [ScheduledAlert] {
+        // Since we removed local caching, this now returns an empty array
+        // Views that need scheduled alerts should fetch them directly from Firestore
+        // or we could implement a direct Firestore query here
+        return []
+    }
 }
 
 // MARK: - Recurrence Pattern Extension

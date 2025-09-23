@@ -35,6 +35,9 @@ class OrganizationFollowingService: ObservableObject {
             ])
             
             print("✅ Added organization \(organizationId) to user's followedOrganizations array")
+            
+            // Update the organization's follower count
+            try await updateOrganizationFollowerCount(organizationId: organizationId)
         } else {
             print("ℹ️ User already follows organization \(organizationId)")
         }
@@ -68,6 +71,9 @@ class OrganizationFollowingService: ObservableObject {
             ])
             
             print("✅ Removed organization \(organizationId) from user's followedOrganizations array")
+            
+            // Update the organization's follower count
+            try await updateOrganizationFollowerCount(organizationId: organizationId)
         } else {
             print("ℹ️ User was not following organization \(organizationId)")
         }
@@ -77,28 +83,41 @@ class OrganizationFollowingService: ObservableObject {
     
     // MARK: - Utility Functions for Fixing Follower Counts
     
-    func fixOrganizationFollowerCount(_ organizationId: String) async throws {
-        print("🔧 Fixing follower count for organization: \(organizationId)")
+    func updateOrganizationFollowerCount(organizationId: String) async throws {
+        print("🔧 Updating follower count for organization: \(organizationId)")
         
         let db = Firestore.firestore()
         
-        // Count actual followers in the subcollection
-        let followersSnapshot = try await db.collection("organizations")
-            .document(organizationId)
-            .collection("followers")
-            .getDocuments()
+        // Count followers by checking all users' followedOrganizations arrays
+        let usersSnapshot = try await db.collection("users").getDocuments()
+        var followerCount = 0
         
-        let actualCount = followersSnapshot.documents.count
-        print("   📊 Actual followers in subcollection: \(actualCount)")
+        for userDoc in usersSnapshot.documents {
+            let userData = userDoc.data()
+            let followedOrganizations = userData["followedOrganizations"] as? [String] ?? []
+            
+            if followedOrganizations.contains(organizationId) {
+                followerCount += 1
+            }
+        }
+        
+        print("   📊 Calculated follower count from user profiles: \(followerCount)")
         
         // Update the organization's follower count
         let orgRef = db.collection("organizations").document(organizationId)
         try await orgRef.updateData([
-            "followerCount": actualCount,
+            "followerCount": followerCount,
             "updatedAt": FieldValue.serverTimestamp()
         ])
         
-        print("✅ Fixed follower count to \(actualCount)")
+        print("✅ Updated follower count to \(followerCount)")
+    }
+    
+    func fixOrganizationFollowerCount(_ organizationId: String) async throws {
+        print("🔧 Fixing follower count for organization: \(organizationId)")
+        
+        // Use the new method to calculate from user profiles
+        try await updateOrganizationFollowerCount(organizationId: organizationId)
     }
     
     func isFollowingOrganization(_ organizationId: String, userId: String) async throws -> Bool {
@@ -106,20 +125,20 @@ class OrganizationFollowingService: ObservableObject {
         
         let db = Firestore.firestore()
         
-        // Check the subcollection document for the specific organization
-        let userOrgRef = db.collection("users").document(userId)
-            .collection("followedOrganizations").document(organizationId)
+        // Check the user's followedOrganizations array
+        let userRef = db.collection("users").document(userId)
+        let userDoc = try await userRef.getDocument()
         
-        let doc = try await userOrgRef.getDocument()
-        
-        if doc.exists, let data = doc.data() {
-            let isFollowing = data["isFollowing"] as? Bool ?? false
-            print("   ✅ Is following: \(isFollowing)")
-            return isFollowing
-        } else {
-            print("   ❌ Organization following document not found")
+        guard let userData = userDoc.data() else {
+            print("   ❌ User document not found")
             return false
         }
+        
+        let followedOrganizations = userData["followedOrganizations"] as? [String] ?? []
+        let isFollowing = followedOrganizations.contains(organizationId)
+        
+        print("   ✅ Is following: \(isFollowing)")
+        return isFollowing
     }
     
     // MARK: - Followed Organizations

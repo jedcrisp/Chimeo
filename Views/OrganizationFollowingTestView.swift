@@ -298,6 +298,10 @@ struct OrganizationFollowingTestView: View {
                 ])
                 
                 testResults += "✅ Added organization \(org.id) to user's followedOrganizations array\n"
+                
+                // Update the organization's follower count
+                try await updateOrganizationFollowerCount(organizationId: org.id)
+                testResults += "✅ Updated organization follower count\n"
             } else {
                 testResults += "ℹ️ User already follows organization \(org.id)\n"
             }
@@ -349,6 +353,10 @@ struct OrganizationFollowingTestView: View {
                 ])
                 
                 testResults += "✅ Removed organization \(org.id) from user's followedOrganizations array\n"
+                
+                // Update the organization's follower count
+                try await updateOrganizationFollowerCount(organizationId: org.id)
+                testResults += "✅ Updated organization follower count\n"
             } else {
                 testResults += "ℹ️ User was not following organization \(org.id)\n"
             }
@@ -363,6 +371,36 @@ struct OrganizationFollowingTestView: View {
         }
         
         isLoading = false
+    }
+    
+    private func updateOrganizationFollowerCount(organizationId: String) async throws {
+        print("🔧 Updating follower count for organization: \(organizationId)")
+        
+        let db = Firestore.firestore()
+        
+        // Count followers by checking all users' followedOrganizations arrays
+        let usersSnapshot = try await db.collection("users").getDocuments()
+        var followerCount = 0
+        
+        for userDoc in usersSnapshot.documents {
+            let userData = userDoc.data()
+            let followedOrganizations = userData["followedOrganizations"] as? [String] ?? []
+            
+            if followedOrganizations.contains(organizationId) {
+                followerCount += 1
+            }
+        }
+        
+        print("   📊 Calculated follower count from user profiles: \(followerCount)")
+        
+        // Update the organization's follower count
+        let orgRef = db.collection("organizations").document(organizationId)
+        try await orgRef.updateData([
+            "followerCount": followerCount,
+            "updatedAt": FieldValue.serverTimestamp()
+        ])
+        
+        print("✅ Updated follower count to \(followerCount)")
     }
     
     private func testPushNotification() async {

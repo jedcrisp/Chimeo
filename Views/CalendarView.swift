@@ -8,30 +8,6 @@
 import SwiftUI
 import Foundation
 
-// MARK: - Calendar View Mode
-enum CalendarViewMode: String, CaseIterable {
-    case month = "Month"
-    case week = "Week"
-    case day = "Day"
-    case agenda = "Agenda"
-    
-    var displayName: String {
-        return self.rawValue
-    }
-}
-
-// MARK: - Calendar Filter
-struct CalendarFilter {
-    var showEvents: Bool = true
-    var showAlerts: Bool = true
-    var selectedTypes: Set<IncidentType> = Set(IncidentType.allCases)
-    var selectedSeverities: Set<IncidentSeverity> = Set(IncidentSeverity.allCases)
-    
-    var isFiltered: Bool {
-        return !showEvents || !showAlerts || selectedTypes.count != IncidentType.allCases.count || selectedSeverities.count != IncidentSeverity.allCases.count
-    }
-}
-
 struct CalendarView: View {
     @StateObject private var calendarService = CalendarService()
     @State private var selectedDate = Date()

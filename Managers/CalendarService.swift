@@ -15,7 +15,6 @@ class CalendarService: ObservableObject {
     private let notificationService: iOSNotificationService
     
     @Published var events: [CalendarEvent] = []
-    @Published var scheduledAlerts: [ScheduledAlert] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     
@@ -230,9 +229,7 @@ class CalendarService: ObservableObject {
             print("🔍 Verification - Last alert title: \(lastAlert["title"] as? String ?? "Unknown")")
         }
         
-        await MainActor.run {
-            self.scheduledAlerts.append(alert)
-        }
+        // No need to cache locally since we're using subcollection
         
         print("✅ Scheduled alert created successfully")
         print("   📍 Added to scheduledAlerts collection")
@@ -320,11 +317,7 @@ class CalendarService: ObservableObject {
         
         try await batch.commit()
         
-        await MainActor.run {
-            if let index = self.scheduledAlerts.firstIndex(where: { $0.id == alert.id }) {
-                self.scheduledAlerts[index] = alert
-            }
-        }
+        // No need to cache locally since we're using subcollection
         
         print("✅ Scheduled alert updated successfully")
         print("   📍 Updated in scheduledAlerts collection")
@@ -362,9 +355,7 @@ class CalendarService: ObservableObject {
         
         try await batch.commit()
         
-        await MainActor.run {
-            self.scheduledAlerts.removeAll { $0.id == alertId }
-        }
+        // No need to cache locally since we're using subcollection
         
         print("✅ Scheduled alert deleted successfully")
         print("   📍 Removed from scheduledAlerts collection")
@@ -373,43 +364,6 @@ class CalendarService: ObservableObject {
         }
     }
     
-    func fetchScheduledAlerts(for dateRange: DateInterval? = nil) async throws {
-        print("⏰ Fetching scheduled alerts...")
-        
-        isLoading = true
-        errorMessage = nil
-        
-        do {
-            var query = db.collection("scheduledAlerts")
-                .order(by: "scheduledDate", descending: false)
-            
-            if let dateRange = dateRange {
-                query = query
-                    .whereField("scheduledDate", isGreaterThanOrEqualTo: dateRange.start)
-                    .whereField("scheduledDate", isLessThanOrEqualTo: dateRange.end)
-            }
-            
-            let snapshot = try await query.getDocuments()
-            
-            let fetchedAlerts = snapshot.documents.compactMap { doc -> ScheduledAlert? in
-                try? doc.data(as: ScheduledAlert.self)
-            }
-            
-            await MainActor.run {
-                self.scheduledAlerts = fetchedAlerts
-                self.isLoading = false
-            }
-            
-            print("✅ Fetched \(fetchedAlerts.count) scheduled alerts")
-        } catch {
-            await MainActor.run {
-                self.errorMessage = error.localizedDescription
-                self.isLoading = false
-            }
-            print("❌ Error fetching scheduled alerts: \(error)")
-            throw error
-        }
-    }
     
     // MARK: - Combined Calendar Data
     
@@ -420,12 +374,7 @@ class CalendarService: ObservableObject {
         errorMessage = nil
         
         do {
-            async let eventsTask = fetchEvents(for: dateRange)
-            async let alertsTask = fetchScheduledAlerts(for: dateRange)
-            
-            try await eventsTask
-            try await alertsTask
-            
+            try await fetchEvents(for: dateRange)
             print("✅ Calendar data fetched successfully")
         } catch {
             await MainActor.run {
@@ -448,27 +397,8 @@ class CalendarService: ObservableObject {
         }
     }
     
-    func getScheduledAlertsForDate(_ date: Date) -> [ScheduledAlert] {
-        let calendar = Calendar.current
-        return scheduledAlerts.filter { alert in
-            calendar.isDate(alert.scheduledDate, inSameDayAs: date)
-        }
-    }
-    
-    func getUpcomingAlerts(limit: Int = 10) -> [ScheduledAlert] {
-        return scheduledAlerts
-            .filter { $0.isUpcoming && $0.isActive }
-            .sorted { $0.scheduledDate < $1.scheduledDate }
-            .prefix(limit)
-            .map { $0 }
-    }
-    
     func getTodaysEvents() -> [CalendarEvent] {
         return getEventsForDate(Date())
-    }
-    
-    func getTodaysAlerts() -> [ScheduledAlert] {
-        return getScheduledAlertsForDate(Date())
     }
 }
 

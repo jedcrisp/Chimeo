@@ -15,7 +15,10 @@ class OrganizationFollowingService: ObservableObject {
         print("🔧 BULLETPROOF: Ensuring user document exists with FCM token...")
         await ensureUserDocumentWithFCMToken(userId: userId)
         
-        // NEW LOGIC: Only update user's followedOrganizations array
+        // Use a batch write to ensure all operations succeed or fail together
+        let batch = db.batch()
+        
+        // Update user's followedOrganizations array
         let userRef = db.collection("users").document(userId)
         let userDoc = try await userRef.getDocument()
         
@@ -29,12 +32,27 @@ class OrganizationFollowingService: ObservableObject {
         if !followedOrganizations.contains(organizationId) {
             followedOrganizations.append(organizationId)
             
-            try await userRef.updateData([
+            batch.updateData([
                 "followedOrganizations": followedOrganizations,
                 "updatedAt": FieldValue.serverTimestamp()
-            ])
+            ], forDocument: userRef)
             
             print("✅ Added organization \(organizationId) to user's followedOrganizations array")
+            
+            // Also add to organization's followers subcollection for web app compatibility
+            let orgFollowersRef = db.collection("organizations").document(organizationId)
+                .collection("followers").document(userId)
+            batch.setData([
+                "userId": userId,
+                "followedAt": FieldValue.serverTimestamp(),
+                "createdAt": FieldValue.serverTimestamp(),
+                "updatedAt": FieldValue.serverTimestamp()
+            ], forDocument: orgFollowersRef)
+            
+            print("✅ Added user to organization's followers subcollection")
+            
+            // Commit all changes
+            try await batch.commit()
             
             // Update the organization's follower count
             try await updateOrganizationFollowerCount(organizationId: organizationId)
@@ -51,7 +69,10 @@ class OrganizationFollowingService: ObservableObject {
         
         let db = Firestore.firestore()
         
-        // NEW LOGIC: Only update user's followedOrganizations array
+        // Use a batch write to ensure all operations succeed or fail together
+        let batch = db.batch()
+        
+        // Update user's followedOrganizations array
         let userRef = db.collection("users").document(userId)
         let userDoc = try await userRef.getDocument()
         
@@ -65,12 +86,22 @@ class OrganizationFollowingService: ObservableObject {
         if let index = followedOrganizations.firstIndex(of: organizationId) {
             followedOrganizations.remove(at: index)
             
-            try await userRef.updateData([
+            batch.updateData([
                 "followedOrganizations": followedOrganizations,
                 "updatedAt": FieldValue.serverTimestamp()
-            ])
+            ], forDocument: userRef)
             
             print("✅ Removed organization \(organizationId) from user's followedOrganizations array")
+            
+            // Also remove from organization's followers subcollection for web app compatibility
+            let orgFollowersRef = db.collection("organizations").document(organizationId)
+                .collection("followers").document(userId)
+            batch.deleteDocument(orgFollowersRef)
+            
+            print("✅ Removed user from organization's followers subcollection")
+            
+            // Commit all changes
+            try await batch.commit()
             
             // Update the organization's follower count
             try await updateOrganizationFollowerCount(organizationId: organizationId)
@@ -88,20 +119,14 @@ class OrganizationFollowingService: ObservableObject {
         
         let db = Firestore.firestore()
         
-        // Count followers by checking all users' followedOrganizations arrays
-        let usersSnapshot = try await db.collection("users").getDocuments()
-        var followerCount = 0
+        // Count followers from the subcollection (more efficient)
+        let followersSnapshot = try await db.collection("organizations")
+            .document(organizationId)
+            .collection("followers")
+            .getDocuments()
         
-        for userDoc in usersSnapshot.documents {
-            let userData = userDoc.data()
-            let followedOrganizations = userData["followedOrganizations"] as? [String] ?? []
-            
-            if followedOrganizations.contains(organizationId) {
-                followerCount += 1
-            }
-        }
-        
-        print("   📊 Calculated follower count from user profiles: \(followerCount)")
+        let followerCount = followersSnapshot.documents.count
+        print("   📊 Calculated follower count from subcollection: \(followerCount)")
         
         // Update the organization's follower count
         let orgRef = db.collection("organizations").document(organizationId)

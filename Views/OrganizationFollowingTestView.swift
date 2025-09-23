@@ -262,12 +262,28 @@ struct OrganizationFollowingTestView: View {
             if !followedOrganizations.contains(org.id) {
                 followedOrganizations.append(org.id)
                 
-                try await userRef.updateData([
+                // Use batch to update both user profile and organization followers
+                let batch = db.batch()
+                
+                batch.updateData([
                     "followedOrganizations": followedOrganizations,
                     "updatedAt": FieldValue.serverTimestamp()
-                ])
+                ], forDocument: userRef)
+                
+                // Also add to organization's followers subcollection for web app compatibility
+                let orgFollowersRef = db.collection("organizations").document(org.id)
+                    .collection("followers").document(currentUser.uid)
+                batch.setData([
+                    "userId": currentUser.uid,
+                    "followedAt": FieldValue.serverTimestamp(),
+                    "createdAt": FieldValue.serverTimestamp(),
+                    "updatedAt": FieldValue.serverTimestamp()
+                ], forDocument: orgFollowersRef)
+                
+                try await batch.commit()
                 
                 testResults += "✅ Added organization \(org.id) to user's followedOrganizations array\n"
+                testResults += "✅ Added user to organization's followers subcollection\n"
                 
                 // Update the organization's follower count
                 try await updateOrganizationFollowerCount(organizationId: org.id)
@@ -317,12 +333,23 @@ struct OrganizationFollowingTestView: View {
             if let index = followedOrganizations.firstIndex(of: org.id) {
                 followedOrganizations.remove(at: index)
                 
-                try await userRef.updateData([
+                // Use batch to update both user profile and organization followers
+                let batch = db.batch()
+                
+                batch.updateData([
                     "followedOrganizations": followedOrganizations,
                     "updatedAt": FieldValue.serverTimestamp()
-                ])
+                ], forDocument: userRef)
+                
+                // Also remove from organization's followers subcollection for web app compatibility
+                let orgFollowersRef = db.collection("organizations").document(org.id)
+                    .collection("followers").document(currentUser.uid)
+                batch.deleteDocument(orgFollowersRef)
+                
+                try await batch.commit()
                 
                 testResults += "✅ Removed organization \(org.id) from user's followedOrganizations array\n"
+                testResults += "✅ Removed user from organization's followers subcollection\n"
                 
                 // Update the organization's follower count
                 try await updateOrganizationFollowerCount(organizationId: org.id)
@@ -348,20 +375,14 @@ struct OrganizationFollowingTestView: View {
         
         let db = Firestore.firestore()
         
-        // Count followers by checking all users' followedOrganizations arrays
-        let usersSnapshot = try await db.collection("users").getDocuments()
-        var followerCount = 0
+        // Count followers from the subcollection (more efficient)
+        let followersSnapshot = try await db.collection("organizations")
+            .document(organizationId)
+            .collection("followers")
+            .getDocuments()
         
-        for userDoc in usersSnapshot.documents {
-            let userData = userDoc.data()
-            let followedOrganizations = userData["followedOrganizations"] as? [String] ?? []
-            
-            if followedOrganizations.contains(organizationId) {
-                followerCount += 1
-            }
-        }
-        
-        print("   📊 Calculated follower count from user profiles: \(followerCount)")
+        let followerCount = followersSnapshot.documents.count
+        print("   📊 Calculated follower count from subcollection: \(followerCount)")
         
         // Update the organization's follower count
         let orgRef = db.collection("organizations").document(organizationId)

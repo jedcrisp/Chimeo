@@ -265,18 +265,39 @@ struct OrganizationProfileView: View {
                                    print("🔄 Direct Firestore fetch - logoURL: \(logoURL ?? "nil")")
                                    
                                    // Update currentOrganization with fresh data
-                                   // TODO: Add organization fetching to SimpleAuthManager
-                if let updatedOrg = nil as Organization? {
-                                       await MainActor.run {
-                                           print("🔄 Updating currentOrganization with fresh data:")
-                                           print("   - Old logoURL: \(self.currentOrganization.logoURL ?? "nil")")
-                                           print("   - New logoURL: \(updatedOrg.logoURL ?? "nil")")
-                                           print("   - Direct Firestore logoURL: \(logoURL ?? "nil")")
-                                           
-                                           self.currentOrganization = updatedOrg
-                                           print("✅ Organization data refreshed")
-                                           print("✅ Current logoURL after refresh: \(self.currentOrganization.logoURL ?? "nil")")
-                                       }
+                                   await MainActor.run {
+                                       print("🔄 Updating currentOrganization with fresh data:")
+                                       print("   - Old logoURL: \(self.currentOrganization.logoURL ?? "nil")")
+                                       print("   - Direct Firestore logoURL: \(logoURL ?? "nil")")
+                                       
+                                       // Create a new organization with updated logoURL
+                                       let updatedOrg = Organization(
+                                           id: self.currentOrganization.id,
+                                           name: self.currentOrganization.name,
+                                           type: self.currentOrganization.type,
+                                           description: self.currentOrganization.description,
+                                           location: self.currentOrganization.location,
+                                           verified: self.currentOrganization.verified,
+                                           followerCount: self.currentOrganization.followerCount,
+                                           logoURL: logoURL,
+                                           website: self.currentOrganization.website,
+                                           phone: self.currentOrganization.phone,
+                                           email: self.currentOrganization.email,
+                                           groups: self.currentOrganization.groups,
+                                           adminIds: self.currentOrganization.adminIds,
+                                           createdAt: self.currentOrganization.createdAt,
+                                           updatedAt: self.currentOrganization.updatedAt,
+                                           groupsArePrivate: self.currentOrganization.groupsArePrivate,
+                                           allowPublicGroupJoin: self.currentOrganization.allowPublicGroupJoin,
+                                           address: self.currentOrganization.address,
+                                           city: self.currentOrganization.city,
+                                           state: self.currentOrganization.state,
+                                           zipCode: self.currentOrganization.zipCode
+                                       )
+                                       
+                                       self.currentOrganization = updatedOrg
+                                       print("✅ Organization data refreshed")
+                                       print("✅ Current logoURL after refresh: \(self.currentOrganization.logoURL ?? "nil")")
                                    }
                                }
                            } catch {
@@ -353,14 +374,7 @@ struct OrganizationProfileView: View {
                 print("📢 Received organizationUpdated notification for: \(organization.id)")
                 Task {
                     await refreshOrganizationData()
-                    // Force refresh the current organization with the new logo
-                    // TODO: Add organization fetching to SimpleAuthManager
-                    if let updatedOrg = nil as Organization? {
-                        await MainActor.run {
-                            self.currentOrganization = updatedOrg
-                            print("📢 Updated currentOrganization with new logo: \(updatedOrg.logoURL ?? "nil")")
-                        }
-                    }
+                    print("📢 Organization data refreshed after notification")
                 }
             }
         }
@@ -422,13 +436,7 @@ struct OrganizationProfileView: View {
                     Task {
                         await refreshOrganizationData()
                         // Also force refresh from Firestore
-                        // TODO: Add organization fetching to SimpleAuthManager
-                    if let updatedOrg = nil as Organization? {
-                            await MainActor.run {
-                                self.currentOrganization = updatedOrg
-                                print("🖼️ Force refreshed organization with logo: \(updatedOrg.logoURL ?? "nil")")
-                            }
-                        }
+                        await refreshOrganizationData()
                     }
                 }
                 .onAppear {
@@ -1309,17 +1317,46 @@ struct OrganizationProfileView: View {
     private func refreshOrganizationData() {
         Task {
             do {
-                // TODO: Add organization fetching to SimpleAuthManager
-                if let updatedOrg = nil as Organization? {
+                // Fetch organization data directly from Firestore
+                let db = Firestore.firestore()
+                let doc = try await db.collection("organizations").document(organization.id).getDocument()
+                
+                if let data = doc.data() {
+                    let logoURL = data["logoURL"] as? String
+                    print("🔄 Refreshing organization data from Firestore:")
+                    print("   - Old logoURL: \(self.currentOrganization.logoURL ?? "nil")")
+                    print("   - New logoURL: \(logoURL ?? "nil")")
+                    
+                    // Create updated organization with fresh data
+                    let updatedOrg = Organization(
+                        id: self.currentOrganization.id,
+                        name: self.currentOrganization.name,
+                        type: self.currentOrganization.type,
+                        description: self.currentOrganization.description,
+                        location: self.currentOrganization.location,
+                        verified: self.currentOrganization.verified,
+                        followerCount: self.currentOrganization.followerCount,
+                        logoURL: logoURL,
+                        website: self.currentOrganization.website,
+                        phone: self.currentOrganization.phone,
+                        email: self.currentOrganization.email,
+                        groups: self.currentOrganization.groups,
+                        adminIds: self.currentOrganization.adminIds,
+                        createdAt: self.currentOrganization.createdAt,
+                        updatedAt: self.currentOrganization.updatedAt,
+                        groupsArePrivate: self.currentOrganization.groupsArePrivate,
+                        allowPublicGroupJoin: self.currentOrganization.allowPublicGroupJoin,
+                        address: self.currentOrganization.address,
+                        city: self.currentOrganization.city,
+                        state: self.currentOrganization.state,
+                        zipCode: self.currentOrganization.zipCode
+                    )
+                    
                     await MainActor.run {
-                        print("🔄 Refreshing organization data:")
-                        print("   - Old logoURL: \(self.currentOrganization.logoURL ?? "nil")")
-                        print("   - New logoURL: \(updatedOrg.logoURL ?? "nil")")
-                        print("   - Old follower count: \(self.currentOrganization.followerCount)")
-                        print("   - New follower count: \(updatedOrg.followerCount)")
-                        
                         self.currentOrganization = updatedOrg
-                        print("✅ Organization data refreshed: Follower count is \(updatedOrg.followerCount)")
+                        print("✅ Organization data refreshed successfully")
+                        print("✅ New logoURL: \(self.currentOrganization.logoURL ?? "nil")")
+                        print("✅ Follower count: \(updatedOrg.followerCount)")
                     }
                 }
                 

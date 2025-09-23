@@ -22,6 +22,7 @@ struct MainTabView: View {
     private var tabs: some View {
         Group {
             MapView()
+                .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "map")
                     Text("Map")
@@ -29,6 +30,7 @@ struct MainTabView: View {
                 .tag(0)
 
             IncidentFeedView()
+                .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "list.bullet")
                     Text("Feed")
@@ -36,6 +38,7 @@ struct MainTabView: View {
                 .tag(1)
 
             MyAlertsView()
+                .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "bell.badge")
                     Text("My Alerts")
@@ -61,6 +64,7 @@ struct MainTabView: View {
                 .tag(4)
             
             GroupInvitationView()
+                .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "envelope")
                     Text("Invitations")
@@ -75,14 +79,6 @@ struct MainTabView: View {
                         Text("Calendar")
                     }
                     .tag(7)
-            } else {
-                // Debug: Show why calendar tab is not showing
-                Text("No Calendar - Admin: \(isOrganizationAdmin)")
-                    .tabItem {
-                        Image(systemName: "questionmark.circle")
-                        Text("Debug")
-                    }
-                    .tag(99)
             }
             
             SettingsTabView()
@@ -104,6 +100,7 @@ struct MainTabView: View {
                 .tag(3)
             
             GroupInvitationView()
+                .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "envelope")
                     Text("Invitations")
@@ -118,14 +115,6 @@ struct MainTabView: View {
                         Text("Calendar")
                     }
                     .tag(6)
-            } else {
-                // Debug: Show why calendar tab is not showing
-                Text("No Calendar - Admin: \(isOrganizationAdmin)")
-                    .tabItem {
-                        Image(systemName: "questionmark.circle")
-                        Text("Debug")
-                    }
-                    .tag(98)
             }
             
             SettingsTabView()
@@ -151,9 +140,6 @@ struct MainTabView: View {
         .onAppear {
             // Request location permissions when app launches
             locationManager.requestLocationPermission()
-            print("🎉 Chimeo app loaded successfully!")
-            print("🔍 MainTabView: isCreatorAccount = \(isCreatorAccount)")
-            print("🔍 MainTabView: isOrganizationAdmin = \(isOrganizationAdmin)")
             
             // Check if user is an organization admin
             Task {
@@ -167,112 +153,37 @@ struct MainTabView: View {
             // Start scheduled alert execution service
             scheduledAlertService.startBackgroundExecution()
         }
-        .overlay(
-            // Debug overlay to show admin status
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("Admin: \(isOrganizationAdmin ? "YES" : "NO")")
-                            .font(.caption)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(isOrganizationAdmin ? Color.green : Color.red)
-                            .cornerRadius(8)
-                        
-                        Text("Creator: \(isCreatorAccount ? "YES" : "NO")")
-                            .font(.caption)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(isCreatorAccount ? Color.blue : Color.gray)
-                            .cornerRadius(8)
-                        
-                        Button("Check Admin") {
-                            Task {
-                                await checkAdminStatus()
-                            }
-                        }
-                        .font(.caption2)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.orange)
-                        .cornerRadius(8)
-                        
-                        Button("Force Calendar") {
-                            forceShowCalendar.toggle()
-                        }
-                        .font(.caption2)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(forceShowCalendar ? Color.green : Color.purple)
-                        .cornerRadius(8)
-                        
-                        Button("Test Alerts") {
-                            Task {
-                                await scheduledAlertService.executeScheduledAlerts()
-                            }
-                        }
-                        .font(.caption2)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.cyan)
-                        .cornerRadius(8)
-                    }
-                    .padding(.trailing, 16)
-                    .padding(.bottom, 100) // Above tab bar
-                }
-            }
-        )
     }
     
     // MARK: - Admin Status Checking
     private func checkAdminStatus() async {
-        print("🔐 MainTabView: Starting admin status check...")
         guard let userId = authManager.currentUser?.id else {
-            print("🔐 MainTabView: No user ID found, setting admin status to false")
             await MainActor.run {
                 self.isOrganizationAdmin = false
             }
             return
         }
-        print("🔐 MainTabView: User ID: \(userId)")
         
         do {
             // Check if user is admin of any organization
             let db = Firestore.firestore()
             let orgsSnapshot = try await db.collection("organizations").getDocuments()
             
-            print("🔐 MainTabView: Found \(orgsSnapshot.documents.count) organizations to check")
-            
             var isAdmin = false
             for orgDoc in orgsSnapshot.documents {
                 let orgData = orgDoc.data()
-                let orgName = orgData["name"] as? String ?? "Unknown"
                 if let adminIds = orgData["adminIds"] as? [String: Bool] {
-                    print("🔐 MainTabView: Organization '\(orgName)' has admin IDs: \(adminIds)")
                     if adminIds[userId] == true {
-                        print("🔐 MainTabView: ✅ User is admin of '\(orgName)'")
                         isAdmin = true
                         break
                     }
-                } else {
-                    print("🔐 MainTabView: Organization '\(orgName)' has no adminIds field or wrong format")
                 }
             }
             
             await MainActor.run {
                 self.isOrganizationAdmin = isAdmin
-                print("🔐 MainTabView: User admin status: \(isAdmin ? "Admin" : "Not admin")")
-                print("🔐 MainTabView: isOrganizationAdmin state updated to: \(self.isOrganizationAdmin)")
             }
         } catch {
-            print("❌ MainTabView: Error checking admin status: \(error)")
             await MainActor.run {
                 self.isOrganizationAdmin = false
             }
@@ -282,11 +193,8 @@ struct MainTabView: View {
     // MARK: - Add User as Admin
     private func addUserAsAdminToOrganization() async {
         guard let userId = authManager.currentUser?.id else {
-            print("🔐 MainTabView: No user ID for adding as admin")
             return
         }
-        
-        print("🔐 MainTabView: Attempting to add user as admin to organization...")
         
         do {
             let db = Firestore.firestore()
@@ -294,32 +202,26 @@ struct MainTabView: View {
             
             for orgDoc in orgsSnapshot.documents {
                 let orgData = orgDoc.data()
-                let orgName = orgData["name"] as? String ?? "Unknown"
                 
                 // Check if this organization has no adminIds or empty adminIds
                 let currentAdminIds = orgData["adminIds"] as? [String: Bool] ?? [:]
                 
                 if currentAdminIds.isEmpty {
-                    print("🔐 MainTabView: Adding user as admin to '\(orgName)'")
-                    
                     // Add user as admin
                     try await db.collection("organizations").document(orgDoc.documentID).updateData([
                         "adminIds": [userId: true]
                     ])
                     
-                    print("🔐 MainTabView: ✅ Successfully added user as admin to '\(orgName)'")
-                    
                     // Update local admin status
                     await MainActor.run {
                         self.isOrganizationAdmin = true
-                        print("🔐 MainTabView: isOrganizationAdmin set to true after adding user as admin")
                     }
                     
                     break // Only add to one organization
                 }
             }
         } catch {
-            print("❌ MainTabView: Error adding user as admin: \(error)")
+            // Silently handle error
         }
     }
 }

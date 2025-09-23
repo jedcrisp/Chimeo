@@ -9,7 +9,7 @@ extension Notification.Name {
 }
 
 struct ContentView: View {
-    @StateObject private var authManager = SimpleAuthManager()
+    @EnvironmentObject var authManager: SimpleAuthManager
     @EnvironmentObject var locationManager: LocationManager
     @EnvironmentObject var apiService: APIService
     @EnvironmentObject var serviceCoordinator: ServiceCoordinator
@@ -20,12 +20,10 @@ struct ContentView: View {
         Group {
             if authManager.isAuthenticated {
                 MainTabView()
-                    .environmentObject(authManager)
                     .environmentObject(apiService)
                     .environmentObject(serviceCoordinator)
             } else {
                 ModernAuthView()
-                    .environmentObject(authManager)
             }
         }
         .onAppear {

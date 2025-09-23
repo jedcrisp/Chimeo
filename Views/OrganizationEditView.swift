@@ -457,9 +457,17 @@ struct OrganizationEditView: View {
                     "updatedAt": FieldValue.serverTimestamp()
                 ]
                 
-                // Always clear the old logo URL first to stop loading broken URLs
-                updateData["logoURL"] = ""
-                print("📝 Clearing old logo URL to stop loading broken URLs")
+                // Only clear the logo URL if we have a new image to upload
+                if selectedImage != nil {
+                    updateData["logoURL"] = ""
+                    print("📝 Clearing old logo URL because new image is being uploaded")
+                } else {
+                    // Keep the existing logo URL if no new image is selected
+                    if let existingLogoURL = organization.logoURL, !existingLogoURL.isEmpty {
+                        updateData["logoURL"] = existingLogoURL
+                        print("📝 Preserving existing logo URL: \(existingLogoURL)")
+                    }
+                }
                 
                 // If we have a selected image, don't let it get overridden
                 if selectedImage != nil {

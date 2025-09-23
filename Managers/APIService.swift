@@ -968,6 +968,10 @@ class APIService: ObservableObject {
         let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
         let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
         
+        // Parse organization settings
+        let groupsArePrivate = data["groupsArePrivate"] as? Bool ?? false
+        let allowPublicGroupJoin = data["allowPublicGroupJoin"] as? Bool ?? true
+        
         // Parse location data
         let locationData = data["location"] as? [String: Any] ?? [:]
         let location = Location(
@@ -1008,7 +1012,9 @@ class APIService: ObservableObject {
             groups: groups,
             adminIds: adminIds,
             createdAt: createdAt,
-            updatedAt: updatedAt
+            updatedAt: updatedAt,
+            groupsArePrivate: groupsArePrivate,
+            allowPublicGroupJoin: allowPublicGroupJoin
         )
     }
     

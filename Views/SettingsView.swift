@@ -57,8 +57,6 @@ struct SettingsView: View {
                         developmentSection
                     }
                     
-                    // Debug section for push notifications
-                    debugSection
                     
                     signOutSection
                 }
@@ -419,7 +417,6 @@ struct SettingsView: View {
                     )
                 }
             } else {
-                // Debug info for admin access
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Admin Access Status")
                         .font(.headline)
@@ -557,35 +554,6 @@ struct SettingsView: View {
                 Divider()
                     .padding(.horizontal, 20)
                 
-                Button(action: {
-                    notificationManager.debugFCMTokenStatus()
-                }) {
-                    HStack {
-                        Image(systemName: "bell.badge")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.blue)
-                            .frame(width: 24)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Debug FCM Token")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.primary)
-                            
-                            Text("Check push notification status")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                
-                Divider()
-                    .padding(.horizontal, 20)
                 
                 Button(action: {
                     notificationManager.retryFCMTokenRegistration()
@@ -677,62 +645,6 @@ struct SettingsView: View {
                 Divider()
                     .padding(.horizontal, 20)
                 
-                Button(action: {
-                    self.debugFollowStatus()
-                }) {
-                    HStack {
-                        Image(systemName: "person.2")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.orange)
-                            .frame(width: 24)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Debug Follow Status")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.primary)
-                            
-                            Text("Check follow status for all organizations")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                
-                Button(action: {
-                    debugOrganizationRequests()
-                }) {
-                    HStack {
-                        Image(systemName: "building.2")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.purple)
-                            .frame(width: 24)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Debug Organization Requests")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.primary)
-                            
-                            Text("Check organization requests in Firestore")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                
-                Divider()
-                    .padding(.horizontal, 20)
                 
                 Button(action: {
                     Task {
@@ -1004,37 +916,6 @@ struct SettingsView: View {
                 Divider()
                     .padding(.horizontal, 20)
                 
-                Button(action: {
-                    Task {
-                        await debugFCMStatus()
-                    }
-                }) {
-                    HStack {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.blue)
-                            .frame(width: 24)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Debug FCM Status")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.primary)
-                            
-                            Text("Check FCM token status and configuration")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                
-                Divider()
-                    .padding(.horizontal, 20)
                 
                 Button(action: {
                     Task {
@@ -1101,37 +982,6 @@ struct SettingsView: View {
                 Divider()
                     .padding(.horizontal, 20)
                 
-                Button(action: {
-                    Task {
-                        await debugGlobalFCMTokens()
-                    }
-                }) {
-                    HStack {
-                        Image(systemName: "globe")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.orange)
-                            .frame(width: 24)
-                        
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Debug Global FCM Tokens")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.primary)
-                            
-                            Text("Check FCM token status for all users globally")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                
-                Divider()
-                    .padding(.horizontal, 20)
                 
                 Button(action: {
                     Task {
@@ -1193,30 +1043,6 @@ struct SettingsView: View {
                     .padding(.vertical, 8)
                 }
                 
-                // Debug Follow Button Test
-                Button(action: {
-                    Task {
-                        await testFollowFunctionality()
-                    }
-                }) {
-                    HStack {
-                        Image(systemName: "person.badge.plus")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.green)
-                            .frame(width: 24)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Test Follow Functionality")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.primary)
-                            Text("Debug follow/unfollow system")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
-                    }
-                    .padding(.vertical, 8)
-                }
                 
                         Button(action: {
                             Task {
@@ -1295,260 +1121,6 @@ struct SettingsView: View {
         }
     }
     
-    private var debugSection: some View {
-        SettingsSection(
-            title: "Debug",
-            icon: "wrench.and.screwdriver.fill",
-            iconColor: .gray
-        ) {
-            NavigationLink(destination: NotificationDebugView()) {
-                SettingsRow(
-                    icon: "magnifyingglass",
-                    title: "Notification Debug",
-                    subtitle: "Comprehensive notification debugging",
-                    iconColor: .blue
-                )
-            }
-            
-            NavigationLink(destination: GroupNotificationTestView()) {
-                SettingsRow(
-                    icon: "testtube.2",
-                    title: "Group Notification Test",
-                    subtitle: "Test group notification functionality",
-                    iconColor: .purple
-                )
-            }
-            
-            NavigationLink(destination: OrganizationFollowingTestView()) {
-                SettingsRow(
-                    icon: "person.2.circle",
-                    title: "Following Test",
-                    subtitle: "Test organization following and notifications",
-                    iconColor: .orange
-                )
-            }
-            
-            NavigationLink(destination: PushNotificationTestView()) {
-                SettingsRow(
-                    icon: "bell.badge",
-                    title: "Push Notification Test",
-                    subtitle: "Complete push notification flow test",
-                    iconColor: .red
-                )
-            }
-            
-            Button(action: {
-                notificationManager.debugPushNotificationSystem()
-            }) {
-                SettingsRow(
-                    icon: "wrench.and.screwdriver",
-                    title: "Quick Debug",
-                    subtitle: "Check FCM token and notification status",
-                    iconColor: .green
-                )
-            }
-            
-            Button(action: {
-                Task {
-                    await forceReregisterPushNotifications()
-                }
-            }) {
-                SettingsRow(
-                    icon: "arrow.clockwise",
-                    title: "Refresh FCM Token",
-                    subtitle: "Force refresh Firebase Cloud Messaging token",
-                    iconColor: .orange
-                )
-            }
-            
-            Button(action: {
-                Task {
-                    await clearAllFCMData()
-                }
-            }) {
-                SettingsRow(
-                    icon: "trash",
-                    title: "Clear All FCM Data",
-                    subtitle: "Remove all FCM tokens and data",
-                    iconColor: .red
-                )
-            }
-            
-            Button(action: {
-                Task {
-                    await forceRequestAPNsPermission()
-                }
-            }) {
-                SettingsRow(
-                    icon: "bell.badge",
-                    title: "Force Request APNs Permission",
-                    subtitle: "Request notification permissions again",
-                    iconColor: .blue
-                )
-            }
-            
-            Button(action: {
-                Task {
-                    await deleteAndRefreshFCMToken()
-                }
-            }) {
-                SettingsRow(
-                    icon: "arrow.clockwise.circle",
-                    title: "Delete & Refresh FCM Token",
-                    subtitle: "Delete old token and get fresh one",
-                    iconColor: .green
-                )
-            }
-            
-            Button(action: {
-                Task {
-                    await notificationManager.checkFollowingStatus()
-                }
-            }) {
-                SettingsRow(
-                    icon: "person.2.fill",
-                    title: "Check Following Status",
-                    subtitle: "See which organizations you follow",
-                    iconColor: .purple
-                )
-            }
-            
-            Button(action: {
-                notificationManager.testNotification()
-            }) {
-                SettingsRow(
-                    icon: "bell.badge",
-                    title: "Test Notification",
-                    subtitle: "Send a test push notification",
-                    iconColor: .green
-                )
-            }
-            
-            Button(action: {
-                notificationManager.testNotificationSystem()
-            }) {
-                SettingsRow(
-                    icon: "wrench.and.screwdriver",
-                    title: "Comprehensive Notification Test",
-                    subtitle: "Test entire notification system",
-                    iconColor: .red
-                )
-            }
-            
-            Button(action: {
-                // TODO: Add user sync to SimpleAuthManager
-                print("User sync not implemented in SimpleAuthManager")
-            }) {
-                SettingsRow(
-                    icon: "arrow.triangle.2.circlepath",
-                    title: "Sync User State",
-                    subtitle: "Sync APIService with ServiceCoordinator",
-                    iconColor: .blue
-                )
-            }
-            
-            Button(action: {
-                Task {
-                    // TODO: Add test push notification to SimpleAuthManager
-                    print("Test push notification not implemented in SimpleAuthManager")
-                }
-            }) {
-                SettingsRow(
-                    icon: "paperplane.fill",
-                    title: "Test Real FCM",
-                    subtitle: "Send test push notification via Firebase Functions",
-                    iconColor: .green
-                )
-            }
-            
-            Button(action: {
-                // Enable push notifications
-                UserDefaults.standard.set(true, forKey: "pushNotificationsEnabled")
-                UserDefaults.standard.set(true, forKey: "criticalAlertsEnabled")
-                print("✅ Push notifications enabled in UserDefaults")
-            }) {
-                SettingsRow(
-                    icon: "bell.fill",
-                    title: "Enable Push Notifications",
-                    subtitle: "Enable push notifications in settings",
-                    iconColor: .orange
-                )
-            }
-            
-            Button(action: {
-                // Debug Firebase Auth status
-                if let firebaseUser = Auth.auth().currentUser {
-                    print("✅ Firebase Auth user: \(firebaseUser.uid)")
-                    print("   Email: \(firebaseUser.email ?? "none")")
-                    print("   Display Name: \(firebaseUser.displayName ?? "none")")
-                } else {
-                    print("❌ No Firebase Auth user found")
-                }
-            }) {
-                SettingsRow(
-                    icon: "person.circle.fill",
-                    title: "Debug Firebase Auth",
-                    subtitle: "Check Firebase authentication status",
-                    iconColor: .purple
-                )
-            }
-            
-            Button(action: {
-                clearStaleAuthenticationData()
-            }) {
-                SettingsRow(
-                    icon: "trash.circle.fill",
-                    title: "Clear Stale Auth Data",
-                    subtitle: "Clear stale authentication data and force sign-in",
-                    iconColor: .red
-                )
-            }
-            
-            Button(action: {
-                checkFirebaseAuthState()
-            }) {
-                SettingsRow(
-                    icon: "magnifyingglass.circle.fill",
-                    title: "Check Firebase Auth State",
-                    subtitle: "Debug Firebase Auth session details",
-                    iconColor: .blue
-                )
-            }
-            
-            Button(action: {
-                restoreFirebaseAuthSession()
-            }) {
-                SettingsRow(
-                    icon: "arrow.clockwise.circle.fill",
-                    title: "Restore Firebase Auth Session",
-                    subtitle: "Restore Firebase Auth using existing token",
-                    iconColor: .green
-                )
-            }
-            
-            Button(action: {
-                forceSignOutAndClear()
-            }) {
-                SettingsRow(
-                    icon: "exclamationmark.triangle.fill",
-                    title: "Force Sign Out & Clear",
-                    subtitle: "Force clear all auth state and show sign-in",
-                    iconColor: .orange
-                )
-            }
-            
-            Button(action: {
-                forceAppRestart()
-            }) {
-                SettingsRow(
-                    icon: "arrow.clockwise.circle.fill",
-                    title: "Force App Restart",
-                    subtitle: "Nuclear option - restart app completely",
-                    iconColor: .red
-                )
-            }
-        }
-    }
     
     private var signOutSection: some View {
         SettingsSection(
@@ -1724,29 +1296,6 @@ struct SettingsView: View {
         }
     }
     
-    private func debugFCMStatus() async {
-        await MainActor.run {
-            isFixingUsers = true
-            alertTitle = "Debugging FCM Status"
-            alertMessage = "Checking FCM token and configuration..."
-            showingAlert = true
-        }
-        
-        // TODO: Add FCM token getting to SimpleAuthManager
-        let token = "FCM_TOKEN_NOT_AVAILABLE"
-        // TODO: Add FCM token registration check to SimpleAuthManager
-        let isRegistered = false
-        
-        await MainActor.run {
-            alertTitle = "FCM Status"
-            alertMessage = """
-                FCM Token: \(token)
-                Is Registered: \(isRegistered)
-                """
-            showingAlert = true
-            isFixingUsers = false
-        }
-    }
     
     private func forceRefreshFCMToken() async {
         await MainActor.run {
@@ -1784,61 +1333,6 @@ struct SettingsView: View {
         }
     }
     
-    private func debugGlobalFCMTokens() async {
-        await MainActor.run {
-            isFixingUsers = true
-            alertTitle = "Debugging Global FCM Tokens"
-            alertMessage = "Checking FCM token status for all users globally..."
-            showingAlert = true
-        }
-        
-        do {
-            let globalStatus = await notificationService.debugGlobalFCMTokens()
-            
-            if let success = globalStatus["success"] as? Bool, success {
-                if let userStats = globalStatus["userStats"] as? [String: Any] {
-                    let totalUsers = userStats["totalUsers"] as? Int ?? 0
-                    let usersWithTokens = userStats["usersWithTokens"] as? Int ?? 0
-                    let validTokens = userStats["validTokens"] as? Int ?? 0
-                    let invalidTokens = userStats["invalidTokens"] as? Int ?? 0
-                    
-                    let statusMessage = """
-                        Global FCM Token Status:
-                        
-                        Total Users: \(totalUsers)
-                        Users with FCM Tokens: \(usersWithTokens)
-                        Valid Tokens: \(validTokens)
-                        Invalid Tokens: \(invalidTokens)
-                        Users without Tokens: \(totalUsers - usersWithTokens)
-                        
-                        Check console for detailed breakdown.
-                        """
-                    
-                    await MainActor.run {
-                        alertTitle = "Global FCM Token Status"
-                        alertMessage = statusMessage
-                        showingAlert = true
-                        isFixingUsers = false
-                    }
-                }
-            } else {
-                let errorMessage = globalStatus["error"] as? String ?? "Unknown error"
-                await MainActor.run {
-                    alertTitle = "Debug Failed"
-                    alertMessage = "Failed to debug global FCM tokens: \(errorMessage)"
-                    showingAlert = true
-                    isFixingUsers = false
-                }
-            }
-        } catch {
-            await MainActor.run {
-                alertTitle = "Debug Failed"
-                alertMessage = "Failed to debug global FCM tokens: \(error.localizedDescription)"
-                showingAlert = true
-                isFixingUsers = false
-            }
-        }
-    }
 
     // MARK: - Duplicate FCM Token Management
     private func checkDuplicateFCMTokens() async {
@@ -2317,83 +1811,7 @@ struct SettingsView: View {
         }
     }
     
-    private func debugFollowStatus() {
-        print("🔍 Debug Follow Status:")
-        print("   FollowStatusManager shared instance: \(FollowStatusManager.shared)")
-        print("   Current follow status changes: \(FollowStatusManager.shared.followStatusChanges)")
-        
-        // Check a specific organization if we have one
-        // TODO: Add organizations to SimpleAuthManager
-        if let firstOrg = nil as Organization? {
-            let followStatus = FollowStatusManager.shared.getFollowStatus(for: firstOrg.id)
-            print("   Follow status for '\(firstOrg.name)': \(followStatus?.description ?? "nil")")
-        }
-        
-        // Check if user is following any organizations
-        Task {
-            do {
-                guard let userId = authManager.currentUser?.id else {
-                    print("   No current user ID available")
-                    return
-                }
-                let followedOrgs = try await serviceCoordinator.getFollowedOrganizations(userId: userId)
-                print("   Followed organizations count: \(followedOrgs.count)")
-                for org in followedOrgs {
-                    print("   - Following: \(org.name) (ID: \(org.id))")
-                }
-            } catch {
-                print("   Error getting followed organizations: \(error)")
-            }
-        }
-    }
     
-    private func debugOrganizationRequests() {
-        print("🔍 Debug Organization Requests:")
-        
-        Task {
-            do {
-                let db = Firestore.firestore()
-                
-                // Get all organization requests
-                let snapshot = try await db.collection("organizationRequests").getDocuments()
-                print("📊 Total organization requests in Firestore: \(snapshot.documents.count)")
-                
-                // Debug: Print all requests and their details
-                for (index, doc) in snapshot.documents.enumerated() {
-                    let data = doc.data()
-                    let status = data["status"] as? String ?? "nil"
-                    let name = data["name"] as? String ?? data["organizationName"] as? String ?? "Unknown"
-                    let id = data["id"] as? String ?? doc.documentID
-                    let submittedAt = data["submittedAt"] as? Timestamp
-                    let createdAt = data["createdAt"] as? Timestamp
-                    
-                    print("📄 Request \(index + 1):")
-                    print("   - Document ID: \(doc.documentID)")
-                    print("   - Request ID: \(id)")
-                    print("   - Name: \(name)")
-                    print("   - Status: \(status)")
-                    print("   - Submitted At: \(submittedAt?.dateValue() ?? Date())")
-                    print("   - Created At: \(createdAt?.dateValue() ?? Date())")
-                    print("   - Admin Email: \(data["adminEmail"] as? String ?? "nil")")
-                    print("   - Organization Type: \(data["type"] as? String ?? data["organizationType"] as? String ?? "nil")")
-                    print("   ---")
-                }
-                
-                // Try to fetch using the iOS app's method
-                print("🔄 Testing iOS app's fetchOrganizationRequests method...")
-                // TODO: Add organization requests fetching to SimpleAuthManager
-                let requests = [OrganizationRequest]()
-                print("📱 iOS app found \(requests.count) pending requests")
-                
-                for request in requests {
-                    print("📱 iOS Request: \(request.name) (Status: \(request.status.rawValue))")
-                }
-                
-            } catch {
-                print("❌ Error debugging organization requests: \(error)")
-            }
-        }
-    }
     
     // MARK: - Force Re-register Push Notifications
     private func forceReregisterPushNotifications() async {

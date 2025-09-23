@@ -2,7 +2,7 @@ import SwiftUI
 import GoogleSignIn
 
 struct SimpleSignInView: View {
-    @StateObject private var authManager = SimpleAuthManager()
+    @EnvironmentObject var authManager: SimpleAuthManager
     @State private var email = ""
     @State private var password = ""
     @State private var showingAlert = false
@@ -103,4 +103,5 @@ struct SimpleSignInView: View {
 
 #Preview {
     SimpleSignInView()
+        .environmentObject(SimpleAuthManager())
 }

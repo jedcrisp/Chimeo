@@ -78,6 +78,10 @@ class OrganizationService: ObservableObject {
         let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
         let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
         
+        // Parse organization settings
+        let groupsArePrivate = data["groupsArePrivate"] as? Bool ?? false
+        let allowPublicGroupJoin = data["allowPublicGroupJoin"] as? Bool ?? true
+        
         // Try to get location from nested structure first
         var location: Location
         if let locationData = data["location"] as? [String: Any],
@@ -124,7 +128,9 @@ class OrganizationService: ObservableObject {
             groups: nil,
             adminIds: adminIds,
             createdAt: createdAt,
-            updatedAt: updatedAt
+            updatedAt: updatedAt,
+            groupsArePrivate: groupsArePrivate,
+            allowPublicGroupJoin: allowPublicGroupJoin
         )
         
         return organization

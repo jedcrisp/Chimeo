@@ -162,6 +162,37 @@ class CalendarService: ObservableObject {
             "recurrencePattern": alert.recurrencePattern?.toDictionary() ?? [:],
             "postedBy": alert.postedBy,
             "postedByUserId": alert.postedByUserId,
+            "createdAt": alert.createdAt,
+            "updatedAt": Date(),
+            "isActive": alert.isActive,
+            "imageURLs": alert.imageURLs,
+            "expiresAt": alert.expiresAt ?? Date(),
+            "calendarEventId": alert.calendarEventId ?? ""
+        ]
+        
+        // Create separate data for scheduledAlerts collection with server timestamps
+        let scheduledAlertData: [String: Any] = [
+            "title": alert.title,
+            "description": alert.description,
+            "organizationId": alert.organizationId,
+            "organizationName": alert.organizationName,
+            "groupId": alert.groupId ?? "",
+            "groupName": alert.groupName ?? "",
+            "type": alert.type.rawValue,
+            "severity": alert.severity.rawValue,
+            "location": [
+                "latitude": alert.location?.latitude ?? 0.0,
+                "longitude": alert.location?.longitude ?? 0.0,
+                "address": alert.location?.address ?? "",
+                "city": alert.location?.city ?? "",
+                "state": alert.location?.state ?? "",
+                "zipCode": alert.location?.zipCode ?? ""
+            ],
+            "scheduledDate": alert.scheduledDate,
+            "isRecurring": alert.isRecurring,
+            "recurrencePattern": alert.recurrencePattern?.toDictionary() ?? [:],
+            "postedBy": alert.postedBy,
+            "postedByUserId": alert.postedByUserId,
             "createdAt": FieldValue.serverTimestamp(),
             "updatedAt": FieldValue.serverTimestamp(),
             "isActive": alert.isActive,
@@ -175,9 +206,9 @@ class CalendarService: ObservableObject {
         
         // Add to scheduledAlerts collection
         let scheduledAlertRef = db.collection("scheduledAlerts").document(alert.id)
-        batch.setData(alertData, forDocument: scheduledAlertRef)
+        batch.setData(scheduledAlertData, forDocument: scheduledAlertRef)
         
-        // Add to organization's scheduledAlerts array
+        // Add to organization's scheduledAlerts array (use alertData with regular dates)
         let orgRef = db.collection("organizations").document(alert.organizationId)
         batch.updateData([
             "scheduledAlerts": FieldValue.arrayUnion([alertData]),
@@ -221,6 +252,37 @@ class CalendarService: ObservableObject {
             "postedBy": alert.postedBy,
             "postedByUserId": alert.postedByUserId,
             "createdAt": alert.createdAt,
+            "updatedAt": Date(),
+            "isActive": alert.isActive,
+            "imageURLs": alert.imageURLs,
+            "expiresAt": alert.expiresAt ?? Date(),
+            "calendarEventId": alert.calendarEventId ?? ""
+        ]
+        
+        // Create separate data for scheduledAlerts collection with server timestamps
+        let scheduledAlertData: [String: Any] = [
+            "title": alert.title,
+            "description": alert.description,
+            "organizationId": alert.organizationId,
+            "organizationName": alert.organizationName,
+            "groupId": alert.groupId ?? "",
+            "groupName": alert.groupName ?? "",
+            "type": alert.type.rawValue,
+            "severity": alert.severity.rawValue,
+            "location": [
+                "latitude": alert.location?.latitude ?? 0.0,
+                "longitude": alert.location?.longitude ?? 0.0,
+                "address": alert.location?.address ?? "",
+                "city": alert.location?.city ?? "",
+                "state": alert.location?.state ?? "",
+                "zipCode": alert.location?.zipCode ?? ""
+            ],
+            "scheduledDate": alert.scheduledDate,
+            "isRecurring": alert.isRecurring,
+            "recurrencePattern": alert.recurrencePattern?.toDictionary() ?? [:],
+            "postedBy": alert.postedBy,
+            "postedByUserId": alert.postedByUserId,
+            "createdAt": alert.createdAt,
             "updatedAt": FieldValue.serverTimestamp(),
             "isActive": alert.isActive,
             "imageURLs": alert.imageURLs,
@@ -233,9 +295,9 @@ class CalendarService: ObservableObject {
         
         // Update in scheduledAlerts collection
         let scheduledAlertRef = db.collection("scheduledAlerts").document(alert.id)
-        batch.setData(alertData, forDocument: scheduledAlertRef)
+        batch.setData(scheduledAlertData, forDocument: scheduledAlertRef)
         
-        // Update in organization's scheduledAlerts array
+        // Update in organization's scheduledAlerts array (use alertData with regular dates)
         let orgRef = db.collection("organizations").document(alert.organizationId)
         batch.updateData([
             "scheduledAlerts": FieldValue.arrayUnion([alertData]),

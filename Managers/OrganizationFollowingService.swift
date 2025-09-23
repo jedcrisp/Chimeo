@@ -15,58 +15,29 @@ class OrganizationFollowingService: ObservableObject {
         print("🔧 BULLETPROOF: Ensuring user document exists with FCM token...")
         await ensureUserDocumentWithFCMToken(userId: userId)
         
-        // Use a batch write to ensure all operations succeed or fail together
-        let batch = db.batch()
-        
-        // Add to user's followed organizations
+        // NEW LOGIC: Only update user's followedOrganizations array
         let userRef = db.collection("users").document(userId)
-        batch.updateData([
-            "followedOrganizations": FieldValue.arrayUnion([organizationId]),
-            "updatedAt": FieldValue.serverTimestamp()
-        ], forDocument: userRef)
+        let userDoc = try await userRef.getDocument()
         
-        // Create/update the user's organization following document
-        let userOrgRef = db.collection("users").document(userId)
-            .collection("followedOrganizations").document(organizationId)
-        batch.setData([
-            "organizationId": organizationId,
-            "isFollowing": true,
-            "followedAt": FieldValue.serverTimestamp(),
-            "updatedAt": FieldValue.serverTimestamp()
-        ], forDocument: userOrgRef, merge: true)
-        
-        // Also add to organization's followers subcollection for web app compatibility
-        let orgFollowersRef = db.collection("organizations").document(organizationId)
-            .collection("followers").document(userId)
-        batch.setData([
-            "userId": userId,
-            "followedAt": FieldValue.serverTimestamp(),
-            "createdAt": FieldValue.serverTimestamp(),
-            "updatedAt": FieldValue.serverTimestamp()
-        ], forDocument: orgFollowersRef)
-        
-        // Get current follower count and increment it safely
-        let orgRef = db.collection("organizations").document(organizationId)
-        let orgDoc = try await orgRef.getDocument()
-        
-        if let orgData = orgDoc.data(), let currentCount = orgData["followerCount"] as? Int {
-            let newCount = currentCount + 1
-            batch.updateData([
-                "followerCount": newCount,
-                "updatedAt": FieldValue.serverTimestamp()
-            ], forDocument: orgRef)
-            print("   📊 Updated follower count from \(currentCount) to \(newCount)")
-        } else {
-            // If no follower count exists, set it to 1
-            batch.updateData([
-                "followerCount": 1,
-                "updatedAt": FieldValue.serverTimestamp()
-            ], forDocument: orgRef)
-            print("   📊 Set initial follower count to 1")
+        guard let userData = userDoc.data() else {
+            print("❌ User document not found")
+            throw NSError(domain: "OrganizationFollowingService", code: 404, userInfo: [NSLocalizedDescriptionKey: "User document not found"])
         }
         
-        // Commit all changes
-        try await batch.commit()
+        var followedOrganizations = userData["followedOrganizations"] as? [String] ?? []
+        
+        if !followedOrganizations.contains(organizationId) {
+            followedOrganizations.append(organizationId)
+            
+            try await userRef.updateData([
+                "followedOrganizations": followedOrganizations,
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+            
+            print("✅ Added organization \(organizationId) to user's followedOrganizations array")
+        } else {
+            print("ℹ️ User already follows organization \(organizationId)")
+        }
         
         print("✅ Successfully followed organization")
     }
@@ -77,43 +48,29 @@ class OrganizationFollowingService: ObservableObject {
         
         let db = Firestore.firestore()
         
-        // Use a batch write to ensure all operations succeed or fail together
-        let batch = db.batch()
-        
-        // Remove from user's followed organizations array
+        // NEW LOGIC: Only update user's followedOrganizations array
         let userRef = db.collection("users").document(userId)
-        batch.updateData([
-            "followedOrganizations": FieldValue.arrayRemove([organizationId]),
-            "updatedAt": FieldValue.serverTimestamp()
-        ], forDocument: userRef)
+        let userDoc = try await userRef.getDocument()
         
-        // Remove the user's organization following document
-        let userOrgRef = db.collection("users").document(userId)
-            .collection("followedOrganizations").document(organizationId)
-        batch.deleteDocument(userOrgRef)
-        
-        // Also remove from organization's followers subcollection for web app compatibility
-        let orgFollowersRef = db.collection("organizations").document(organizationId)
-            .collection("followers").document(userId)
-        batch.deleteDocument(orgFollowersRef)
-        
-        // Get current follower count and decrement it safely
-        let orgRef = db.collection("organizations").document(organizationId)
-        let orgDoc = try await orgRef.getDocument()
-        
-        if let orgData = orgDoc.data(), let currentCount = orgData["followerCount"] as? Int {
-            let newCount = max(0, currentCount - 1) // Ensure count doesn't go below 0
-            batch.updateData([
-                "followerCount": newCount,
-                "updatedAt": FieldValue.serverTimestamp()
-            ], forDocument: orgRef)
-            print("   📊 Updated follower count from \(currentCount) to \(newCount)")
-        } else {
-            print("   ⚠️ Could not get current follower count, skipping count update")
+        guard let userData = userDoc.data() else {
+            print("❌ User document not found")
+            throw NSError(domain: "OrganizationFollowingService", code: 404, userInfo: [NSLocalizedDescriptionKey: "User document not found"])
         }
         
-        // Commit all changes
-        try await batch.commit()
+        var followedOrganizations = userData["followedOrganizations"] as? [String] ?? []
+        
+        if let index = followedOrganizations.firstIndex(of: organizationId) {
+            followedOrganizations.remove(at: index)
+            
+            try await userRef.updateData([
+                "followedOrganizations": followedOrganizations,
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+            
+            print("✅ Removed organization \(organizationId) from user's followedOrganizations array")
+        } else {
+            print("ℹ️ User was not following organization \(organizationId)")
+        }
         
         print("✅ Successfully unfollowed organization")
     }

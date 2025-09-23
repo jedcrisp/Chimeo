@@ -277,55 +277,30 @@ struct OrganizationFollowingTestView: View {
         
         do {
             let db = Firestore.firestore()
-            let batch = db.batch()
             
-            // Add to user's followed organizations array
+            // NEW LOGIC: Only update user's followedOrganizations array
             let userRef = db.collection("users").document(currentUser.uid)
-            batch.updateData([
-                "followedOrganizations": FieldValue.arrayUnion([org.id]),
-                "updatedAt": FieldValue.serverTimestamp()
-            ], forDocument: userRef)
+            let userDoc = try await userRef.getDocument()
             
-            // Create user's organization following document
-            let userOrgRef = db.collection("users").document(currentUser.uid)
-                .collection("followedOrganizations").document(org.id)
-            batch.setData([
-                "organizationId": org.id,
-                "isFollowing": true,
-                "followedAt": FieldValue.serverTimestamp(),
-                "updatedAt": FieldValue.serverTimestamp()
-            ], forDocument: userOrgRef, merge: true)
-            
-            // Add to organization's followers subcollection
-            let orgFollowersRef = db.collection("organizations").document(org.id)
-                .collection("followers").document(currentUser.uid)
-            batch.setData([
-                "userId": currentUser.uid,
-                "followedAt": FieldValue.serverTimestamp(),
-                "createdAt": FieldValue.serverTimestamp(),
-                "updatedAt": FieldValue.serverTimestamp()
-            ], forDocument: orgFollowersRef)
-            
-            // Update organization's follower count
-            let orgRef = db.collection("organizations").document(org.id)
-            let orgDoc = try await orgRef.getDocument()
-            
-            if let orgData = orgDoc.data(), let currentCount = orgData["followerCount"] as? Int {
-                let newCount = currentCount + 1
-                batch.updateData([
-                    "followerCount": newCount,
-                    "updatedAt": FieldValue.serverTimestamp()
-                ], forDocument: orgRef)
-                testResults += "📊 Updated follower count from \(currentCount) to \(newCount)\n"
-            } else {
-                batch.updateData([
-                    "followerCount": 1,
-                    "updatedAt": FieldValue.serverTimestamp()
-                ], forDocument: orgRef)
-                testResults += "📊 Set initial follower count to 1\n"
+            guard let userData = userDoc.data() else {
+                testResults += "❌ User document not found\n"
+                return
             }
             
-            try await batch.commit()
+            var followedOrganizations = userData["followedOrganizations"] as? [String] ?? []
+            
+            if !followedOrganizations.contains(org.id) {
+                followedOrganizations.append(org.id)
+                
+                try await userRef.updateData([
+                    "followedOrganizations": followedOrganizations,
+                    "updatedAt": FieldValue.serverTimestamp()
+                ])
+                
+                testResults += "✅ Added organization \(org.id) to user's followedOrganizations array\n"
+            } else {
+                testResults += "ℹ️ User already follows organization \(org.id)\n"
+            }
             
             testResults += "✅ Successfully followed organization: \(org.name)\n"
             testResults += "   User ID: \(currentUser.uid)\n"
@@ -353,39 +328,30 @@ struct OrganizationFollowingTestView: View {
         
         do {
             let db = Firestore.firestore()
-            let batch = db.batch()
             
-            // Remove from user's followed organizations array
+            // NEW LOGIC: Only update user's followedOrganizations array
             let userRef = db.collection("users").document(currentUser.uid)
-            batch.updateData([
-                "followedOrganizations": FieldValue.arrayRemove([org.id]),
-                "updatedAt": FieldValue.serverTimestamp()
-            ], forDocument: userRef)
+            let userDoc = try await userRef.getDocument()
             
-            // Remove user's organization following document
-            let userOrgRef = db.collection("users").document(currentUser.uid)
-                .collection("followedOrganizations").document(org.id)
-            batch.deleteDocument(userOrgRef)
-            
-            // Remove from organization's followers subcollection
-            let orgFollowersRef = db.collection("organizations").document(org.id)
-                .collection("followers").document(currentUser.uid)
-            batch.deleteDocument(orgFollowersRef)
-            
-            // Update organization's follower count
-            let orgRef = db.collection("organizations").document(org.id)
-            let orgDoc = try await orgRef.getDocument()
-            
-            if let orgData = orgDoc.data(), let currentCount = orgData["followerCount"] as? Int {
-                let newCount = max(0, currentCount - 1)
-                batch.updateData([
-                    "followerCount": newCount,
-                    "updatedAt": FieldValue.serverTimestamp()
-                ], forDocument: orgRef)
-                testResults += "📊 Updated follower count from \(currentCount) to \(newCount)\n"
+            guard let userData = userDoc.data() else {
+                testResults += "❌ User document not found\n"
+                return
             }
             
-            try await batch.commit()
+            var followedOrganizations = userData["followedOrganizations"] as? [String] ?? []
+            
+            if let index = followedOrganizations.firstIndex(of: org.id) {
+                followedOrganizations.remove(at: index)
+                
+                try await userRef.updateData([
+                    "followedOrganizations": followedOrganizations,
+                    "updatedAt": FieldValue.serverTimestamp()
+                ])
+                
+                testResults += "✅ Removed organization \(org.id) from user's followedOrganizations array\n"
+            } else {
+                testResults += "ℹ️ User was not following organization \(org.id)\n"
+            }
             
             testResults += "✅ Successfully unfollowed organization: \(org.name)\n\n"
             

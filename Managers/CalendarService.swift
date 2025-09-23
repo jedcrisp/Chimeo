@@ -245,6 +245,17 @@ class CalendarService: ObservableObject {
             }
         }
         
+        // Wait a moment and verify again to see if data persists
+        try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+        let verifyDoc2 = try await orgRef.getDocument()
+        if let verifyData2 = verifyDoc2.data() {
+            let verifyScheduledAlerts2 = verifyData2["scheduledAlerts"] as? [[String: Any]] ?? []
+            print("🔍 Delayed Verification - Scheduled alerts count in organization: \(verifyScheduledAlerts2.count)")
+            if let lastAlert2 = verifyScheduledAlerts2.last {
+                print("🔍 Delayed Verification - Last alert title: \(lastAlert2["title"] as? String ?? "Unknown")")
+            }
+        }
+        
         await MainActor.run {
             self.scheduledAlerts.append(alert)
         }

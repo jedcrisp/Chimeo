@@ -452,13 +452,21 @@ struct PushNotificationTestView: View {
         
         do {
             let db = Firestore.firestore()
-            let followerDoc = try await db.collection("users")
-                .document(currentUser.uid)
-                .collection("followedOrganizations")
-                .document(org.id)
-                .getDocument()
             
-            let isFollowingOrg = followerDoc.exists
+            // NEW LOGIC: Check user's followedOrganizations array
+            let userRef = db.collection("users").document(currentUser.uid)
+            let userDoc = try await userRef.getDocument()
+            
+            guard let userData = userDoc.data() else {
+                await MainActor.run {
+                    testResults += "❌ User document not found\n\n"
+                    isFollowing = false
+                }
+                return
+            }
+            
+            let followedOrganizations = userData["followedOrganizations"] as? [String] ?? []
+            let isFollowingOrg = followedOrganizations.contains(org.id)
             let followerCount = org.followerCount
             
             await MainActor.run {
@@ -466,7 +474,8 @@ struct PushNotificationTestView: View {
                 followingCount = followerCount
                 testResults += "🔍 Following Status Check:\n"
                 testResults += isFollowingOrg ? "✅ Following \(org.name)\n" : "❌ Not following \(org.name)\n"
-                testResults += "📊 Organization has \(followerCount) followers\n\n"
+                testResults += "📊 Organization has \(followerCount) followers\n"
+                testResults += "👤 User's followed organizations: \(followedOrganizations)\n\n"
             }
         } catch {
             await MainActor.run {

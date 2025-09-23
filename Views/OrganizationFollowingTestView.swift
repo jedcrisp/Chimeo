@@ -194,46 +194,27 @@ struct OrganizationFollowingTestView: View {
         do {
             let db = Firestore.firestore()
             
-            // Check if user is following this organization
-            let userOrgRef = db.collection("users")
-                .document(currentUser.uid)
-                .collection("followedOrganizations")
-                .document(org.id)
+            // NEW LOGIC: Check user's followedOrganizations array
+            let userRef = db.collection("users").document(currentUser.uid)
+            let userDoc = try await userRef.getDocument()
             
-            let userOrgDoc = try await userOrgRef.getDocument()
-            
-            if userOrgDoc.exists {
-                let data = userOrgDoc.data() ?? [:]
-                let isFollowingOrg = data["isFollowing"] as? Bool ?? false
-                
-                testResults += "✅ User following document found\n"
-                testResults += "   Following: \(isFollowingOrg)\n"
-                testResults += "   Followed at: \(data["followedAt"] as? Timestamp)\n\n"
-                
-                await MainActor.run {
-                    self.isFollowing = isFollowingOrg
-                }
-            } else {
-                testResults += "❌ User following document not found\n\n"
+            guard let userData = userDoc.data() else {
+                testResults += "❌ User document not found\n\n"
                 await MainActor.run {
                     self.isFollowing = false
                 }
+                return
             }
             
-            // Check organization's followers subcollection
-            let orgFollowersRef = db.collection("organizations")
-                .document(org.id)
-                .collection("followers")
-                .document(currentUser.uid)
+            let followedOrganizations = userData["followedOrganizations"] as? [String] ?? []
+            let isFollowingOrg = followedOrganizations.contains(org.id)
             
-            let orgFollowersDoc = try await orgFollowersRef.getDocument()
+            testResults += "✅ User document found\n"
+            testResults += "   Followed organizations: \(followedOrganizations)\n"
+            testResults += "   Following \(org.name): \(isFollowingOrg)\n\n"
             
-            if orgFollowersDoc.exists {
-                testResults += "✅ Organization followers document found\n"
-                testResults += "   User ID: \(orgFollowersDoc.documentID)\n"
-                testResults += "   Followed at: \(orgFollowersDoc.data()?["followedAt"] as? Timestamp)\n\n"
-            } else {
-                testResults += "❌ Organization followers document not found\n\n"
+            await MainActor.run {
+                self.isFollowing = isFollowingOrg
             }
             
             // Check organization's follower count
@@ -245,17 +226,6 @@ struct OrganizationFollowingTestView: View {
                 await MainActor.run {
                     self.followerCount = followerCount
                 }
-            }
-            
-            // Check user's followedOrganizations array
-            let userDoc = try await db.collection("users").document(currentUser.uid).getDocument()
-            if let userData = userDoc.data() {
-                let followedOrgs = userData["followedOrganizations"] as? [String] ?? []
-                testResults += "👤 User's followed organizations array:\n"
-                for orgId in followedOrgs {
-                    testResults += "   - \(orgId)\n"
-                }
-                testResults += "\n"
             }
             
         } catch {

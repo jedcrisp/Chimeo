@@ -33,6 +33,7 @@ struct OrganizationProfileView: View {
     @State private var showingCreateGroupAlert = false
     @State private var newGroupName = ""
     @State private var newGroupDescription = ""
+    @State private var showingAdminManagement = false
     @State private var newGroupIsPrivate = false
     @State private var newGroupAllowPublicJoin = true
     @State private var selectedGroupForAlert: OrganizationGroup?
@@ -150,6 +151,26 @@ struct OrganizationProfileView: View {
                             .background(
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(Color.green.opacity(0.1))
+                            )
+                        }
+                        
+                        // Admin Management button
+                        Button(action: { 
+                            showingAdminManagement = true 
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "person.2.circle.fill")
+                                    .font(.system(size: 20))
+                                Text("Manage Admins")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                            }
+                            .foregroundColor(.blue)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.blue.opacity(0.1))
                             )
                         }
                         
@@ -277,6 +298,9 @@ struct OrganizationProfileView: View {
                     createGroupWithDetails(name: group.name, description: group.description ?? "No description", isPrivate: group.isPrivate, allowPublicJoin: group.allowPublicJoin)
                 }
             )
+        }
+        .sheet(isPresented: $showingAdminManagement) {
+            OrganizationAdminManagementView()
         }
         .onAppear {
             print("🏢 OrganizationProfileView appeared for: \(organization.name)")

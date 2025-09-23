@@ -227,7 +227,7 @@ struct ScheduledAlertDetailView: View {
         
         Task {
             do {
-                try await calendarService.deleteScheduledAlert(alert.id)
+                try await calendarService.deleteScheduledAlert(alert.id, organizationId: alert.organizationId)
                 
                 // Also delete the associated calendar event if it exists
                 if let calendarEventId = alert.calendarEventId {

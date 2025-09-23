@@ -201,22 +201,14 @@ class CalendarService: ObservableObject {
             "calendarEventId": alert.calendarEventId ?? ""
         ]
         
-        // Use batch to update both scheduledAlerts collection and organization subcollection
-        let batch = db.batch()
-        
-        // Add to scheduledAlerts collection (for execution)
-        let scheduledAlertRef = db.collection("scheduledAlerts").document(alert.id)
-        batch.setData(scheduledAlertData, forDocument: scheduledAlertRef)
-        
-        // Add to organization's scheduledAlerts subcollection (for visibility)
+        // Only add to organization's scheduledAlerts subcollection
         let orgScheduledAlertRef = db.collection("organizations")
             .document(alert.organizationId)
             .collection("scheduledAlerts")
             .document(alert.id)
-        batch.setData(scheduledAlertData, forDocument: orgScheduledAlertRef)
         
-        try await batch.commit()
-        print("✅ Batch commit successful")
+        try await orgScheduledAlertRef.setData(scheduledAlertData)
+        print("✅ Scheduled alert created successfully")
         
         // Verify the data was saved by reading it back
         let verifyRef = db.collection("organizations")
@@ -229,11 +221,7 @@ class CalendarService: ObservableObject {
             print("🔍 Verification - Last alert title: \(lastAlert["title"] as? String ?? "Unknown")")
         }
         
-        // No need to cache locally since we're using subcollection
-        
-        print("✅ Scheduled alert created successfully")
-        print("   📍 Added to scheduledAlerts collection")
-        print("   📍 Added to organization document: organizations/\(alert.organizationId)")
+        print("   📍 Added to organization subcollection: organizations/\(alert.organizationId)/scheduledAlerts")
     }
     
     func updateScheduledAlert(_ alert: ScheduledAlert) async throws {
@@ -301,67 +289,31 @@ class CalendarService: ObservableObject {
             "calendarEventId": alert.calendarEventId ?? ""
         ]
         
-        // Use batch to update both scheduledAlerts collection and organization subcollection
-        let batch = db.batch()
-        
-        // Update in scheduledAlerts collection (for execution)
-        let scheduledAlertRef = db.collection("scheduledAlerts").document(alert.id)
-        batch.setData(scheduledAlertData, forDocument: scheduledAlertRef)
-        
-        // Update in organization's scheduledAlerts subcollection (for visibility)
+        // Only update in organization's scheduledAlerts subcollection
         let orgScheduledAlertRef = db.collection("organizations")
             .document(alert.organizationId)
             .collection("scheduledAlerts")
             .document(alert.id)
-        batch.setData(scheduledAlertData, forDocument: orgScheduledAlertRef)
         
-        try await batch.commit()
-        
-        // No need to cache locally since we're using subcollection
+        try await orgScheduledAlertRef.setData(scheduledAlertData)
         
         print("✅ Scheduled alert updated successfully")
-        print("   📍 Updated in scheduledAlerts collection")
-        print("   📍 Updated in organization document: organizations/\(alert.organizationId)")
+        print("   📍 Updated in organization subcollection: organizations/\(alert.organizationId)/scheduledAlerts")
     }
     
-    func deleteScheduledAlert(_ alertId: String) async throws {
+    func deleteScheduledAlert(_ alertId: String, organizationId: String) async throws {
         print("⏰ Deleting scheduled alert: \(alertId)")
         
-        // First get the alert data to know which organization to update
-        let alertDoc = try await db.collection("scheduledAlerts").document(alertId).getDocument()
+        // Only delete from organization's scheduledAlerts subcollection
+        let orgScheduledAlertRef = db.collection("organizations")
+            .document(organizationId)
+            .collection("scheduledAlerts")
+            .document(alertId)
         
-        guard let alertData = alertDoc.data() else {
-            print("❌ Alert not found")
-            return
-        }
-        
-        let organizationId = alertData["organizationId"] as? String ?? ""
-        
-        // Use batch to delete from both collections
-        let batch = db.batch()
-        
-        // Delete from scheduledAlerts collection (for execution)
-        let scheduledAlertRef = db.collection("scheduledAlerts").document(alertId)
-        batch.deleteDocument(scheduledAlertRef)
-        
-        // Delete from organization's scheduledAlerts subcollection (for visibility)
-        if !organizationId.isEmpty {
-            let orgScheduledAlertRef = db.collection("organizations")
-                .document(organizationId)
-                .collection("scheduledAlerts")
-                .document(alertId)
-            batch.deleteDocument(orgScheduledAlertRef)
-        }
-        
-        try await batch.commit()
-        
-        // No need to cache locally since we're using subcollection
+        try await orgScheduledAlertRef.delete()
         
         print("✅ Scheduled alert deleted successfully")
-        print("   📍 Removed from scheduledAlerts collection")
-        if !organizationId.isEmpty {
-            print("   📍 Removed from organization document: organizations/\(organizationId)")
-        }
+        print("   📍 Removed from organization subcollection: organizations/\(organizationId)/scheduledAlerts")
     }
     
     

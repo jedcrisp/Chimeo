@@ -361,6 +361,80 @@ class CalendarService: ObservableObject {
         // or we could implement a direct Firestore query here
         return []
     }
+    
+    // MARK: - Fetch Scheduled Alerts from Firestore
+    
+    func fetchScheduledAlertsForDate(_ date: Date) async throws -> [ScheduledAlert] {
+        print("⏰ Fetching scheduled alerts for date: \(date)")
+        
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? date
+        
+        // Get all organizations first
+        let organizationsSnapshot = try await db.collection("organizations").getDocuments()
+        var allAlerts: [ScheduledAlert] = []
+        
+        for orgDoc in organizationsSnapshot.documents {
+            let orgId = orgDoc.documentID
+            
+            // Query scheduled alerts for this organization within the date range
+            let alertsQuery = db.collection("organizations")
+                .document(orgId)
+                .collection("scheduledAlerts")
+                .whereField("scheduledDate", isGreaterThanOrEqualTo: startOfDay)
+                .whereField("scheduledDate", isLessThan: endOfDay)
+                .whereField("isActive", isEqualTo: true)
+            
+            let alertsSnapshot = try await alertsQuery.getDocuments()
+            
+            for alertDoc in alertsSnapshot.documents {
+                if let alert = try? alertDoc.data(as: ScheduledAlert.self) {
+                    allAlerts.append(alert)
+                }
+            }
+        }
+        
+        // Sort by scheduled date
+        allAlerts.sort { $0.scheduledDate < $1.scheduledDate }
+        
+        print("✅ Found \(allAlerts.count) scheduled alerts for \(date)")
+        return allAlerts
+    }
+    
+    func fetchScheduledAlertsForDateRange(_ startDate: Date, endDate: Date) async throws -> [ScheduledAlert] {
+        print("⏰ Fetching scheduled alerts for date range: \(startDate) to \(endDate)")
+        
+        // Get all organizations first
+        let organizationsSnapshot = try await db.collection("organizations").getDocuments()
+        var allAlerts: [ScheduledAlert] = []
+        
+        for orgDoc in organizationsSnapshot.documents {
+            let orgId = orgDoc.documentID
+            
+            // Query scheduled alerts for this organization within the date range
+            let alertsQuery = db.collection("organizations")
+                .document(orgId)
+                .collection("scheduledAlerts")
+                .whereField("scheduledDate", isGreaterThanOrEqualTo: startDate)
+                .whereField("scheduledDate", isLessThanOrEqualTo: endDate)
+                .whereField("isActive", isEqualTo: true)
+            
+            let alertsSnapshot = try await alertsQuery.getDocuments()
+            
+            for alertDoc in alertsSnapshot.documents {
+                if let alert = try? alertDoc.data(as: ScheduledAlert.self) {
+                    allAlerts.append(alert)
+                }
+            }
+        }
+        
+        // Sort by scheduled date
+        allAlerts.sort { $0.scheduledDate < $1.scheduledDate }
+        
+        print("✅ Found \(allAlerts.count) scheduled alerts for date range")
+        return allAlerts
+    }
 }
 
 // MARK: - Recurrence Pattern Extension

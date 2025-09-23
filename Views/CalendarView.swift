@@ -17,12 +17,41 @@ struct CalendarView: View {
     @State private var showingAlertDetail: ScheduledAlert?
     @State private var showingFilter = false
     @State private var filter = CalendarFilter()
+    @State private var scheduledAlerts: [ScheduledAlert] = []
+    @State private var isLoadingAlerts = false
     
     private let calendar = Calendar.current
     private let dateFormatter = DateFormatter()
     
     init() {
         dateFormatter.dateFormat = "MMMM yyyy"
+    }
+    
+    private func loadScheduledAlerts() async {
+        isLoadingAlerts = true
+        
+        do {
+            let startDate = calendar.date(byAdding: .month, value: -1, to: selectedDate) ?? selectedDate
+            let endDate = calendar.date(byAdding: .month, value: 2, to: selectedDate) ?? selectedDate
+            
+            let alerts = try await calendarService.fetchScheduledAlertsForDateRange(startDate, endDate: endDate)
+            
+            await MainActor.run {
+                self.scheduledAlerts = alerts
+                self.isLoadingAlerts = false
+            }
+        } catch {
+            await MainActor.run {
+                self.isLoadingAlerts = false
+            }
+            print("❌ Error loading scheduled alerts: \(error)")
+        }
+    }
+    
+    private func getScheduledAlertsForDate(_ date: Date) -> [ScheduledAlert] {
+        return scheduledAlerts.filter { alert in
+            calendar.isDate(alert.scheduledDate, inSameDayAs: date)
+        }
     }
     
     var body: some View {
@@ -81,6 +110,16 @@ struct CalendarView: View {
             .sheet(item: $showingAlertDetail) { alert in
                 ScheduledAlertDetailView(alert: alert, calendarService: calendarService)
             }
+            .onAppear {
+                Task {
+                    await loadScheduledAlerts()
+                }
+            }
+            .onChange(of: selectedDate) { _, _ in
+                Task {
+                    await loadScheduledAlerts()
+                }
+            }
         }
     }
     
@@ -138,7 +177,8 @@ struct CalendarView: View {
                     },
                     onAlertTap: { alert in
                         showingAlertDetail = alert
-                    }
+                    },
+                    getScheduledAlertsForDate: getScheduledAlertsForDate
                 )
             case .week:
                 WeekCalendarView(
@@ -150,7 +190,8 @@ struct CalendarView: View {
                     },
                     onAlertTap: { alert in
                         showingAlertDetail = alert
-                    }
+                    },
+                    getScheduledAlertsForDate: getScheduledAlertsForDate
                 )
             case .day:
                 DayCalendarView(
@@ -162,7 +203,8 @@ struct CalendarView: View {
                     },
                     onAlertTap: { alert in
                         showingAlertDetail = alert
-                    }
+                    },
+                    getScheduledAlertsForDate: getScheduledAlertsForDate
                 )
             case .agenda:
                 AgendaView(
@@ -174,7 +216,8 @@ struct CalendarView: View {
                     },
                     onAlertTap: { alert in
                         showingAlertDetail = alert
-                    }
+                    },
+                    getScheduledAlertsForDate: getScheduledAlertsForDate
                 )
             }
         }
@@ -237,16 +280,18 @@ struct MonthCalendarView: View {
     let filter: CalendarFilter
     let onEventTap: (CalendarEvent) -> Void
     let onAlertTap: (ScheduledAlert) -> Void
+    let getScheduledAlertsForDate: (Date) -> [ScheduledAlert]
     
     private let calendar = Calendar.current
     private let dateFormatter = DateFormatter()
     
-    init(selectedDate: Binding<Date>, calendarService: CalendarService, filter: CalendarFilter, onEventTap: @escaping (CalendarEvent) -> Void, onAlertTap: @escaping (ScheduledAlert) -> Void) {
+    init(selectedDate: Binding<Date>, calendarService: CalendarService, filter: CalendarFilter, onEventTap: @escaping (CalendarEvent) -> Void, onAlertTap: @escaping (ScheduledAlert) -> Void, getScheduledAlertsForDate: @escaping (Date) -> [ScheduledAlert]) {
         self._selectedDate = selectedDate
         self.calendarService = calendarService
         self.filter = filter
         self.onEventTap = onEventTap
         self.onAlertTap = onAlertTap
+        self.getScheduledAlertsForDate = getScheduledAlertsForDate
         dateFormatter.dateFormat = "d"
     }
     
@@ -343,7 +388,7 @@ struct MonthDayView: View {
     }
     
     private var dayAlerts: [ScheduledAlert] {
-        calendarService.getScheduledAlertsForDate(date).filter { alert in
+        getScheduledAlertsForDate(date).filter { alert in
             filter.showAlerts &&
             filter.selectedTypes.contains(alert.type) &&
             filter.selectedSeverities.contains(alert.severity)
@@ -398,16 +443,18 @@ struct WeekCalendarView: View {
     let filter: CalendarFilter
     let onEventTap: (CalendarEvent) -> Void
     let onAlertTap: (ScheduledAlert) -> Void
+    let getScheduledAlertsForDate: (Date) -> [ScheduledAlert]
     
     private let calendar = Calendar.current
     private let dateFormatter = DateFormatter()
     
-    init(selectedDate: Binding<Date>, calendarService: CalendarService, filter: CalendarFilter, onEventTap: @escaping (CalendarEvent) -> Void, onAlertTap: @escaping (ScheduledAlert) -> Void) {
+    init(selectedDate: Binding<Date>, calendarService: CalendarService, filter: CalendarFilter, onEventTap: @escaping (CalendarEvent) -> Void, onAlertTap: @escaping (ScheduledAlert) -> Void, getScheduledAlertsForDate: @escaping (Date) -> [ScheduledAlert]) {
         self._selectedDate = selectedDate
         self.calendarService = calendarService
         self.filter = filter
         self.onEventTap = onEventTap
         self.onAlertTap = onAlertTap
+        self.getScheduledAlertsForDate = getScheduledAlertsForDate
         dateFormatter.dateFormat = "E d"
     }
     
@@ -480,7 +527,7 @@ struct WeekDayView: View {
     }
     
     private var dayAlerts: [ScheduledAlert] {
-        calendarService.getScheduledAlertsForDate(date).filter { alert in
+        getScheduledAlertsForDate(date).filter { alert in
             filter.showAlerts &&
             filter.selectedTypes.contains(alert.type) &&
             filter.selectedSeverities.contains(alert.severity)
@@ -544,16 +591,18 @@ struct DayCalendarView: View {
     let filter: CalendarFilter
     let onEventTap: (CalendarEvent) -> Void
     let onAlertTap: (ScheduledAlert) -> Void
+    let getScheduledAlertsForDate: (Date) -> [ScheduledAlert]
     
     private let calendar = Calendar.current
     private let dateFormatter = DateFormatter()
     
-    init(selectedDate: Binding<Date>, calendarService: CalendarService, filter: CalendarFilter, onEventTap: @escaping (CalendarEvent) -> Void, onAlertTap: @escaping (ScheduledAlert) -> Void) {
+    init(selectedDate: Binding<Date>, calendarService: CalendarService, filter: CalendarFilter, onEventTap: @escaping (CalendarEvent) -> Void, onAlertTap: @escaping (ScheduledAlert) -> Void, getScheduledAlertsForDate: @escaping (Date) -> [ScheduledAlert]) {
         self._selectedDate = selectedDate
         self.calendarService = calendarService
         self.filter = filter
         self.onEventTap = onEventTap
         self.onAlertTap = onAlertTap
+        self.getScheduledAlertsForDate = getScheduledAlertsForDate
         dateFormatter.dateFormat = "EEEE, MMMM d, yyyy"
     }
     
@@ -592,7 +641,7 @@ struct DayCalendarView: View {
     }
     
     private var dayAlerts: [ScheduledAlert] {
-        calendarService.getScheduledAlertsForDate(selectedDate).filter { alert in
+        getScheduledAlertsForDate(selectedDate).filter { alert in
             filter.showAlerts &&
             filter.selectedTypes.contains(alert.type) &&
             filter.selectedSeverities.contains(alert.severity)
@@ -607,16 +656,18 @@ struct AgendaView: View {
     let filter: CalendarFilter
     let onEventTap: (CalendarEvent) -> Void
     let onAlertTap: (ScheduledAlert) -> Void
+    let getScheduledAlertsForDate: (Date) -> [ScheduledAlert]
     
     private let calendar = Calendar.current
     private let dateFormatter = DateFormatter()
     
-    init(selectedDate: Binding<Date>, calendarService: CalendarService, filter: CalendarFilter, onEventTap: @escaping (CalendarEvent) -> Void, onAlertTap: @escaping (ScheduledAlert) -> Void) {
+    init(selectedDate: Binding<Date>, calendarService: CalendarService, filter: CalendarFilter, onEventTap: @escaping (CalendarEvent) -> Void, onAlertTap: @escaping (ScheduledAlert) -> Void, getScheduledAlertsForDate: @escaping (Date) -> [ScheduledAlert]) {
         self._selectedDate = selectedDate
         self.calendarService = calendarService
         self.filter = filter
         self.onEventTap = onEventTap
         self.onAlertTap = onAlertTap
+        self.getScheduledAlertsForDate = getScheduledAlertsForDate
         dateFormatter.dateFormat = "EEEE, MMMM d"
     }
     
@@ -630,7 +681,8 @@ struct AgendaView: View {
                         calendarService: calendarService,
                         filter: filter,
                         onEventTap: onEventTap,
-                        onAlertTap: onAlertTap
+                        onAlertTap: onAlertTap,
+                        getScheduledAlertsForDate: getScheduledAlertsForDate
                     )
                 }
             }
@@ -661,17 +713,19 @@ struct AgendaDayView: View {
     let filter: CalendarFilter
     let onEventTap: (CalendarEvent) -> Void
     let onAlertTap: (ScheduledAlert) -> Void
+    let getScheduledAlertsForDate: (Date) -> [ScheduledAlert]
     
     private let calendar = Calendar.current
     private let dateFormatter = DateFormatter()
     
-    init(date: Date, selectedDate: Binding<Date>, calendarService: CalendarService, filter: CalendarFilter, onEventTap: @escaping (CalendarEvent) -> Void, onAlertTap: @escaping (ScheduledAlert) -> Void) {
+    init(date: Date, selectedDate: Binding<Date>, calendarService: CalendarService, filter: CalendarFilter, onEventTap: @escaping (CalendarEvent) -> Void, onAlertTap: @escaping (ScheduledAlert) -> Void, getScheduledAlertsForDate: @escaping (Date) -> [ScheduledAlert]) {
         self.date = date
         self._selectedDate = selectedDate
         self.calendarService = calendarService
         self.filter = filter
         self.onEventTap = onEventTap
         self.onAlertTap = onAlertTap
+        self.getScheduledAlertsForDate = getScheduledAlertsForDate
         dateFormatter.dateFormat = "EEEE, MMMM d"
     }
     
@@ -686,7 +740,7 @@ struct AgendaDayView: View {
     }
     
     private var dayAlerts: [ScheduledAlert] {
-        calendarService.getScheduledAlertsForDate(date).filter { alert in
+        getScheduledAlertsForDate(date).filter { alert in
             filter.showAlerts &&
             filter.selectedTypes.contains(alert.type) &&
             filter.selectedSeverities.contains(alert.severity)

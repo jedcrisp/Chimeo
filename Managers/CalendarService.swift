@@ -141,6 +141,7 @@ class CalendarService: ObservableObject {
         print("⏰ Creating scheduled alert: \(alert.title)")
         
         let alertData: [String: Any] = [
+            "id": alert.id,
             "title": alert.title,
             "description": alert.description,
             "organizationId": alert.organizationId,
@@ -208,10 +209,17 @@ class CalendarService: ObservableObject {
         let scheduledAlertRef = db.collection("scheduledAlerts").document(alert.id)
         batch.setData(scheduledAlertData, forDocument: scheduledAlertRef)
         
-        // Add to organization's scheduledAlerts array (use alertData with regular dates)
+        // Get current scheduled alerts from organization document
         let orgRef = db.collection("organizations").document(alert.organizationId)
+        let orgDoc = try await orgRef.getDocument()
+        var currentScheduledAlerts = orgDoc.data()?["scheduledAlerts"] as? [[String: Any]] ?? []
+        
+        // Add new alert to the array
+        currentScheduledAlerts.append(alertData)
+        
+        // Update organization document with the new array
         batch.updateData([
-            "scheduledAlerts": FieldValue.arrayUnion([alertData]),
+            "scheduledAlerts": currentScheduledAlerts,
             "updatedAt": FieldValue.serverTimestamp()
         ], forDocument: orgRef)
         
@@ -230,6 +238,7 @@ class CalendarService: ObservableObject {
         print("⏰ Updating scheduled alert: \(alert.title)")
         
         let alertData: [String: Any] = [
+            "id": alert.id,
             "title": alert.title,
             "description": alert.description,
             "organizationId": alert.organizationId,
@@ -297,10 +306,22 @@ class CalendarService: ObservableObject {
         let scheduledAlertRef = db.collection("scheduledAlerts").document(alert.id)
         batch.setData(scheduledAlertData, forDocument: scheduledAlertRef)
         
-        // Update in organization's scheduledAlerts array (use alertData with regular dates)
+        // Get current scheduled alerts from organization document
         let orgRef = db.collection("organizations").document(alert.organizationId)
+        let orgDoc = try await orgRef.getDocument()
+        var currentScheduledAlerts = orgDoc.data()?["scheduledAlerts"] as? [[String: Any]] ?? []
+        
+        // Find and update the alert in the array
+        if let index = currentScheduledAlerts.firstIndex(where: { $0["id"] as? String == alert.id }) {
+            currentScheduledAlerts[index] = alertData
+        } else {
+            // If not found, add it
+            currentScheduledAlerts.append(alertData)
+        }
+        
+        // Update organization document with the updated array
         batch.updateData([
-            "scheduledAlerts": FieldValue.arrayUnion([alertData]),
+            "scheduledAlerts": currentScheduledAlerts,
             "updatedAt": FieldValue.serverTimestamp()
         ], forDocument: orgRef)
         

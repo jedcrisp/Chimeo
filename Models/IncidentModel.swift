@@ -206,6 +206,9 @@ struct Organization: Identifiable, Codable, Hashable {
     let state: String?
     let zipCode: String?
     
+    // Scheduled alerts for this organization
+    let scheduledAlerts: [ScheduledAlert]?
+    
     // Custom coding keys to map flat Firestore fields to nested Swift structure
     enum CodingKeys: String, CodingKey {
         case id
@@ -230,9 +233,10 @@ struct Organization: Identifiable, Codable, Hashable {
         case city
         case state
         case zipCode
+        case scheduledAlerts
     }
     
-    init(id: String = UUID().uuidString, name: String, type: String, description: String? = nil, location: Location, verified: Bool = false, followerCount: Int = 0, logoURL: String? = nil, website: String? = nil, phone: String? = nil, email: String? = nil, groups: [OrganizationGroup]? = nil, adminIds: [String: Bool]? = nil, createdAt: Date? = nil, updatedAt: Date? = nil, groupsArePrivate: Bool = false, allowPublicGroupJoin: Bool = true, address: String? = nil, city: String? = nil, state: String? = nil, zipCode: String? = nil) {
+    init(id: String = UUID().uuidString, name: String, type: String, description: String? = nil, location: Location, verified: Bool = false, followerCount: Int = 0, logoURL: String? = nil, website: String? = nil, phone: String? = nil, email: String? = nil, groups: [OrganizationGroup]? = nil, adminIds: [String: Bool]? = nil, createdAt: Date? = nil, updatedAt: Date? = nil, groupsArePrivate: Bool = false, allowPublicGroupJoin: Bool = true, address: String? = nil, city: String? = nil, state: String? = nil, zipCode: String? = nil, scheduledAlerts: [ScheduledAlert]? = nil) {
         self.id = id
         self.name = name
         self.type = type
@@ -254,6 +258,7 @@ struct Organization: Identifiable, Codable, Hashable {
         self.city = city
         self.state = state
         self.zipCode = zipCode
+        self.scheduledAlerts = scheduledAlerts
     }
     
     // Custom decoding to handle flat address fields
@@ -285,6 +290,9 @@ struct Organization: Identifiable, Codable, Hashable {
         self.city = try container.decodeIfPresent(String.self, forKey: .city)
         self.state = try container.decodeIfPresent(String.self, forKey: .state)
         self.zipCode = try container.decodeIfPresent(String.self, forKey: .zipCode)
+        
+        // Decode scheduled alerts
+        self.scheduledAlerts = try container.decodeIfPresent([ScheduledAlert].self, forKey: .scheduledAlerts)
         
         // Handle location - try nested first, then fall back to flat fields
         if let nestedLocation = try? container.decode(Location.self, forKey: .location) {

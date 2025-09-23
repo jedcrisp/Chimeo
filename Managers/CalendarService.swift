@@ -170,13 +170,29 @@ class CalendarService: ObservableObject {
             "calendarEventId": alert.calendarEventId ?? ""
         ]
         
-        try await db.collection("scheduledAlerts").document(alert.id).setData(alertData)
+        // Use batch to update both scheduledAlerts collection and organization document
+        let batch = db.batch()
+        
+        // Add to scheduledAlerts collection
+        let scheduledAlertRef = db.collection("scheduledAlerts").document(alert.id)
+        batch.setData(alertData, forDocument: scheduledAlertRef)
+        
+        // Add to organization's scheduledAlerts array
+        let orgRef = db.collection("organizations").document(alert.organizationId)
+        batch.updateData([
+            "scheduledAlerts": FieldValue.arrayUnion([alertData]),
+            "updatedAt": FieldValue.serverTimestamp()
+        ], forDocument: orgRef)
+        
+        try await batch.commit()
         
         await MainActor.run {
             self.scheduledAlerts.append(alert)
         }
         
         print("✅ Scheduled alert created successfully")
+        print("   📍 Added to scheduledAlerts collection")
+        print("   📍 Added to organization document: organizations/\(alert.organizationId)")
     }
     
     func updateScheduledAlert(_ alert: ScheduledAlert) async throws {
@@ -212,7 +228,21 @@ class CalendarService: ObservableObject {
             "calendarEventId": alert.calendarEventId ?? ""
         ]
         
-        try await db.collection("scheduledAlerts").document(alert.id).setData(alertData)
+        // Use batch to update both scheduledAlerts collection and organization document
+        let batch = db.batch()
+        
+        // Update in scheduledAlerts collection
+        let scheduledAlertRef = db.collection("scheduledAlerts").document(alert.id)
+        batch.setData(alertData, forDocument: scheduledAlertRef)
+        
+        // Update in organization's scheduledAlerts array
+        let orgRef = db.collection("organizations").document(alert.organizationId)
+        batch.updateData([
+            "scheduledAlerts": FieldValue.arrayUnion([alertData]),
+            "updatedAt": FieldValue.serverTimestamp()
+        ], forDocument: orgRef)
+        
+        try await batch.commit()
         
         await MainActor.run {
             if let index = self.scheduledAlerts.firstIndex(where: { $0.id == alert.id }) {
@@ -221,18 +251,50 @@ class CalendarService: ObservableObject {
         }
         
         print("✅ Scheduled alert updated successfully")
+        print("   📍 Updated in scheduledAlerts collection")
+        print("   📍 Updated in organization document: organizations/\(alert.organizationId)")
     }
     
     func deleteScheduledAlert(_ alertId: String) async throws {
         print("⏰ Deleting scheduled alert: \(alertId)")
         
-        try await db.collection("scheduledAlerts").document(alertId).delete()
+        // First get the alert data to know which organization to update
+        let alertDoc = try await db.collection("scheduledAlerts").document(alertId).getDocument()
+        
+        guard let alertData = alertDoc.data() else {
+            print("❌ Alert not found")
+            return
+        }
+        
+        let organizationId = alertData["organizationId"] as? String ?? ""
+        
+        // Use batch to delete from both collections
+        let batch = db.batch()
+        
+        // Delete from scheduledAlerts collection
+        let scheduledAlertRef = db.collection("scheduledAlerts").document(alertId)
+        batch.deleteDocument(scheduledAlertRef)
+        
+        // Remove from organization's scheduledAlerts array
+        if !organizationId.isEmpty {
+            let orgRef = db.collection("organizations").document(organizationId)
+            batch.updateData([
+                "scheduledAlerts": FieldValue.arrayRemove([alertData]),
+                "updatedAt": FieldValue.serverTimestamp()
+            ], forDocument: orgRef)
+        }
+        
+        try await batch.commit()
         
         await MainActor.run {
             self.scheduledAlerts.removeAll { $0.id == alertId }
         }
         
         print("✅ Scheduled alert deleted successfully")
+        print("   📍 Removed from scheduledAlerts collection")
+        if !organizationId.isEmpty {
+            print("   📍 Removed from organization document: organizations/\(organizationId)")
+        }
     }
     
     func fetchScheduledAlerts(for dateRange: DateInterval? = nil) async throws {

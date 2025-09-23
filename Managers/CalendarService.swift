@@ -14,7 +14,6 @@ class CalendarService: ObservableObject {
     private let db = Firestore.firestore()
     private let notificationService: iOSNotificationService
     
-    @Published var events: [CalendarEvent] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     
@@ -22,117 +21,7 @@ class CalendarService: ObservableObject {
         self.notificationService = notificationService
     }
     
-    // MARK: - Calendar Event Management
-    
-    func createEvent(_ event: CalendarEvent) async throws {
-        print("📅 Creating calendar event: \(event.title)")
-        
-        let eventData: [String: Any] = [
-            "title": event.title,
-            "description": event.description ?? "",
-            "startDate": event.startDate,
-            "endDate": event.endDate,
-            "isAllDay": event.isAllDay,
-            "location": event.location ?? "",
-            "alertId": event.alertId ?? "",
-            "createdBy": event.createdBy,
-            "createdByUserId": event.createdByUserId,
-            "createdAt": FieldValue.serverTimestamp(),
-            "updatedAt": FieldValue.serverTimestamp(),
-            "isRecurring": event.isRecurring,
-            "recurrencePattern": event.recurrencePattern?.toDictionary() ?? [:],
-            "color": event.color
-        ]
-        
-        try await db.collection("calendarEvents").document(event.id).setData(eventData)
-        
-        await MainActor.run {
-            self.events.append(event)
-        }
-        
-        print("✅ Calendar event created successfully")
-    }
-    
-    func updateEvent(_ event: CalendarEvent) async throws {
-        print("📅 Updating calendar event: \(event.title)")
-        
-        let eventData: [String: Any] = [
-            "title": event.title,
-            "description": event.description ?? "",
-            "startDate": event.startDate,
-            "endDate": event.endDate,
-            "isAllDay": event.isAllDay,
-            "location": event.location ?? "",
-            "alertId": event.alertId ?? "",
-            "createdBy": event.createdBy,
-            "createdByUserId": event.createdByUserId,
-            "createdAt": event.createdAt,
-            "updatedAt": FieldValue.serverTimestamp(),
-            "isRecurring": event.isRecurring,
-            "recurrencePattern": event.recurrencePattern?.toDictionary() ?? [:],
-            "color": event.color
-        ]
-        
-        try await db.collection("calendarEvents").document(event.id).setData(eventData)
-        
-        await MainActor.run {
-            if let index = self.events.firstIndex(where: { $0.id == event.id }) {
-                self.events[index] = event
-            }
-        }
-        
-        print("✅ Calendar event updated successfully")
-    }
-    
-    func deleteEvent(_ eventId: String) async throws {
-        print("📅 Deleting calendar event: \(eventId)")
-        
-        try await db.collection("calendarEvents").document(eventId).delete()
-        
-        await MainActor.run {
-            self.events.removeAll { $0.id == eventId }
-        }
-        
-        print("✅ Calendar event deleted successfully")
-    }
-    
-    func fetchEvents(for dateRange: DateInterval? = nil) async throws {
-        print("📅 Fetching calendar events...")
-        
-        isLoading = true
-        errorMessage = nil
-        
-        do {
-            var query = db.collection("calendarEvents")
-                .order(by: "startDate", descending: false)
-            
-            if let dateRange = dateRange {
-                query = query
-                    .whereField("startDate", isGreaterThanOrEqualTo: dateRange.start)
-                    .whereField("startDate", isLessThanOrEqualTo: dateRange.end)
-            }
-            
-            let snapshot = try await query.getDocuments()
-            
-            let fetchedEvents = snapshot.documents.compactMap { doc -> CalendarEvent? in
-                try? doc.data(as: CalendarEvent.self)
-            }
-            
-            await MainActor.run {
-                self.events = fetchedEvents
-                self.isLoading = false
-            }
-            
-            print("✅ Fetched \(fetchedEvents.count) calendar events")
-        } catch {
-            await MainActor.run {
-                self.errorMessage = error.localizedDescription
-                self.isLoading = false
-            }
-            print("❌ Error fetching calendar events: \(error)")
-            throw error
-        }
-    }
+    // MARK: - Calendar Event Management (Removed - using only scheduled alerts now)
     
     // MARK: - Scheduled Alert Management
     
@@ -326,8 +215,11 @@ class CalendarService: ObservableObject {
         errorMessage = nil
         
         do {
-            try await fetchEvents(for: dateRange)
-            print("✅ Calendar data fetched successfully")
+            // No longer fetching calendar events - only using scheduled alerts
+            await MainActor.run {
+                self.isLoading = false
+            }
+            print("✅ Calendar data fetched successfully (scheduled alerts only)")
         } catch {
             await MainActor.run {
                 self.errorMessage = error.localizedDescription
@@ -341,16 +233,13 @@ class CalendarService: ObservableObject {
     // MARK: - Helper Methods
     
     func getEventsForDate(_ date: Date) -> [CalendarEvent] {
-        let calendar = Calendar.current
-        return events.filter { event in
-            calendar.isDate(event.startDate, inSameDayAs: date) ||
-            calendar.isDate(event.endDate, inSameDayAs: date) ||
-            (event.startDate <= date && event.endDate >= date)
-        }
+        // No longer using calendar events - only scheduled alerts
+        return []
     }
     
     func getTodaysEvents() -> [CalendarEvent] {
-        return getEventsForDate(Date())
+        // No longer using calendar events - only scheduled alerts
+        return []
     }
     
     // MARK: - Scheduled Alert Fetching (for specific dates)

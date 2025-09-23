@@ -224,24 +224,6 @@ struct CreateScheduledAlertView: View {
                 
                 try await calendarService.createScheduledAlert(alert)
                 
-                // Create corresponding calendar event
-                let event = CalendarEvent(
-                    title: title,
-                    description: description,
-                    startDate: scheduledDate,
-                    endDate: scheduledDate.addingTimeInterval(3600), // 1 hour duration
-                    isAllDay: false,
-                    location: alertLocation?.fullAddress,
-                    alertId: alert.id,
-                    createdBy: currentUser.name ?? "Unknown",
-                    createdByUserId: currentUser.id,
-                    isRecurring: isRecurring,
-                    recurrencePattern: recurrencePattern,
-                    color: selectedSeverity.color.hexString
-                )
-                
-                try await calendarService.createEvent(event)
-                
                 await MainActor.run {
                     isLoading = false
                     dismiss()

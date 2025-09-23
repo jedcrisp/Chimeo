@@ -178,7 +178,8 @@ struct EventDetailView: View {
         
         Task {
             do {
-                try await calendarService.deleteEvent(event.id)
+                // Calendar events are no longer supported - only scheduled alerts
+                print("⚠️ Calendar events are no longer supported. Please use scheduled alerts instead.")
                 
                 await MainActor.run {
                     isDeleting = false
@@ -344,7 +345,8 @@ struct EditEventView: View {
                     color: selectedColor.rawValue
                 )
                 
-                try await calendarService.updateEvent(updatedEvent)
+                // Calendar events are no longer supported - only scheduled alerts
+                print("⚠️ Calendar events are no longer supported. Please use scheduled alerts instead.")
                 
                 await MainActor.run {
                     isLoading = false

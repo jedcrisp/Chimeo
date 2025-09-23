@@ -229,10 +229,8 @@ struct ScheduledAlertDetailView: View {
             do {
                 try await calendarService.deleteScheduledAlert(alert.id, organizationId: alert.organizationId)
                 
-                // Also delete the associated calendar event if it exists
-                if let calendarEventId = alert.calendarEventId {
-                    try await calendarService.deleteEvent(calendarEventId)
-                }
+                // Calendar events are no longer supported - only scheduled alerts
+                // No need to delete associated calendar events
                 
                 await MainActor.run {
                     isDeleting = false

@@ -138,7 +138,8 @@ struct CreateEventView: View {
                     color: selectedColor.rawValue
                 )
                 
-                try await calendarService.createEvent(event)
+                // Calendar events are no longer supported - only scheduled alerts
+                print("⚠️ Calendar events are no longer supported. Please use scheduled alerts instead.")
                 
                 await MainActor.run {
                     isLoading = false

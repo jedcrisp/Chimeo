@@ -212,10 +212,19 @@ class CalendarService: ObservableObject {
         // Get current scheduled alerts from organization document
         let orgRef = db.collection("organizations").document(alert.organizationId)
         let orgDoc = try await orgRef.getDocument()
-        var currentScheduledAlerts = orgDoc.data()?["scheduledAlerts"] as? [[String: Any]] ?? []
+        
+        guard let orgData = orgDoc.data() else {
+            print("❌ Organization document not found: \(alert.organizationId)")
+            throw NSError(domain: "CalendarService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Organization document not found"])
+        }
+        
+        var currentScheduledAlerts = orgData["scheduledAlerts"] as? [[String: Any]] ?? []
+        print("📋 Current scheduled alerts count: \(currentScheduledAlerts.count)")
         
         // Add new alert to the array
         currentScheduledAlerts.append(alertData)
+        print("📋 New scheduled alerts count: \(currentScheduledAlerts.count)")
+        print("📋 Alert data being added: \(alertData)")
         
         // Update organization document with the new array
         batch.updateData([
@@ -224,6 +233,17 @@ class CalendarService: ObservableObject {
         ], forDocument: orgRef)
         
         try await batch.commit()
+        print("✅ Batch commit successful")
+        
+        // Verify the data was saved by reading it back
+        let verifyDoc = try await orgRef.getDocument()
+        if let verifyData = verifyDoc.data() {
+            let verifyScheduledAlerts = verifyData["scheduledAlerts"] as? [[String: Any]] ?? []
+            print("🔍 Verification - Scheduled alerts count in organization: \(verifyScheduledAlerts.count)")
+            if let lastAlert = verifyScheduledAlerts.last {
+                print("🔍 Verification - Last alert title: \(lastAlert["title"] as? String ?? "Unknown")")
+            }
+        }
         
         await MainActor.run {
             self.scheduledAlerts.append(alert)

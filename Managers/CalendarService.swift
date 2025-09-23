@@ -202,58 +202,32 @@ class CalendarService: ObservableObject {
             "calendarEventId": alert.calendarEventId ?? ""
         ]
         
-        // Use batch to update both scheduledAlerts collection and organization document
+        // Use batch to update both scheduledAlerts collection and organization subcollection
         let batch = db.batch()
         
-        // Add to scheduledAlerts collection
+        // Add to scheduledAlerts collection (for execution)
         let scheduledAlertRef = db.collection("scheduledAlerts").document(alert.id)
         batch.setData(scheduledAlertData, forDocument: scheduledAlertRef)
         
-        // Get current scheduled alerts from organization document
-        let orgRef = db.collection("organizations").document(alert.organizationId)
-        let orgDoc = try await orgRef.getDocument()
-        
-        guard let orgData = orgDoc.data() else {
-            print("❌ Organization document not found: \(alert.organizationId)")
-            throw NSError(domain: "CalendarService", code: 404, userInfo: [NSLocalizedDescriptionKey: "Organization document not found"])
-        }
-        
-        var currentScheduledAlerts = orgData["scheduledAlerts"] as? [[String: Any]] ?? []
-        print("📋 Current scheduled alerts count: \(currentScheduledAlerts.count)")
-        
-        // Add new alert to the array
-        currentScheduledAlerts.append(alertData)
-        print("📋 New scheduled alerts count: \(currentScheduledAlerts.count)")
-        print("📋 Alert data being added: \(alertData)")
-        
-        // Update organization document with the new array
-        batch.updateData([
-            "scheduledAlerts": currentScheduledAlerts,
-            "updatedAt": FieldValue.serverTimestamp()
-        ], forDocument: orgRef)
+        // Add to organization's scheduledAlerts subcollection (for visibility)
+        let orgScheduledAlertRef = db.collection("organizations")
+            .document(alert.organizationId)
+            .collection("scheduledAlerts")
+            .document(alert.id)
+        batch.setData(scheduledAlertData, forDocument: orgScheduledAlertRef)
         
         try await batch.commit()
         print("✅ Batch commit successful")
         
         // Verify the data was saved by reading it back
-        let verifyDoc = try await orgRef.getDocument()
-        if let verifyData = verifyDoc.data() {
-            let verifyScheduledAlerts = verifyData["scheduledAlerts"] as? [[String: Any]] ?? []
-            print("🔍 Verification - Scheduled alerts count in organization: \(verifyScheduledAlerts.count)")
-            if let lastAlert = verifyScheduledAlerts.last {
-                print("🔍 Verification - Last alert title: \(lastAlert["title"] as? String ?? "Unknown")")
-            }
-        }
-        
-        // Wait a moment and verify again to see if data persists
-        try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-        let verifyDoc2 = try await orgRef.getDocument()
-        if let verifyData2 = verifyDoc2.data() {
-            let verifyScheduledAlerts2 = verifyData2["scheduledAlerts"] as? [[String: Any]] ?? []
-            print("🔍 Delayed Verification - Scheduled alerts count in organization: \(verifyScheduledAlerts2.count)")
-            if let lastAlert2 = verifyScheduledAlerts2.last {
-                print("🔍 Delayed Verification - Last alert title: \(lastAlert2["title"] as? String ?? "Unknown")")
-            }
+        let verifyRef = db.collection("organizations")
+            .document(alert.organizationId)
+            .collection("scheduledAlerts")
+        let verifySnapshot = try await verifyRef.getDocuments()
+        print("🔍 Verification - Scheduled alerts count in organization subcollection: \(verifySnapshot.documents.count)")
+        if let lastDoc = verifySnapshot.documents.last {
+            let lastAlert = lastDoc.data()
+            print("🔍 Verification - Last alert title: \(lastAlert["title"] as? String ?? "Unknown")")
         }
         
         await MainActor.run {
@@ -330,31 +304,19 @@ class CalendarService: ObservableObject {
             "calendarEventId": alert.calendarEventId ?? ""
         ]
         
-        // Use batch to update both scheduledAlerts collection and organization document
+        // Use batch to update both scheduledAlerts collection and organization subcollection
         let batch = db.batch()
         
-        // Update in scheduledAlerts collection
+        // Update in scheduledAlerts collection (for execution)
         let scheduledAlertRef = db.collection("scheduledAlerts").document(alert.id)
         batch.setData(scheduledAlertData, forDocument: scheduledAlertRef)
         
-        // Get current scheduled alerts from organization document
-        let orgRef = db.collection("organizations").document(alert.organizationId)
-        let orgDoc = try await orgRef.getDocument()
-        var currentScheduledAlerts = orgDoc.data()?["scheduledAlerts"] as? [[String: Any]] ?? []
-        
-        // Find and update the alert in the array
-        if let index = currentScheduledAlerts.firstIndex(where: { $0["id"] as? String == alert.id }) {
-            currentScheduledAlerts[index] = alertData
-        } else {
-            // If not found, add it
-            currentScheduledAlerts.append(alertData)
-        }
-        
-        // Update organization document with the updated array
-        batch.updateData([
-            "scheduledAlerts": currentScheduledAlerts,
-            "updatedAt": FieldValue.serverTimestamp()
-        ], forDocument: orgRef)
+        // Update in organization's scheduledAlerts subcollection (for visibility)
+        let orgScheduledAlertRef = db.collection("organizations")
+            .document(alert.organizationId)
+            .collection("scheduledAlerts")
+            .document(alert.id)
+        batch.setData(scheduledAlertData, forDocument: orgScheduledAlertRef)
         
         try await batch.commit()
         
@@ -385,17 +347,17 @@ class CalendarService: ObservableObject {
         // Use batch to delete from both collections
         let batch = db.batch()
         
-        // Delete from scheduledAlerts collection
+        // Delete from scheduledAlerts collection (for execution)
         let scheduledAlertRef = db.collection("scheduledAlerts").document(alertId)
         batch.deleteDocument(scheduledAlertRef)
         
-        // Remove from organization's scheduledAlerts array
+        // Delete from organization's scheduledAlerts subcollection (for visibility)
         if !organizationId.isEmpty {
-            let orgRef = db.collection("organizations").document(organizationId)
-            batch.updateData([
-                "scheduledAlerts": FieldValue.arrayRemove([alertData]),
-                "updatedAt": FieldValue.serverTimestamp()
-            ], forDocument: orgRef)
+            let orgScheduledAlertRef = db.collection("organizations")
+                .document(organizationId)
+                .collection("scheduledAlerts")
+                .document(alertId)
+            batch.deleteDocument(orgScheduledAlertRef)
         }
         
         try await batch.commit()

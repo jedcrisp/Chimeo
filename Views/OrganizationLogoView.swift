@@ -18,6 +18,9 @@ struct OrganizationLogoView: View {
                             Circle()
                                 .stroke(showBorder ? Color.blue : Color.clear, lineWidth: showBorder ? 2 : 0)
                         )
+                        .onAppear {
+                            print("🖼️ OrganizationLogoView: Successfully loaded logo for \(organization.name) - \(logoURL)")
+                        }
                 } placeholder: {
                     // Placeholder while loading
                     Image(systemName: "building.2.fill")
@@ -30,6 +33,12 @@ struct OrganizationLogoView: View {
                             Circle()
                                 .stroke(showBorder ? Color.blue : Color.clear, lineWidth: showBorder ? 2 : 0)
                         )
+                        .onAppear {
+                            print("⏳ OrganizationLogoView: Loading logo for \(organization.name) - \(logoURL)")
+                        }
+                }
+                .onAppear {
+                    print("🖼️ OrganizationLogoView: Attempting to load logo for \(organization.name) - \(logoURL)")
                 }
             } else {
                 // Fallback when no logo URL
@@ -43,6 +52,9 @@ struct OrganizationLogoView: View {
                         Circle()
                             .stroke(showBorder ? Color.blue : Color.clear, lineWidth: showBorder ? 2 : 0)
                     )
+                    .onAppear {
+                        print("🏢 OrganizationLogoView: No logo URL for \(organization.name), using fallback icon")
+                    }
             }
         }
     }

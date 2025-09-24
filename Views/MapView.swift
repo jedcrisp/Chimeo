@@ -1102,11 +1102,17 @@ struct OrganizationAnnotationView: View {
                     if let logoURL = organization.logoURL, !logoURL.isEmpty {
                         // Show organization logo if available using OrganizationLogoView for consistency
                         OrganizationLogoView(organization: organization, size: isSelected ? 24 : 20, showBorder: false)
+                            .onAppear {
+                                print("🗺️ Map Annotation: Loading logo for \(organization.name) - \(logoURL)")
+                            }
                     } else {
                         // Fallback to icon if no logo
                         Image(systemName: getOrganizationIcon())
                             .font(.system(size: isSelected ? 20 : 16, weight: .semibold))
                             .foregroundColor(.white)
+                            .onAppear {
+                                print("🗺️ Map Annotation: No logo for \(organization.name), using icon: \(getOrganizationIcon())")
+                            }
                     }
                     
                     // Verification badge removed - pins indicate verified status

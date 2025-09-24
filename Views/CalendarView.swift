@@ -37,6 +37,11 @@ struct CalendarView: View {
                 self.scheduledAlerts = alerts
                 self.isLoadingAlerts = false
                 print("✅ Loaded \(alerts.count) scheduled alerts into calendar view")
+                
+                // Debug: Print details of each alert
+                for alert in alerts {
+                    print("📋 Calendar Alert: \(alert.title) - \(alert.scheduledDate) - Active: \(alert.isActive) - Org: \(alert.organizationName)")
+                }
             }
         } catch {
             await MainActor.run {
@@ -52,6 +57,8 @@ struct CalendarView: View {
         }
         if !alerts.isEmpty {
             print("📅 Found \(alerts.count) alerts for \(date): \(alerts.map { $0.title })")
+        } else {
+            print("📅 No alerts found for \(date) (total alerts: \(scheduledAlerts.count))")
         }
         return alerts
     }

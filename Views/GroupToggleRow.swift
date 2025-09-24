@@ -63,8 +63,8 @@ struct GroupToggleRow: View {
                 name: "Emergency Alerts",
                 description: "Critical safety notifications",
                 organizationId: "org1",
-                isPrivate: false,
                 memberCount: 25,
+                isPrivate: false,
                 createdAt: Date(),
                 updatedAt: Date()
             ),
@@ -78,8 +78,8 @@ struct GroupToggleRow: View {
                 name: "Weather Updates",
                 description: "Daily weather forecasts and severe weather warnings",
                 organizationId: "org1",
-                isPrivate: true,
                 memberCount: 150,
+                isPrivate: true,
                 createdAt: Date(),
                 updatedAt: Date()
             ),

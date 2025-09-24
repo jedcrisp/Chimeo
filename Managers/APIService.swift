@@ -1664,6 +1664,11 @@ class APIService: ObservableObject {
         try await organizationAlertService.fixExistingAlertTimestamps()
     }
     
+    func createTestAlert(organizationId: String, organizationName: String) async throws {
+        print("🧪 APIService: Creating test alert...")
+        try await organizationAlertService.createTestAlert(organizationId: organizationId, organizationName: organizationName)
+    }
+    
     func getOrganizationAlerts(organizationId: String) async throws -> [OrganizationAlert] {
         print("🔍 Fetching alerts for organization: \(organizationId)")
         

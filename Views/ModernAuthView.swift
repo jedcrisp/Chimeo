@@ -197,30 +197,35 @@ struct ModernAuthView: View {
                     Spacer()
                         .frame(height: 40)
                     
-                    HStack(spacing: 4) {
-                        Text("By continuing, you agree to our")
-                            .font(.system(size: 12, weight: .regular))
-                            .foregroundColor(.gray)
-                        
-                        Button("Terms of Service") {
-                            if let url = URL(string: "https://chimeo.app/terms") {
-                                UIApplication.shared.open(url)
-                            }
+                    VStack(spacing: 6) {
+                        HStack(spacing: 4) {
+                            Text("By creating an account or using this app, you acknowledge that you have read, understood, and agree to be bound by our")
+                                .font(.system(size: 11, weight: .regular))
+                                .foregroundColor(.gray)
                         }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.blue)
                         
-                        Text("and")
-                            .font(.system(size: 12, weight: .regular))
-                            .foregroundColor(.gray)
-                        
-                        Button("Privacy Policy") {
-                            if let url = URL(string: "https://chimeo.app/privacy") {
-                                UIApplication.shared.open(url)
+                        HStack(spacing: 4) {
+                            Button("Terms of Service") {
+                                if let url = URL(string: "https://chimeo.app/terms") {
+                                    UIApplication.shared.open(url)
+                                }
                             }
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.blue)
+                            
+                            Text("and")
+                                .font(.system(size: 11, weight: .regular))
+                                .foregroundColor(.gray)
+                            
+                            Button("Privacy Policy") {
+                                if let url = URL(string: "https://chimeo.app/privacy") {
+                                    UIApplication.shared.open(url)
+                                }
+                            }
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.blue)
                         }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.blue)
+                        
                     }
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)

@@ -2,6 +2,7 @@ import SwiftUI
 import Foundation
 
 struct CalendarView: View {
+    @EnvironmentObject var apiService: APIService
     @StateObject private var calendarService = CalendarService()
     @State private var selectedDate = Date()
     @State private var currentViewMode: CalendarViewMode = .month
@@ -118,6 +119,7 @@ struct CalendarView: View {
             }
             .sheet(isPresented: $showingCreateAlert) {
                 CreateScheduledAlertView(calendarService: calendarService)
+                    .environmentObject(apiService)
             }
             .sheet(isPresented: $showingFilter) {
                 CalendarFilterView(filter: $filter)

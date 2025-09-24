@@ -24,68 +24,161 @@ struct SignUpView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 24) {
-                // Header
-                VStack(spacing: 8) {
+            VStack(spacing: 0) {
+                // Header with Cancel Button
+                HStack {
+                    Button("Cancel") {
+                        onDismiss()
+                    }
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.green)
+                    .padding(.leading, 20)
+                    
+                    Spacer()
+                    
                     Text("Create Account")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.primary)
                     
-                    Text("Join Chimeo to stay informed about your community")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
+                    Spacer()
+                    
+                    // Invisible spacer for symmetry
+                    Color.clear
+                        .frame(width: 60)
                 }
-                .padding(.top, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 20)
                 
-                // Form
-                VStack(spacing: 16) {
-                    // Name Field
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Full Name")
-                            .font(.headline)
+                // App Icon
+                VStack(spacing: 20) {
+                    // Bell Icon
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color.blue.opacity(0.8), Color.blue]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 80, height: 80)
+                        
+                        Image(systemName: "bell.fill")
+                            .font(.system(size: 32, weight: .medium))
+                            .foregroundColor(.white)
+                    }
+                    
+                    // Welcome Text
+                    VStack(spacing: 8) {
+                        Text("Join Chimeo")
+                            .font(.system(size: 28, weight: .bold))
                             .foregroundColor(.primary)
                         
-                        TextField("Enter your full name", text: $name)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .autocapitalization(.words)
+                        Text("Create your account to get started")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.bottom, 40)
+                
+                // Form Fields
+                VStack(spacing: 20) {
+                    // Full Name Field
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Full Name")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        HStack {
+                            Image(systemName: "person")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.gray)
+                                .frame(width: 20)
+                            
+                            TextField("Enter your full name", text: $name)
+                                .font(.system(size: 16))
+                                .autocapitalization(.words)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray6))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                                )
+                        )
                     }
                     
                     // Email Field
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Email")
-                            .font(.headline)
+                        Text("Email Address")
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.primary)
                         
-                        TextField("Enter your email", text: $email)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .keyboardType(.emailAddress)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
+                        HStack {
+                            Image(systemName: "envelope")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.gray)
+                                .frame(width: 20)
+                            
+                            TextField("Enter your email", text: $email)
+                                .font(.system(size: 16))
+                                .keyboardType(.emailAddress)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray6))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                                )
+                        )
                     }
                     
                     // Password Field
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Password")
-                            .font(.headline)
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.primary)
                         
                         HStack {
+                            Image(systemName: "lock")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.gray)
+                                .frame(width: 20)
+                            
                             if showPassword {
-                                TextField("Enter your password", text: $password)
+                                TextField("Create a password", text: $password)
+                                    .font(.system(size: 16))
                             } else {
-                                SecureField("Enter your password", text: $password)
+                                SecureField("Create a password", text: $password)
+                                    .font(.system(size: 16))
                             }
                             
                             Button(action: {
                                 showPassword.toggle()
                             }) {
                                 Image(systemName: showPassword ? "eye.slash" : "eye")
-                                    .foregroundColor(.secondary)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.gray)
                             }
                         }
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray6))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                                )
+                        )
                         
                         if password.count > 0 && password.count < 6 {
                             Text("Password must be at least 6 characters")
@@ -97,24 +190,41 @@ struct SignUpView: View {
                     // Confirm Password Field
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Confirm Password")
-                            .font(.headline)
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.primary)
                         
                         HStack {
+                            Image(systemName: "lock")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.gray)
+                                .frame(width: 20)
+                            
                             if showConfirmPassword {
                                 TextField("Confirm your password", text: $confirmPassword)
+                                    .font(.system(size: 16))
                             } else {
                                 SecureField("Confirm your password", text: $confirmPassword)
+                                    .font(.system(size: 16))
                             }
                             
                             Button(action: {
                                 showConfirmPassword.toggle()
                             }) {
                                 Image(systemName: showConfirmPassword ? "eye.slash" : "eye")
-                                    .foregroundColor(.secondary)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.gray)
                             }
                         }
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray6))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.green.opacity(0.3), lineWidth: 1)
+                                )
+                        )
                         
                         if passwordMismatch && !confirmPassword.isEmpty {
                             Text("Passwords do not match")
@@ -137,38 +247,50 @@ struct SignUpView: View {
                         passwordMismatch = true
                     }
                 }) {
-                    HStack {
+                    HStack(spacing: 8) {
                         if isCreatingAccount {
                             ProgressView()
                                 .scaleEffect(0.8)
                                 .foregroundColor(.white)
                         } else {
-                            Image(systemName: "person.badge.plus")
-                                .font(.system(size: 16, weight: .medium))
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 16, weight: .semibold))
                         }
                         
                         Text(isCreatingAccount ? "Creating Account..." : "Create Account")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.system(size: 16, weight: .semibold))
                     }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(isFormValid ? Color.green : Color.gray)
-                    .cornerRadius(8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(isFormValid ? Color.green : Color.gray)
+                    )
                 }
                 .disabled(!isFormValid || isCreatingAccount)
                 .padding(.horizontal, 20)
+                .padding(.top, 32)
+                
+                // Sign In Link
+                HStack {
+                    Text("Already have an account?")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.secondary)
+                    
+                    Button(action: {
+                        onDismiss()
+                    }) {
+                        Text("Sign In")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.green)
+                    }
+                }
+                .padding(.top, 16)
                 
                 Spacer()
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        onDismiss()
-                    }
-                }
-            }
+            .background(Color(.systemBackground))
         }
     }
 }

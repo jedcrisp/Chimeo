@@ -1,4 +1,6 @@
 import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
 
 
 struct CreateScheduledAlertView: View {
@@ -8,14 +10,14 @@ struct CreateScheduledAlertView: View {
     
     @State private var title = ""
     @State private var description = ""
-    @State private var selectedType = IncidentType.emergency
-    @State private var selectedSeverity = IncidentSeverity.high
+    @State private var selectedType: IncidentType?
+    @State private var selectedSeverity: IncidentSeverity?
     @State private var scheduledDate = Date().addingTimeInterval(3600) // 1 hour from now
     @State private var location = ""
     @State private var city = ""
     @State private var state = ""
     @State private var zipCode = ""
-    @State private var selectedOrganization: Organization?
+    @State private var currentUserOrganization: Organization?
     @State private var selectedGroup: OrganizationGroup?
     @State private var isRecurring = false
     @State private var recurrenceFrequency = RecurrenceFrequency.weekly
@@ -24,7 +26,6 @@ struct CreateScheduledAlertView: View {
     @State private var expiresAt: Date?
     @State private var hasExpiration = false
     
-    @State private var organizations: [Organization] = []
     @State private var groups: [OrganizationGroup] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -34,29 +35,41 @@ struct CreateScheduledAlertView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 0) {
-                    // Modern Header
+                    // Modern Header with Close Button
                     VStack(spacing: 12) {
                         HStack {
-                            VStack(alignment: .leading, spacing: 4) {
+                            // Close Button
+                            Button(action: {
+                                dismiss()
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.secondary)
+                                    .background(
+                                        Circle()
+                                            .fill(Color(.systemBackground))
+                                            .frame(width: 32, height: 32)
+                                    )
+                            }
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .center, spacing: 4) {
                                 Text("Schedule Alert")
-                                    .font(.largeTitle)
+                                    .font(.title2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.primary)
                                 
-                                Text("Create a scheduled alert for your organization")
-                                    .font(.subheadline)
+                                Text("Create a scheduled alert")
+                                    .font(.caption)
                                     .foregroundColor(.secondary)
                             }
+                            
                             Spacer()
                             
-                            Image(systemName: "bell.badge.fill")
-                                .font(.title)
-                                .foregroundColor(.blue)
-                                .frame(width: 50, height: 50)
-                                .background(
-                                    Circle()
-                                        .fill(Color.blue.opacity(0.1))
-                                )
+                            // Placeholder for symmetry
+                            Color.clear
+                                .frame(width: 32, height: 32)
                         }
                     }
                     .padding(.horizontal, 24)
@@ -103,21 +116,22 @@ struct CreateScheduledAlertView: View {
                                     .font(.body)
                             }
                             
-                            // Type and Severity Row
+                            // Type and Severity Row (Optional)
                             HStack(spacing: 16) {
                                 VStack(alignment: .leading, spacing: 8) {
-                                    Text("Type")
+                                    Text("Type (Optional)")
                                         .font(.subheadline)
                                         .fontWeight(.medium)
                                         .foregroundColor(.primary)
                                     Picker("Type", selection: $selectedType) {
+                                        Text("None").tag(nil as IncidentType?)
                                         ForEach(IncidentType.allCases, id: \.self) { type in
                                             HStack {
                                                 Image(systemName: type.icon)
                                                     .foregroundColor(type.color)
                                                 Text(type.displayName)
                                             }
-                                            .tag(type)
+                                            .tag(type as IncidentType?)
                                         }
                                     }
                                     .pickerStyle(MenuPickerStyle())
@@ -128,18 +142,19 @@ struct CreateScheduledAlertView: View {
                                 }
                                 
                                 VStack(alignment: .leading, spacing: 8) {
-                                    Text("Severity")
+                                    Text("Severity (Optional)")
                                         .font(.subheadline)
                                         .fontWeight(.medium)
                                         .foregroundColor(.primary)
                                     Picker("Severity", selection: $selectedSeverity) {
+                                        Text("None").tag(nil as IncidentSeverity?)
                                         ForEach(IncidentSeverity.allCases, id: \.self) { severity in
                                             HStack {
                                                 Image(systemName: severity.icon)
                                                     .foregroundColor(severity.color)
                                                 Text(severity.displayName)
                                             }
-                                            .tag(severity)
+                                            .tag(severity as IncidentSeverity?)
                                         }
                                     }
                                     .pickerStyle(MenuPickerStyle())
@@ -171,16 +186,40 @@ struct CreateScheduledAlertView: View {
                         
                         VStack(spacing: 16) {
                             // Date Picker
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 12) {
                                 Text("Scheduled Date & Time")
                                     .font(.headline)
                                     .foregroundColor(.primary)
-                                DatePicker("", selection: $scheduledDate, displayedComponents: [.date, .hourAndMinute])
-                                    .datePickerStyle(CompactDatePickerStyle())
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(Color(.systemGray6))
-                                    .cornerRadius(8)
+                                
+                                VStack(spacing: 12) {
+                                    // Date Picker
+                                    HStack {
+                                        Image(systemName: "calendar")
+                                            .foregroundColor(.blue)
+                                            .font(.title3)
+                                        DatePicker("Date", selection: $scheduledDate, displayedComponents: .date)
+                                            .datePickerStyle(CompactDatePickerStyle())
+                                        Spacer()
+                                    }
+                                    
+                                    Divider()
+                                    
+                                    // Time Picker
+                                    HStack {
+                                        Image(systemName: "clock")
+                                            .foregroundColor(.blue)
+                                            .font(.title3)
+                                        DatePicker("Time", selection: $scheduledDate, displayedComponents: .hourAndMinute)
+                                            .datePickerStyle(CompactDatePickerStyle())
+                                        Spacer()
+                                    }
+                                }
+                                .padding(16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(.systemBackground))
+                                        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                                )
                             }
                             
                             // Recurring Toggle
@@ -239,66 +278,117 @@ struct CreateScheduledAlertView: View {
                     }
                     .cardStyle()
                     
-                    // Organization Card
+                    // Organization & Group Card
                     VStack(alignment: .leading, spacing: 20) {
-                        CardHeader(title: "Organization", icon: "building.2", color: .green)
+                        CardHeader(title: "Organization & Group", icon: "building.2", color: .green)
                         
                         VStack(spacing: 16) {
+                            // Current Organization Display
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("Select Organization")
+                                Text("Organization")
                                     .font(.headline)
                                     .foregroundColor(.primary)
-                                Picker("Organization", selection: $selectedOrganization) {
-                                    Text("Choose an organization").tag(nil as Organization?)
-                                    ForEach(organizations, id: \.id) { org in
-                                        HStack {
-                                            if let logoURL = org.logoURL, !logoURL.isEmpty {
-                                                AsyncImage(url: URL(string: logoURL)) { image in
-                                                    image
-                                                        .resizable()
-                                                        .aspectRatio(contentMode: .fill)
-                                                } placeholder: {
-                                                    Image(systemName: "building.2")
-                                                        .foregroundColor(.gray)
-                                                }
-                                                .frame(width: 20, height: 20)
-                                                .clipShape(Circle())
-                                            } else {
+                                
+                                if let organization = currentUserOrganization {
+                                    HStack {
+                                        if let logoURL = organization.logoURL, !logoURL.isEmpty {
+                                            AsyncImage(url: URL(string: logoURL)) { image in
+                                                image
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fill)
+                                            } placeholder: {
                                                 Image(systemName: "building.2")
                                                     .foregroundColor(.gray)
-                                                    .frame(width: 20, height: 20)
                                             }
-                                            Text(org.name)
+                                            .frame(width: 24, height: 24)
+                                            .clipShape(Circle())
+                                        } else {
+                                            Image(systemName: "building.2")
+                                                .foregroundColor(.gray)
+                                                .frame(width: 24, height: 24)
                                         }
-                                        .tag(org as Organization?)
+                                        
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(organization.name)
+                                                .font(.subheadline)
+                                                .fontWeight(.medium)
+                                            Text("Your Organization")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                            .font(.title3)
                                     }
-                                }
-                                .pickerStyle(MenuPickerStyle())
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(8)
-                                .onChange(of: selectedOrganization) { _, newValue in
-                                    loadGroups(for: newValue)
+                                    .padding(12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.green.opacity(0.1))
+                                    )
+                                } else {
+                                    HStack {
+                                        Image(systemName: "exclamationmark.triangle")
+                                            .foregroundColor(.orange)
+                                        Text("Loading organization...")
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                    }
+                                    .padding(12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.orange.opacity(0.1))
+                                    )
                                 }
                             }
                             
-                            if !groups.isEmpty {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Target Group (Optional)")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
+                            // Group Selection
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Target Group")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                
+                                if !groups.isEmpty {
                                     Picker("Group", selection: $selectedGroup) {
                                         Text("All Members").tag(nil as OrganizationGroup?)
                                         ForEach(groups, id: \.id) { group in
-                                            Text(group.name).tag(group as OrganizationGroup?)
+                                            HStack {
+                                                Image(systemName: "person.3")
+                                                    .foregroundColor(.blue)
+                                                Text(group.name)
+                                            }
+                                            .tag(group as OrganizationGroup?)
                                         }
                                     }
                                     .pickerStyle(MenuPickerStyle())
                                     .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
+                                    .padding(.vertical, 10)
                                     .background(Color(.systemGray6))
                                     .cornerRadius(8)
+                                    .onAppear {
+                                        print("🔍 Group picker appeared with \(groups.count) groups")
+                                        for group in groups {
+                                            print("   📋 Group: \(group.name) (ID: \(group.id))")
+                                        }
+                                    }
+                                } else {
+                                    HStack {
+                                        Image(systemName: "person.3")
+                                            .foregroundColor(.secondary)
+                                        Text("No groups available (\(groups.count))")
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                    }
+                                    .padding(12)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color(.systemGray6))
+                                    )
+                                    .onAppear {
+                                        print("🔍 No groups available - groups count: \(groups.count)")
+                                    }
                                 }
                             }
                         }
@@ -420,8 +510,8 @@ struct CreateScheduledAlertView: View {
                                     .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
                             )
                         }
-                        .disabled(title.isEmpty || description.isEmpty || selectedOrganization == nil || isLoading)
-                        .opacity((title.isEmpty || description.isEmpty || selectedOrganization == nil || isLoading) ? 0.6 : 1.0)
+                        .disabled(title.isEmpty || description.isEmpty || currentUserOrganization == nil || isLoading)
+                        .opacity((title.isEmpty || description.isEmpty || currentUserOrganization == nil || isLoading) ? 0.6 : 1.0)
                         
                         // Secondary Action Button
                         Button("Cancel") {
@@ -440,49 +530,139 @@ struct CreateScheduledAlertView: View {
                     .padding(.bottom, 40)
                 }
             }
-            .navigationBarHidden(true)
+            .navigationTitle("Schedule Alert")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.blue)
+                }
+            }
             .alert("Error", isPresented: $showingError) {
                 Button("OK") { }
             } message: {
                 Text(errorMessage ?? "Unknown error occurred")
             }
             .onAppear {
-                loadOrganizations()
+                Task {
+                    await loadCurrentUserOrganization()
+                }
             }
         }
     }
     
-    private func loadOrganizations() {
-        Task {
-            do {
-                let orgs = try await apiService.fetchOrganizations()
-                await MainActor.run {
-                    self.organizations = orgs
+    private func loadCurrentUserOrganization() async {
+        do {
+            // Get current user
+            print("🔍 Loading current user organization...")
+            let currentUser = try await getCurrentUser()
+            print("✅ Got current user: \(currentUser.name ?? "Unknown") (ID: \(currentUser.id))")
+            print("🔍 User organizations: \(currentUser.organizations ?? [])")
+            
+            // Get user's organization ID
+            var organizationId: String?
+            
+            // First try to get from user's organizations array
+            if let orgs = currentUser.organizations, !orgs.isEmpty {
+                organizationId = orgs.first
+                print("✅ Found organization from user.organizations: \(organizationId!)")
+            } else {
+                // Try to get from Firebase Auth user's custom claims or database
+                print("🔍 User has no organizations array, trying to find organization from database...")
+                
+                // Try to find organization by checking if user is admin of any organization
+                let db = Firestore.firestore()
+                let orgsQuery = try await db.collection("organizations")
+                    .whereField("adminIds.\(currentUser.id)", isEqualTo: true)
+                    .getDocuments()
+                
+                if let firstOrg = orgsQuery.documents.first {
+                    organizationId = firstOrg.documentID
+                    print("✅ Found organization from adminIds query: \(organizationId!)")
+                } else {
+                    print("❌ No organization found where user is admin")
                 }
-            } catch {
+            }
+            
+            guard let orgId = organizationId else {
+                print("❌ User has no organization")
                 await MainActor.run {
-                    errorMessage = "Failed to load organizations: \(error.localizedDescription)"
+                    errorMessage = "You are not associated with any organization. Please contact your administrator."
                     showingError = true
                 }
+                return
+            }
+            
+            print("🔍 User's organization ID: \(orgId)")
+            
+            // Fetch the organization details
+            guard let organization = try await apiService.getOrganizationById(orgId) else {
+                print("❌ Organization not found with ID: \(orgId)")
+                await MainActor.run {
+                    errorMessage = "Organization not found. Please contact your administrator."
+                    showingError = true
+                }
+                return
+            }
+            
+            print("✅ Fetched organization: \(organization.name) (ID: \(organization.id))")
+            print("🔍 Organization groups from object: \(organization.groups?.count ?? 0)")
+            
+            await MainActor.run {
+                self.currentUserOrganization = organization
+            }
+            
+            // Load groups for this organization
+            print("🔍 Loading groups for organization...")
+            await loadGroups(for: organization)
+            
+        } catch {
+            print("Error loading current user organization: \(error)")
+            await MainActor.run {
+                if error is APIError && error as? APIError == .unauthorized {
+                    errorMessage = "Unable to verify your authentication. Please try logging out and back in."
+                } else {
+                    errorMessage = "Failed to load your organization: \(error.localizedDescription)"
+                }
+                showingError = true
             }
         }
     }
     
-    private func loadGroups(for organization: Organization?) {
+    
+    private func loadGroups(for organization: Organization?) async {
         guard let organization = organization else {
-            groups = []
-            selectedGroup = nil
+            await MainActor.run {
+                groups = []
+                selectedGroup = nil
+            }
             return
         }
         
-        groups = organization.groups ?? []
-        selectedGroup = nil
+        do {
+            // Fetch groups from the database using the API service
+            let fetchedGroups = try await apiService.getOrganizationGroups(organizationId: organization.id)
+            
+            await MainActor.run {
+                groups = fetchedGroups
+                selectedGroup = nil
+                print("✅ Loaded \(fetchedGroups.count) groups for organization: \(organization.name)")
+            }
+        } catch {
+            print("❌ Error loading groups: \(error)")
+            await MainActor.run {
+                groups = []
+                selectedGroup = nil
+            }
+        }
     }
     
     private func scheduleAlert() {
         guard !title.isEmpty,
               !description.isEmpty,
-              let organization = selectedOrganization else { return }
+              let organization = currentUserOrganization else { return }
         
         isLoading = true
         
@@ -517,8 +697,8 @@ struct CreateScheduledAlertView: View {
                     organizationName: organization.name,
                     groupId: selectedGroup?.id,
                     groupName: selectedGroup?.name,
-                    type: selectedType,
-                    severity: selectedSeverity,
+                    type: selectedType ?? .other,
+                    severity: selectedSeverity ?? .medium,
                     location: alertLocation,
                     scheduledDate: scheduledDate,
                     isRecurring: isRecurring,
@@ -545,29 +725,52 @@ struct CreateScheduledAlertView: View {
     }
     
     private func getCurrentUser() async throws -> User {
-        // This should be implemented to get the current user
-        // For now, return a mock user
-        return User(
-            id: "mock_user_id",
-            email: "user@example.com",
-            name: "Current User",
-            phone: nil,
-            profilePhotoURL: nil,
-            homeLocation: nil,
-            workLocation: nil,
-            schoolLocation: nil,
-            alertRadius: 10.0,
-            preferences: UserPreferences(
-                incidentTypes: Array(IncidentType.allCases),
-                criticalAlertsOnly: false,
-                pushNotifications: true,
-                quietHoursEnabled: false,
-                quietHoursStart: nil,
-                quietHoursEnd: nil
-            ),
-            createdAt: Date(),
-            isAdmin: false
-        )
+        // Try multiple sources for current user
+        var currentUser: User?
+        
+        // First try APIService
+        if let apiUser = apiService.currentUser {
+            currentUser = apiUser
+            print("✅ Found user from APIService: \(apiUser.name ?? "Unknown")")
+        }
+        // Then try UserDefaults
+        else if let data = UserDefaults.standard.data(forKey: "currentUser"),
+                let user = try? JSONDecoder().decode(User.self, from: data) {
+            currentUser = user
+            print("✅ Found user from UserDefaults: \(user.name ?? "Unknown")")
+        }
+        // Finally try Firebase Auth and create user from it
+        else if let firebaseUser = Auth.auth().currentUser {
+            print("✅ Found Firebase user, creating User object: \(firebaseUser.uid)")
+            currentUser = User(
+                id: firebaseUser.uid,
+                email: firebaseUser.email,
+                name: firebaseUser.displayName ?? "User",
+                phone: firebaseUser.phoneNumber,
+                profilePhotoURL: firebaseUser.photoURL?.absoluteString,
+                homeLocation: nil,
+                workLocation: nil,
+                schoolLocation: nil,
+                alertRadius: 10.0,
+                preferences: UserPreferences(
+                    incidentTypes: Array(IncidentType.allCases),
+                    criticalAlertsOnly: false,
+                    pushNotifications: true,
+                    quietHoursEnabled: false,
+                    quietHoursStart: nil,
+                    quietHoursEnd: nil
+                ),
+                createdAt: Date(),
+                isAdmin: false
+            )
+        }
+        
+        guard let user = currentUser else {
+            print("❌ No current user found from any source")
+            throw APIError.unauthorized
+        }
+        
+        return user
     }
 }
 

@@ -77,6 +77,9 @@ class ScheduledAlertExecutionService: ObservableObject {
         
         do {
             // Convert scheduled alert to organization alert
+            // Calculate expiration date from the scheduled date, not the execution date
+            let expirationDate = Calendar.current.date(byAdding: .day, value: 14, to: alert.scheduledDate) ?? alert.scheduledDate
+            
             let organizationAlert = OrganizationAlert(
                 title: alert.title,
                 description: alert.description,
@@ -89,6 +92,7 @@ class ScheduledAlertExecutionService: ObservableObject {
                 location: alert.location,
                 postedBy: alert.postedBy,
                 postedByUserId: alert.postedByUserId,
+                postedAt: alert.scheduledDate, // Use scheduled date as posted date
                 imageURLs: alert.imageURLs
             )
             

@@ -335,7 +335,10 @@ struct OrganizationProfileView: View {
             fetchGroups()
             fetchActualFollowerCount() // Fetch actual follower count from Firestore
             loadGroupPreferences() // Load user's group preferences
-            refreshOrganizationData() // Refresh organization data to get accurate follower count
+            
+            Task {
+                await refreshOrganizationData() // Refresh organization data to get accurate follower count
+            }
             print("🔍 fetchGroups() called")
             
             // Force admin status check immediately
@@ -353,16 +356,12 @@ struct OrganizationProfileView: View {
                 await checkAdminStatus()
                 
                 // Update currentOrganization with fresh data
-                do {
-                    // TODO: Add organization fetching to SimpleAuthManager
-                if let updatedOrg = nil as Organization? {
-                        await MainActor.run {
-                            self.currentOrganization = updatedOrg
-                        }
-                    }
-                } catch {
-                    print("❌ Failed to get organization by ID: \(error)")
-                }
+                // TODO: Add organization fetching to SimpleAuthManager
+                // if let updatedOrg = nil as Organization? {
+                //     await MainActor.run {
+                //         self.currentOrganization = updatedOrg
+                //     }
+                // }
             }
             
             // Listen for organization updates
@@ -410,17 +409,13 @@ struct OrganizationProfileView: View {
             print("Organization refresh not implemented in SimpleAuthManager")
             
             // Also refresh the current organization
-            do {
-                // TODO: Add organization fetching to SimpleAuthManager
-                if let updatedOrg = nil as Organization? {
-                    await MainActor.run {
-                        self.currentOrganization = updatedOrg
-                        print("✅ OrganizationProfileView: Updated current organization with new logo")
-                    }
-                }
-            } catch {
-                print("❌ OrganizationProfileView: Failed to refresh organization: \(error)")
-            }
+            // TODO: Add organization fetching to SimpleAuthManager
+            // if let updatedOrg = nil as Organization? {
+            //     await MainActor.run {
+            //         self.currentOrganization = updatedOrg
+            //         print("✅ OrganizationProfileView: Updated current organization with new logo")
+            //     }
+            // }
         }
     }
     
@@ -516,9 +511,7 @@ struct OrganizationProfileView: View {
                     title: isOrganizationAdmin ? "Groups" : "Groups",
                     value: "\(visibleGroups.count)",
                     icon: "person.3.fill",
-                    color: .green,
-                    isClickable: isOrganizationAdmin && currentOrganization.verified,
-                    action: isOrganizationAdmin && currentOrganization.verified ? { showingGroupManagement = true } : nil
+                    color: .green
                 )
             }
             .padding(.horizontal)
@@ -1314,7 +1307,7 @@ struct OrganizationProfileView: View {
     
     // Follow Status Management methods removed
 
-    private func refreshOrganizationData() {
+    private func refreshOrganizationData() async {
         Task {
             do {
                 // Fetch organization data directly from Firestore
@@ -1361,7 +1354,7 @@ struct OrganizationProfileView: View {
                 }
                 
                 // Also refresh the actual follower count from Firestore
-                await fetchActualFollowerCount()
+                fetchActualFollowerCount()
             } catch {
                 print("❌ Failed to refresh organization data: \(error)")
             }

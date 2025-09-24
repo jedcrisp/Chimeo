@@ -22,183 +22,363 @@ struct ScheduledAlertDetailView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 0) {
-                    // Modern Header
-                    VStack(spacing: 16) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 8) {
+                VStack(spacing: 20) {
+                    // Professional Header with Gradient
+                    VStack(spacing: 20) {
+                        // Alert Title and Severity Badge
+                        HStack(alignment: .top, spacing: 16) {
+                            VStack(alignment: .leading, spacing: 12) {
                                 HStack(spacing: 12) {
-                                    Circle()
+                                    // Severity Indicator
+                                    RoundedRectangle(cornerRadius: 4)
                                         .fill(alert.severity.color)
-                                        .frame(width: 20, height: 20)
+                                        .frame(width: 4, height: 40)
                                     
-                                    Text(alert.title)
-                                        .font(.largeTitle)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.primary)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(alert.title)
+                                            .font(.title2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.primary)
+                                            .lineLimit(2)
+                                        
+                                        Text(alert.description)
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(3)
+                                    }
                                 }
                                 
-                                Text(alert.description)
-                                    .font(.body)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(nil)
-                            }
-                            Spacer()
-                            
-                            VStack(spacing: 8) {
-                                Image(systemName: alert.type.icon)
-                                    .font(.title2)
+                                // Type and Severity Pills
+                                HStack(spacing: 8) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: alert.type.icon)
+                                            .font(.caption)
+                                            .foregroundColor(alert.type.color)
+                                        Text(alert.type.displayName)
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(alert.type.color.opacity(0.1))
                                     .foregroundColor(alert.type.color)
-                                    .frame(width: 50, height: 50)
-                                    .background(
-                                        Circle()
-                                            .fill(alert.type.color.opacity(0.1))
-                                    )
-                                
-                                Text(alert.type.displayName)
-                                    .font(.caption)
+                                    .cornerRadius(12)
+                                    
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .font(.caption)
+                                            .foregroundColor(alert.severity.color)
+                                        Text(alert.severity.displayName)
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(alert.severity.color.opacity(0.1))
+                                    .foregroundColor(alert.severity.color)
+                                    .cornerRadius(12)
+                                }
+                            }
+                            
+                            Spacer()
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 24)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(.systemBackground),
+                                Color(.systemGray6).opacity(0.3)
+                            ]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    
+                    // Schedule Information Card
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "calendar")
+                                .font(.title3)
+                                .foregroundColor(.blue)
+                            Text("Schedule")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            Spacer()
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "calendar.badge.clock")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Text(dateFormatter.string(from: alert.scheduledDate))
+                                    .font(.subheadline)
                                     .fontWeight(.medium)
+                                Spacer()
+                            }
+                            
+                            HStack {
+                                Image(systemName: "clock")
+                                    .font(.subheadline)
                                     .foregroundColor(.secondary)
+                                Text(timeFormatter.string(from: alert.scheduledDate))
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Spacer()
                             }
                         }
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 20)
-                    .padding(.bottom, 32)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    )
                     
-                    // Alert Type & Severity
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Alert Details")
-                            .font(.headline)
-                        
+                    // Organization Information Card
+                    VStack(alignment: .leading, spacing: 16) {
                         HStack {
-                            Text("Type:")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            Text(alert.type.displayName)
-                                .font(.subheadline)
-                                .fontWeight(.medium)
+                            Image(systemName: "building.2")
+                                .font(.title3)
+                                .foregroundColor(.green)
+                            Text("Organization")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            Spacer()
                         }
                         
-                        HStack {
-                            Text("Severity:")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            Text(alert.severity.displayName)
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(alert.severity.color)
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    
-                    // Schedule
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Schedule")
-                            .font(.headline)
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(dateFormatter.string(from: alert.scheduledDate))
-                                .font(.subheadline)
-                                .fontWeight(.medium)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "building.2.circle")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Text(alert.organizationName)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Spacer()
+                            }
                             
-                            Text(timeFormatter.string(from: alert.scheduledDate))
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                            if let groupName = alert.groupName, !groupName.isEmpty {
+                                HStack {
+                                    Image(systemName: "person.3")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Text("Group: \(groupName)")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                }
+                            } else {
+                                HStack {
+                                    Image(systemName: "person.3")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Text("All Members")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                }
+                            }
                         }
                     }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    )
                     
-                    // Organization
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Organization")
-                            .font(.headline)
-                        
-                        Text(alert.organizationName)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        
-                        if let groupName = alert.groupName {
-                            Text("Group: \(groupName)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    
-                    // Location
+                    // Location Information Card
                     if let location = alert.location {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Location")
-                                .font(.headline)
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Image(systemName: "location")
+                                    .font(.title3)
+                                    .foregroundColor(.orange)
+                                Text("Location")
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                Spacer()
+                            }
                             
-                            Text(location.fullAddress)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                    }
-                    
-                    // Recurrence
-                    if alert.isRecurring, let pattern = alert.recurrencePattern {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Recurrence")
-                                .font(.headline)
-                            
-                            Text("Repeats every \(pattern.interval) \(pattern.frequency.rawValue)")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            if let endDate = pattern.endDate {
-                                Text("Until \(dateFormatter.string(from: endDate))")
-                                    .font(.caption)
+                            HStack {
+                                Image(systemName: "location.circle")
+                                    .font(.subheadline)
                                     .foregroundColor(.secondary)
+                                Text(location.fullAddress)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Spacer()
                             }
                         }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemBackground))
+                                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                        )
+                    } else {
+                        // Location unavailable card
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Image(systemName: "location.slash")
+                                    .font(.title3)
+                                    .foregroundColor(.gray)
+                                Text("Location")
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                Spacer()
+                            }
+                            
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Text("Location unavailable")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemBackground))
+                                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                        )
                     }
                     
-                    // Expiration
-                    if let expiresAt = alert.expiresAt {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Expiration")
-                                .font(.headline)
+                    // Recurrence Information Card
+                    if alert.isRecurring, let pattern = alert.recurrencePattern {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Image(systemName: "repeat")
+                                    .font(.title3)
+                                    .foregroundColor(.purple)
+                                Text("Recurrence")
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                Spacer()
+                            }
                             
-                            Text("\(dateFormatter.string(from: expiresAt)) at \(timeFormatter.string(from: expiresAt))")
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "arrow.clockwise")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Text("Repeats every \(pattern.interval) \(pattern.frequency.rawValue)")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                }
+                                
+                                if let endDate = pattern.endDate {
+                                    HStack {
+                                        Image(systemName: "calendar.badge.minus")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                        Text("Until \(dateFormatter.string(from: endDate))")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                    }
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemBackground))
+                                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                        )
+                    }
+                    
+                    // Expiration Information Card
+                    if let expiresAt = alert.expiresAt {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Image(systemName: "clock.badge.exclamationmark")
+                                    .font(.title3)
+                                    .foregroundColor(.red)
+                                Text("Expiration")
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                Spacer()
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "calendar.badge.clock")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Text(dateFormatter.string(from: expiresAt))
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Spacer()
+                                }
+                                
+                                HStack {
+                                    Image(systemName: "clock")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Text(timeFormatter.string(from: expiresAt))
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemBackground))
+                                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                        )
+                    }
+                    
+                    // Created By Information Card
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "person.circle")
+                                .font(.title3)
+                                .foregroundColor(.blue)
+                            Text("Created By")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            Spacer()
+                        }
+                        
+                        HStack {
+                            Image(systemName: "person")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
+                            Text(alert.postedBy)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Spacer()
                         }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+                    )
                     
-                    // Created By
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Created By")
-                            .font(.headline)
-                        
-                        Text(alert.postedBy)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    
-                    Spacer()
+                    Spacer(minLength: 20)
                 }
-                .padding()
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
             }
             .navigationTitle("Scheduled Alert")
             .navigationBarTitleDisplayMode(.inline)

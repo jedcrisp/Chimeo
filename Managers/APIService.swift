@@ -2788,91 +2788,6 @@ class APIService: ObservableObject {
         }
     }
     
-    func createTestAlert(organizationId: String) async throws {
-        print("🔧 Creating test alert for organization: \(organizationId)")
-        
-        let db = Firestore.firestore()
-        
-        // First, get the organization name
-        let orgDoc = try await db.collection("organizations").document(organizationId).getDocument()
-        let orgName = orgDoc.data()?["name"] as? String ?? "Unknown Organization"
-        
-        let testAlert = OrganizationAlert(
-            id: UUID().uuidString,
-            title: "Test Alert - System Check",
-            description: "This is a test alert to verify the alert system is working correctly.",
-            organizationId: organizationId,
-            organizationName: orgName,
-            groupId: nil,
-            groupName: nil,
-            type: .other,
-            severity: .medium,
-            location: Location(
-                latitude: 33.2148,
-                longitude: -97.1331,
-                address: "123 Test Street",
-                city: "Denton",
-                state: "TX",
-                zipCode: "76201"
-            ),
-            postedBy: currentUser?.name ?? "System",
-            postedByUserId: currentUser?.id ?? "system",
-            postedAt: Date(),
-            imageURLs: []
-        )
-        
-        do {
-            var alertData: [String: Any] = [
-                "id": testAlert.id,
-                "organizationId": testAlert.organizationId,
-                "organizationName": testAlert.organizationName,
-                "title": testAlert.title,
-                "description": testAlert.description,
-                "type": testAlert.type.rawValue,
-                "severity": testAlert.severity.rawValue,
-                "postedBy": testAlert.postedBy,
-                "postedByUserId": testAlert.postedByUserId,
-                "postedAt": Timestamp(date: testAlert.postedAt),
-                "expiresAt": Timestamp(date: testAlert.expiresAt),
-                "imageURLs": testAlert.imageURLs,
-                "isActive": testAlert.isActive
-            ]
-            
-            // Only add optional fields if they have values
-            if let groupId = testAlert.groupId {
-                alertData["groupId"] = groupId
-            }
-            if let groupName = testAlert.groupName {
-                alertData["groupName"] = groupName
-            }
-            if let location = testAlert.location {
-                alertData["location"] = [
-                    "latitude": location.latitude,
-                    "longitude": location.longitude,
-                    "address": location.address,
-                    "city": location.city,
-                    "state": location.state,
-                    "zipCode": location.zipCode
-                ]
-            }
-            if let distance = testAlert.distance {
-                alertData["distance"] = distance
-            }
-            
-            try await db.collection("organizations")
-                .document(organizationId)
-                .collection("alerts")
-                .document(testAlert.id)
-                .setData(alertData)
-            
-            print("✅ Test alert created successfully: \(testAlert.title)")
-            
-        } catch {
-            print("❌ Error creating test alert: \(error)")
-            throw error
-        }
-    }
-    
     func updateCurrentUser(from simpleAuthManager: SimpleAuthManager) {
         print("🔄 APIService: Updating current user from SimpleAuthManager...")
         print("   SimpleAuthManager isAuthenticated: \(simpleAuthManager.isAuthenticated)")
@@ -4916,7 +4831,7 @@ struct AuthResponse: Codable {
 }
 
 // MARK: - API Errors
-enum APIError: Error, LocalizedError {
+enum APIError: Error, LocalizedError, Equatable {
     case invalidURL
     case invalidResponse
     case networkError

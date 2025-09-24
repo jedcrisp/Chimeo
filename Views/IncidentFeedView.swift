@@ -370,20 +370,12 @@ struct IncidentFeedView: View {
                     print("   📍 \(org.name) (ID: \(org.id))")
                 }
                 
-                // Let's also check if there are ANY alerts in the system at all
+                // Check if there are ANY alerts in the system at all
                 print("🔍 Checking for ANY alerts in the system...")
                 let allAlerts = try await serviceCoordinator.getAllAlerts()
                 print("📊 Found \(allAlerts.count) total alerts in the system")
                 for alert in allAlerts {
                     print("   📋 Alert: '\(alert.title)' from org \(alert.organizationId)")
-                }
-                
-                // If no alerts exist, let's create a test alert
-                if allAlerts.isEmpty && !followedOrgs.isEmpty {
-                    print("🔧 No alerts found - creating a test alert...")
-                    let testOrg = followedOrgs.first!
-                    try await serviceCoordinator.createTestAlert(organizationId: testOrg.id)
-                    print("✅ Test alert created for \(testOrg.name)")
                 }
                 
                 print("📡 Fetching alerts from followed organizations...")

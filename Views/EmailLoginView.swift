@@ -11,40 +11,90 @@ struct EmailLoginView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 24) {
+            VStack {
                 // Header
-                VStack(spacing: 8) {
+                HStack {
+                    Button(action: onDismiss) {
+                        Text("Cancel")
+                            .font(.system(size: 15, weight: .semibold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(Color(.systemGray5))
+                            .foregroundColor(.blue)
+                            .cornerRadius(20)
+                    }
+                    
+                    Spacer()
+                    
                     Text("Sign In")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
+                        .font(.system(size: 18, weight: .bold))
                         .foregroundColor(.primary)
                     
-                    Text("Enter your email and password")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    Spacer()
+                    
+                    // Invisible filler for symmetry
+                    Text("Cancel")
+                        .font(.system(size: 15, weight: .semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .opacity(0)
                 }
-                .padding(.top, 20)
+                .padding(.horizontal)
+                .padding(.top, 8)
                 
-                // Form
-                VStack(spacing: 16) {
-                    // Email Field
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Email")
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                Spacer().frame(height: 40)
+                
+                // Card container
+                VStack(spacing: 20) {
+                    // Icon
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color.blue.opacity(0.9), Color.blue]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 80, height: 80)
+                            .shadow(color: .blue.opacity(0.3), radius: 6, x: 0, y: 3)
+                        
+                        Image(systemName: "bell.fill")
+                            .font(.system(size: 36, weight: .medium))
+                            .foregroundColor(.white)
+                    }
+                    
+                    // Welcome text
+                    VStack(spacing: 4) {
+                        Text("Welcome Back")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        
+                        Text("Sign in to your Chimeo account")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Email field
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Email Address")
+                            .font(.footnote)
+                            .fontWeight(.semibold)
                         
                         TextField("Enter your email", text: $email)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
                             .keyboardType(.emailAddress)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(10)
                     }
                     
-                    // Password Field
-                    VStack(alignment: .leading, spacing: 8) {
+                    // Password field
+                    VStack(alignment: .leading, spacing: 6) {
                         Text("Password")
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                            .font(.footnote)
+                            .fontWeight(.semibold)
                         
                         HStack {
                             if showPassword {
@@ -52,65 +102,56 @@ struct EmailLoginView: View {
                             } else {
                                 SecureField("Enter your password", text: $password)
                             }
-                            
-                            Button(action: {
-                                showPassword.toggle()
-                            }) {
+                            Button(action: { showPassword.toggle() }) {
                                 Image(systemName: showPassword ? "eye.slash" : "eye")
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(.gray)
                             }
                         }
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(10)
                     }
-                }
-                .padding(.horizontal, 20)
-                
-                // Sign In Button
-                Button(action: {
-                    isSigningIn = true
-                    onSignIn(email, password)
-                }) {
-                    HStack {
-                        if isSigningIn {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                                .foregroundColor(.white)
-                        } else {
-                            Image(systemName: "envelope")
-                                .font(.system(size: 16, weight: .medium))
-                        }
-                        
+                    
+                    // Sign In button
+                    Button(action: {
+                        isSigningIn = true
+                        onSignIn(email, password)
+                    }) {
                         Text(isSigningIn ? "Signing In..." : "Sign In")
-                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(email.isEmpty || password.isEmpty ? Color.gray : Color.blue)
+                            .cornerRadius(10)
                     }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(email.isEmpty || password.isEmpty ? Color.gray : Color.blue)
-                    .cornerRadius(8)
+                    .disabled(email.isEmpty || password.isEmpty || isSigningIn)
+                    
+                    // Forgot password
+                    Button("Forgot your password?") {
+                        // TODO: Forgot password flow
+                    }
+                    .foregroundColor(.blue)
+                    .font(.subheadline)
                 }
-                .disabled(email.isEmpty || password.isEmpty || isSigningIn)
-                .padding(.horizontal, 20)
+                .padding()
+                .background(Color.white)
+                .cornerRadius(20)
+                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+                .padding(.horizontal, 24)
                 
                 Spacer()
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        onDismiss()
-                    }
-                }
-            }
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
         }
     }
 }
 
 #Preview {
     EmailLoginView(
-        email: .constant("test@example.com"),
-        password: .constant("password"),
+        email: .constant(""),
+        password: .constant(""),
         onSignIn: { _, _ in },
-        onDismiss: { }
+        onDismiss: {}
     )
 }

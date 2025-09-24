@@ -875,6 +875,10 @@ exports.executeScheduledAlerts = functions.pubsub
 async function executeScheduledAlert(orgId, alertId, alert) {
     console.log(`🚨 Executing scheduled alert: ${alert.title}`);
     // Create organization alert from scheduled alert
+    // Calculate expiration date from the scheduled date, not the execution date
+    const scheduledDate = alert.scheduledDate?.toDate?.() || new Date();
+    const expirationDate = new Date(scheduledDate.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days from scheduled date
+    
     const organizationAlert = {
         title: alert.title,
         description: alert.description,
@@ -887,6 +891,8 @@ async function executeScheduledAlert(orgId, alertId, alert) {
         location: alert.location || {},
         postedBy: alert.postedBy,
         postedByUserId: alert.postedByUserId,
+        postedAt: scheduledDate, // Use scheduled date as posted date
+        expiresAt: expirationDate, // Use calculated expiration date
         imageURLs: alert.imageURLs || [],
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         isActive: true,

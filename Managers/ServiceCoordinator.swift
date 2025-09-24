@@ -563,9 +563,6 @@ class ServiceCoordinator: ObservableObject {
         return try await apiService.getAllAlerts()
     }
     
-    func createTestAlert(organizationId: String) async throws {
-        return try await apiService.createTestAlert(organizationId: organizationId)
-    }
     
     func updateGroupPreference(organizationId: String, groupId: String, isEnabled: Bool) async throws {
         return try await apiService.updateGroupPreference(organizationId: organizationId, groupId: groupId, isEnabled: isEnabled)

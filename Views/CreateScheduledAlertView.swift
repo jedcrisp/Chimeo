@@ -33,56 +33,82 @@ struct CreateScheduledAlertView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 24) {
-                    // Header Section
-                    VStack(spacing: 16) {
+                VStack(spacing: 0) {
+                    // Modern Header
+                    VStack(spacing: 12) {
                         HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Schedule Alert")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.primary)
+                                
+                                Text("Create a scheduled alert for your organization")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            
                             Image(systemName: "bell.badge.fill")
-                                .font(.title2)
+                                .font(.title)
                                 .foregroundColor(.blue)
-                            Text("Schedule New Alert")
+                                .frame(width: 50, height: 50)
+                                .background(
+                                    Circle()
+                                        .fill(Color.blue.opacity(0.1))
+                                )
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 20)
+                    .padding(.bottom, 32)
+                    
+                    // Alert Details Section
+                    VStack(spacing: 0) {
+                        // Section Header
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                                .font(.title3)
+                            Text("Alert Details")
                                 .font(.title2)
                                 .fontWeight(.semibold)
                             Spacer()
                         }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 20)
                         
-                        Text("Create a scheduled alert for your organization")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    
-                    // Alert Details Card
-                    VStack(alignment: .leading, spacing: 20) {
-                        CardHeader(title: "Alert Details", icon: "exclamationmark.triangle.fill", color: .orange)
-                        
-                        VStack(spacing: 16) {
+                        // Form Fields
+                        VStack(spacing: 20) {
                             // Title Field
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Alert Title")
-                                    .font(.headline)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
                                     .foregroundColor(.primary)
                                 TextField("Enter alert title", text: $title)
-                                    .textFieldStyle(ModernTextFieldStyle())
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .font(.body)
                             }
                             
                             // Description Field
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Description")
-                                    .font(.headline)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
                                     .foregroundColor(.primary)
                                 TextField("Describe the alert details", text: $description, axis: .vertical)
-                                    .textFieldStyle(ModernTextFieldStyle())
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
                                     .lineLimit(3...6)
+                                    .font(.body)
                             }
                             
                             // Type and Severity Row
                             HStack(spacing: 16) {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("Type")
-                                        .font(.headline)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
                                         .foregroundColor(.primary)
                                     Picker("Type", selection: $selectedType) {
                                         ForEach(IncidentType.allCases, id: \.self) { type in
@@ -96,14 +122,15 @@ struct CreateScheduledAlertView: View {
                                     }
                                     .pickerStyle(MenuPickerStyle())
                                     .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
+                                    .padding(.vertical, 10)
                                     .background(Color(.systemGray6))
-                                    .cornerRadius(8)
+                                    .cornerRadius(10)
                                 }
                                 
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("Severity")
-                                        .font(.headline)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
                                         .foregroundColor(.primary)
                                     Picker("Severity", selection: $selectedSeverity) {
                                         ForEach(IncidentSeverity.allCases, id: \.self) { severity in
@@ -117,18 +144,30 @@ struct CreateScheduledAlertView: View {
                                     }
                                     .pickerStyle(MenuPickerStyle())
                                     .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
+                                    .padding(.vertical, 10)
                                     .background(Color(.systemGray6))
-                                    .cornerRadius(8)
+                                    .cornerRadius(10)
                                 }
                             }
                         }
+                        .padding(.horizontal, 24)
                     }
-                    .cardStyle()
+                    .padding(.bottom, 32)
                     
-                    // Schedule Card
-                    VStack(alignment: .leading, spacing: 20) {
-                        CardHeader(title: "Schedule", icon: "calendar", color: .blue)
+                    // Schedule Section
+                    VStack(spacing: 0) {
+                        // Section Header
+                        HStack {
+                            Image(systemName: "calendar")
+                                .foregroundColor(.blue)
+                                .font(.title3)
+                            Text("Schedule")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 20)
                         
                         VStack(spacing: 16) {
                             // Date Picker
@@ -350,42 +389,55 @@ struct CreateScheduledAlertView: View {
                     .cardStyle()
                     
                     // Action Buttons
-                    VStack(spacing: 12) {
+                    VStack(spacing: 16) {
+                        // Primary Action Button
                         Button(action: scheduleAlert) {
-                            HStack {
+                            HStack(spacing: 12) {
                                 if isLoading {
                                     ProgressView()
-                                        .scaleEffect(0.8)
+                                        .scaleEffect(0.9)
                                         .foregroundColor(.white)
                                 } else {
                                     Image(systemName: "bell.badge.fill")
+                                        .font(.system(size: 18, weight: .medium))
                                 }
-                                Text(isLoading ? "Scheduling..." : "Schedule Alert")
+                                Text(isLoading ? "Creating Alert..." : "Schedule Alert")
+                                    .font(.headline)
                                     .fontWeight(.semibold)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [.blue, .blue.opacity(0.8)]),
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
                             .foregroundColor(.white)
-                            .cornerRadius(12)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [Color.blue, Color.blue.opacity(0.8)]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                            )
                         }
                         .disabled(title.isEmpty || description.isEmpty || selectedOrganization == nil || isLoading)
                         .opacity((title.isEmpty || description.isEmpty || selectedOrganization == nil || isLoading) ? 0.6 : 1.0)
                         
+                        // Secondary Action Button
                         Button("Cancel") {
                             dismiss()
                         }
+                        .font(.headline)
                         .foregroundColor(.secondary)
-                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemGray6))
+                        )
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 20)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
                 }
             }
             .navigationBarHidden(true)

@@ -22,28 +22,49 @@ struct ScheduledAlertDetailView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Header
-                    VStack(alignment: .leading, spacing: 8) {
+                VStack(spacing: 0) {
+                    // Modern Header
+                    VStack(spacing: 16) {
                         HStack {
-                            Circle()
-                                .fill(alert.severity.color)
-                                .frame(width: 16, height: 16)
-                            
-                            Text(alert.title)
-                                .font(.title2)
-                                .fontWeight(.bold)
-                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack(spacing: 12) {
+                                    Circle()
+                                        .fill(alert.severity.color)
+                                        .frame(width: 20, height: 20)
+                                    
+                                    Text(alert.title)
+                                        .font(.largeTitle)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.primary)
+                                }
+                                
+                                Text(alert.description)
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(nil)
+                            }
                             Spacer()
+                            
+                            VStack(spacing: 8) {
+                                Image(systemName: alert.type.icon)
+                                    .font(.title2)
+                                    .foregroundColor(alert.type.color)
+                                    .frame(width: 50, height: 50)
+                                    .background(
+                                        Circle()
+                                            .fill(alert.type.color.opacity(0.1))
+                                    )
+                                
+                                Text(alert.type.displayName)
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
+                            }
                         }
-                        
-                        Text(alert.description)
-                            .font(.body)
-                            .foregroundColor(.secondary)
                     }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 20)
+                    .padding(.bottom, 32)
                     
                     // Alert Type & Severity
                     VStack(alignment: .leading, spacing: 12) {
@@ -612,42 +633,55 @@ struct EditScheduledAlertView: View {
                     .cardStyle()
                     
                     // Action Buttons
-                    VStack(spacing: 12) {
+                    VStack(spacing: 16) {
+                        // Primary Action Button
                         Button(action: saveAlert) {
-                            HStack {
+                            HStack(spacing: 12) {
                                 if isLoading {
                                     ProgressView()
-                                        .scaleEffect(0.8)
+                                        .scaleEffect(0.9)
                                         .foregroundColor(.white)
                                 } else {
                                     Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 18, weight: .medium))
                                 }
-                                Text(isLoading ? "Saving..." : "Save Changes")
+                                Text(isLoading ? "Saving Changes..." : "Save Changes")
+                                    .font(.headline)
                                     .fontWeight(.semibold)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [.green, .green.opacity(0.8)]),
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
                             .foregroundColor(.white)
-                            .cornerRadius(12)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [Color.green, Color.green.opacity(0.8)]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .shadow(color: .green.opacity(0.3), radius: 8, x: 0, y: 4)
+                            )
                         }
                         .disabled(title.isEmpty || description.isEmpty || selectedOrganization == nil || isLoading)
                         .opacity((title.isEmpty || description.isEmpty || selectedOrganization == nil || isLoading) ? 0.6 : 1.0)
                         
+                        // Secondary Action Button
                         Button("Cancel") {
                             dismiss()
                         }
+                        .font(.headline)
                         .foregroundColor(.secondary)
-                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(.systemGray6))
+                        )
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 20)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
                 }
             }
             .navigationBarHidden(true)

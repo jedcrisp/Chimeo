@@ -40,11 +40,11 @@ class OrganizationAlertService: ObservableObject {
             ],
             "postedBy": alert.postedBy,
             "postedByUserId": alert.postedByUserId,
-            "postedAt": FieldValue.serverTimestamp(),
+            "postedAt": alert.postedAt,
             "isActive": true,
             "createdAt": FieldValue.serverTimestamp(),
             "updatedAt": FieldValue.serverTimestamp(),
-            "expiresAt": Calendar.current.date(byAdding: .day, value: 14, to: Date()) ?? Date()
+            "expiresAt": Calendar.current.date(byAdding: .day, value: 14, to: alert.postedAt) ?? alert.postedAt
         ]
         
         // Add to organization's alerts subcollection

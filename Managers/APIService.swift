@@ -1659,6 +1659,11 @@ class APIService: ObservableObject {
         return canManage
     }
     
+    func fixExistingAlertTimestamps() async throws {
+        print("🔧 APIService: Starting to fix existing alert timestamps...")
+        try await organizationAlertService.fixExistingAlertTimestamps()
+    }
+    
     func getOrganizationAlerts(organizationId: String) async throws -> [OrganizationAlert] {
         print("🔍 Fetching alerts for organization: \(organizationId)")
         

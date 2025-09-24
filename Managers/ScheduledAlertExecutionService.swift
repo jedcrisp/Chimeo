@@ -93,7 +93,8 @@ class ScheduledAlertExecutionService: ObservableObject {
                 postedBy: alert.postedBy,
                 postedByUserId: alert.postedByUserId,
                 postedAt: alert.scheduledDate, // Use scheduled date as posted date
-                imageURLs: alert.imageURLs
+                imageURLs: alert.imageURLs,
+                scheduledAlertId: alert.id // Track that this came from a scheduled alert
             )
             
             // Post the alert through the organization alert service

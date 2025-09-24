@@ -554,6 +554,43 @@ struct SettingsView: View {
                 Divider()
                     .padding(.horizontal, 20)
                 
+                Button(action: {
+                    Task {
+                        await fixAlertTimestamps()
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.blue)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Fix Alert Timestamps")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.primary)
+                            
+                            Text("Fix existing alerts to show correct posting time")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        if isFixingUsers {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isFixingUsers)
+                
+                Divider()
+                    .padding(.horizontal, 20)
                 
                 Button(action: {
                     notificationManager.retryFCMTokenRegistration()
@@ -1240,6 +1277,21 @@ struct SettingsView: View {
             showingAlert = true
             isFixingUsers = false
         }
+    }
+    
+    private func fixAlertTimestamps() async {
+        isFixingUsers = true
+        do {
+            try await apiService.fixExistingAlertTimestamps()
+            alertTitle = "Success"
+            alertMessage = "Alert timestamps have been fixed successfully!"
+            showingAlert = true
+        } catch {
+            alertTitle = "Error"
+            alertMessage = "Failed to fix alert timestamps: \(error.localizedDescription)"
+            showingAlert = true
+        }
+        isFixingUsers = false
     }
     
     private func fixAllUserDocuments() async {

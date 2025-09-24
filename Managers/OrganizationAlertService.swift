@@ -41,6 +41,7 @@ class OrganizationAlertService: ObservableObject {
             "postedBy": alert.postedBy,
             "postedByUserId": alert.postedByUserId,
             "postedAt": alert.postedAt,
+            "scheduledAlertId": alert.scheduledAlertId ?? "",
             "isActive": true,
             "createdAt": FieldValue.serverTimestamp(),
             "updatedAt": FieldValue.serverTimestamp(),
@@ -356,6 +357,61 @@ private func getCurrentUser() async throws -> User {
         return allAlerts
     }
     
+    // MARK: - Fix Existing Alerts
+    func fixExistingAlertTimestamps() async throws {
+        print("🔧 Fixing existing alert timestamps...")
+        
+        let db = Firestore.firestore()
+        
+        // Get all organizations
+        let orgsSnapshot = try await db.collection("organizations").getDocuments()
+        
+        for orgDoc in orgsSnapshot.documents {
+            let orgId = orgDoc.documentID
+            print("🔧 Checking organization: \(orgId)")
+            
+            // Get all alerts for this organization
+            let alertsRef = db.collection("organizations")
+                .document(orgId)
+                .collection("alerts")
+            
+            let alertsSnapshot = try await alertsRef.getDocuments()
+            
+            for alertDoc in alertsSnapshot.documents {
+                let data = alertDoc.data()
+                
+                // Check if this alert has a scheduledAlertId (meaning it came from a scheduled alert)
+                if let scheduledAlertId = data["scheduledAlertId"] as? String {
+                    print("🔧 Found scheduled alert: \(alertDoc.documentID) -> \(scheduledAlertId)")
+                    
+                    // Get the original scheduled alert to get the correct scheduled date
+                    let scheduledAlertRef = db.collection("organizations")
+                        .document(orgId)
+                        .collection("scheduledAlerts")
+                        .document(scheduledAlertId)
+                    
+                    do {
+                        let scheduledAlertDoc = try await scheduledAlertRef.getDocument()
+                        if let scheduledData = scheduledAlertDoc.data(),
+                           let scheduledDate = scheduledData["scheduledDate"] as? Timestamp {
+                            
+                            // Update the alert with the correct postedAt timestamp
+                            try await alertDoc.reference.updateData([
+                                "postedAt": scheduledDate
+                            ])
+                            
+                            print("✅ Fixed timestamp for alert \(alertDoc.documentID)")
+                        }
+                    } catch {
+                        print("❌ Error fixing alert \(alertDoc.documentID): \(error)")
+                    }
+                }
+            }
+        }
+        
+        print("✅ Finished fixing alert timestamps")
+    }
+    
     // MARK: - Alert Parsing
     private func parseOrganizationAlert(data: [String: Any], id: String) throws -> OrganizationAlert {
         let title = data["title"] as? String ?? "Unknown"
@@ -385,6 +441,8 @@ private func getCurrentUser() async throws -> User {
             print("   ⚠️ createdAt not found or not a Timestamp")
         }
         print("   📅 Final postedAt used: \(postedAt)")
+        print("   📅 Current time: \(Date())")
+        print("   📅 Time difference: \(Date().timeIntervalSince(postedAt)) seconds")
         let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
         let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
         
@@ -399,6 +457,8 @@ private func getCurrentUser() async throws -> User {
         
         let type = IncidentType(rawValue: typeString) ?? .other
         let severity = IncidentSeverity(rawValue: severityString) ?? .low
+        let imageURLs = data["imageURLs"] as? [String] ?? []
+        let scheduledAlertId = data["scheduledAlertId"] as? String
         
         return OrganizationAlert(
             id: id,
@@ -414,7 +474,8 @@ private func getCurrentUser() async throws -> User {
             postedBy: postedBy,
             postedByUserId: postedByUserId,
             postedAt: postedAt,
-            imageURLs: []
+            imageURLs: imageURLs,
+            scheduledAlertId: scheduledAlertId
         )
     }
     

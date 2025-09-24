@@ -745,8 +745,9 @@ struct OrganizationAlert: Identifiable, Codable {
     let imageURLs: [String]
     let isActive: Bool
     let distance: Double?
+    let scheduledAlertId: String? // Reference to the scheduled alert that created this
     
-    init(id: String = UUID().uuidString, title: String, description: String, organizationId: String, organizationName: String, groupId: String? = nil, groupName: String? = nil, type: IncidentType, severity: IncidentSeverity, location: Location? = nil, postedBy: String, postedByUserId: String, postedAt: Date = Date(), imageURLs: [String] = [], distance: Double? = nil) {
+    init(id: String = UUID().uuidString, title: String, description: String, organizationId: String, organizationName: String, groupId: String? = nil, groupName: String? = nil, type: IncidentType, severity: IncidentSeverity, location: Location? = nil, postedBy: String, postedByUserId: String, postedAt: Date = Date(), imageURLs: [String] = [], distance: Double? = nil, scheduledAlertId: String? = nil) {
         self.id = id
         self.title = title
         self.description = description
@@ -764,6 +765,7 @@ struct OrganizationAlert: Identifiable, Codable {
         self.imageURLs = imageURLs
         self.isActive = true
         self.distance = distance
+        self.scheduledAlertId = scheduledAlertId
     }
     
     var isExpired: Bool {

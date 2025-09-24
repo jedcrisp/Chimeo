@@ -44,6 +44,16 @@ struct MainTabView: View {
                     Text("My Alerts")
                 }
                 .tag(2)
+            
+            // Calendar tab for organization admins
+            if isOrganizationAdmin || forceShowCalendar {
+                CalendarView()
+                    .tabItem {
+                        Image(systemName: "calendar")
+                        Text("Calendar")
+                    }
+                    .tag(7)
+            }
         }
     }
     
@@ -71,16 +81,6 @@ struct MainTabView: View {
                 }
                 .tag(5)
             
-            // Calendar tab for organization admins
-            if isOrganizationAdmin || forceShowCalendar {
-                CalendarView()
-                    .tabItem {
-                        Image(systemName: "calendar")
-                        Text("Calendar")
-                    }
-                    .tag(7)
-            }
-            
             SettingsTabView()
                 .tabItem {
                     Image(systemName: "gear")
@@ -106,16 +106,6 @@ struct MainTabView: View {
                     Text("Invitations")
                 }
                 .tag(4)
-            
-            // Calendar tab for organization admins
-            if isOrganizationAdmin || forceShowCalendar {
-                CalendarView()
-                    .tabItem {
-                        Image(systemName: "calendar")
-                        Text("Calendar")
-                    }
-                    .tag(6)
-            }
             
             SettingsTabView()
                 .tabItem {

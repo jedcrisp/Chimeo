@@ -281,6 +281,7 @@ class CalendarService: ObservableObject {
                 do {
                     // Create a ScheduledAlert by manually parsing the data and using document ID
                     let data = alertDoc.data()
+                    print("🔧 Using custom fromFirestoreData method for document: \(alertDoc.documentID)")
                     let alert = try ScheduledAlert.fromFirestoreData(data, documentId: alertDoc.documentID)
                     
                     // Filter by isActive in code instead of query
@@ -329,6 +330,7 @@ class CalendarService: ObservableObject {
                 do {
                     // Create a ScheduledAlert by manually parsing the data and using document ID
                     let data = alertDoc.data()
+                    print("🔧 Using custom fromFirestoreData method for document: \(alertDoc.documentID)")
                     let alert = try ScheduledAlert.fromFirestoreData(data, documentId: alertDoc.documentID)
                     
                     // Filter by isActive in code instead of query

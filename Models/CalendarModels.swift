@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import FirebaseFirestore
 
 // MARK: - Calendar Event
 struct CalendarEvent: Identifiable, Codable {
@@ -167,6 +168,86 @@ struct ScheduledAlert: Identifiable, Codable {
         let calendar = Calendar.current
         let components = calendar.dateComponents([.day], from: Date(), to: scheduledDate)
         return components.day ?? 0
+    }
+    
+    // MARK: - Custom Decoder for Firestore
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        // Handle String ID
+        self.id = try container.decode(String.self, forKey: .id)
+        
+        // Handle basic strings
+        self.title = try container.decode(String.self, forKey: .title)
+        self.description = try container.decode(String.self, forKey: .description)
+        self.organizationId = try container.decode(String.self, forKey: .organizationId)
+        self.organizationName = try container.decode(String.self, forKey: .organizationName)
+        self.postedBy = try container.decode(String.self, forKey: .postedBy)
+        self.postedByUserId = try container.decode(String.self, forKey: .postedByUserId)
+        
+        // Handle optional strings
+        self.groupId = try container.decodeIfPresent(String.self, forKey: .groupId)
+        self.groupName = try container.decodeIfPresent(String.self, forKey: .groupName)
+        self.calendarEventId = try container.decodeIfPresent(String.self, forKey: .calendarEventId)
+        
+        // Handle enums
+        self.type = try container.decode(IncidentType.self, forKey: .type)
+        self.severity = try container.decode(IncidentSeverity.self, forKey: .severity)
+        
+        // Handle optional location
+        self.location = try container.decodeIfPresent(Location.self, forKey: .location)
+        
+        // Handle dates - convert from Firestore Timestamp or Date
+        if let timestamp = try? container.decode(FirebaseFirestore.Timestamp.self, forKey: .scheduledDate) {
+            self.scheduledDate = timestamp.dateValue()
+        } else {
+            self.scheduledDate = try container.decode(Date.self, forKey: .scheduledDate)
+        }
+        
+        if let timestamp = try? container.decode(FirebaseFirestore.Timestamp.self, forKey: .createdAt) {
+            self.createdAt = timestamp.dateValue()
+        } else {
+            self.createdAt = try container.decode(Date.self, forKey: .createdAt)
+        }
+        
+        if let timestamp = try? container.decode(FirebaseFirestore.Timestamp.self, forKey: .updatedAt) {
+            self.updatedAt = timestamp.dateValue()
+        } else {
+            self.updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        }
+        
+        if let timestamp = try? container.decodeIfPresent(FirebaseFirestore.Timestamp.self, forKey: .expiresAt) {
+            self.expiresAt = timestamp.dateValue()
+        } else {
+            self.expiresAt = try container.decodeIfPresent(Date.self, forKey: .expiresAt)
+        }
+        
+        // Handle booleans - convert from Int (0/1) or Bool
+        if let intValue = try? container.decode(Int.self, forKey: .isRecurring) {
+            self.isRecurring = intValue != 0
+        } else {
+            self.isRecurring = try container.decode(Bool.self, forKey: .isRecurring)
+        }
+        
+        if let intValue = try? container.decode(Int.self, forKey: .isActive) {
+            self.isActive = intValue != 0
+        } else {
+            self.isActive = try container.decode(Bool.self, forKey: .isActive)
+        }
+        
+        // Handle arrays
+        self.imageURLs = try container.decodeIfPresent([String].self, forKey: .imageURLs) ?? []
+        
+        // Handle optional recurrence pattern
+        self.recurrencePattern = try container.decodeIfPresent(RecurrencePattern.self, forKey: .recurrencePattern)
+    }
+    
+    // MARK: - Coding Keys
+    enum CodingKeys: String, CodingKey {
+        case id, title, description, organizationId, organizationName
+        case groupId, groupName, type, severity, location, scheduledDate
+        case isRecurring, recurrencePattern, postedBy, postedByUserId
+        case createdAt, updatedAt, isActive, imageURLs, expiresAt, calendarEventId
     }
 }
 

@@ -106,7 +106,7 @@ struct CalendarView: View {
                             }
                             
                             Button(action: { showingCreateAlert = true }) {
-                                Label("Schedule Alert", systemImage: "bell.badge.plus")
+                                Label("Schedule Alert", systemImage: "bell.badge")
                             }
                             
                             Button(action: { 

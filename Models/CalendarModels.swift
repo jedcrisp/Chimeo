@@ -240,6 +240,11 @@ struct ScheduledAlert: Identifiable, Codable {
         
         // Handle optional recurrence pattern
         self.recurrencePattern = try container.decodeIfPresent(RecurrencePattern.self, forKey: .recurrencePattern)
+        
+        // Ignore extra fields that might be in Firestore but not in our model
+        // These fields are decoded but not stored in our model
+        _ = try? container.decodeIfPresent(FirebaseFirestore.Timestamp.self, forKey: .processedAt)
+        _ = try? container.decodeIfPresent(String.self, forKey: .processedAlertId)
     }
     
     // MARK: - Coding Keys
@@ -248,6 +253,8 @@ struct ScheduledAlert: Identifiable, Codable {
         case groupId, groupName, type, severity, location, scheduledDate
         case isRecurring, recurrencePattern, postedBy, postedByUserId
         case createdAt, updatedAt, isActive, imageURLs, expiresAt, calendarEventId
+        // Additional fields that might be in Firestore but not in our model
+        case processedAt, processedAlertId
     }
 }
 

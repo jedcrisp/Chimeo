@@ -278,11 +278,15 @@ class CalendarService: ObservableObject {
             let alertsSnapshot = try await alertsQuery.getDocuments()
             
             for alertDoc in alertsSnapshot.documents {
-                if let alert = try? alertDoc.data(as: ScheduledAlert.self) {
+                do {
+                    let alert = try alertDoc.data(as: ScheduledAlert.self)
                     // Filter by isActive in code instead of query
                     if alert.isActive {
                         allAlerts.append(alert)
                     }
+                } catch {
+                    print("❌ Failed to parse alert document: \(alertDoc.documentID)")
+                    print("❌ Parsing error: \(error)")
                 }
             }
         }
@@ -319,7 +323,8 @@ class CalendarService: ObservableObject {
             
             for alertDoc in alertsSnapshot.documents {
                 print("📄 Processing alert document: \(alertDoc.documentID)")
-                if let alert = try? alertDoc.data(as: ScheduledAlert.self) {
+                do {
+                    let alert = try alertDoc.data(as: ScheduledAlert.self)
                     // Filter by isActive in code instead of query
                     if alert.isActive {
                         print("✅ Successfully parsed active alert: \(alert.title) for date: \(alert.scheduledDate)")
@@ -327,8 +332,9 @@ class CalendarService: ObservableObject {
                     } else {
                         print("⏸️ Skipping inactive alert: \(alert.title)")
                     }
-                } else {
+                } catch {
                     print("❌ Failed to parse alert document: \(alertDoc.documentID)")
+                    print("❌ Parsing error: \(error)")
                     print("📄 Document data: \(alertDoc.data())")
                 }
             }

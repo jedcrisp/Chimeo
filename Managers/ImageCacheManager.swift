@@ -14,6 +14,7 @@ class ImageCacheManager {
     private let cache = NSCache<NSString, UIImage>()
     private let fileManager = FileManager.default
     private let cacheDirectory: URL
+    private var cachedKeys = Set<String>()
     
     private init() {
         // Set cache limits
@@ -38,6 +39,7 @@ class ImageCacheManager {
     func setImage(_ image: UIImage, for url: String) {
         let key = NSString(string: url)
         cache.setObject(image, forKey: key)
+        cachedKeys.insert(url)
         
         // Also save to disk for persistence
         saveImageToDisk(image, for: url)
@@ -45,12 +47,14 @@ class ImageCacheManager {
     
     func clearCacheForOrganization(_ organizationId: String) {
         // Clear from memory cache
-        let keysToRemove = cache.allKeys.filter { key in
+        let keysToRemove = cachedKeys.filter { key in
             key.contains(organizationId)
         }
         
         for key in keysToRemove {
-            cache.removeObject(forKey: key)
+            let nsKey = NSString(string: key)
+            cache.removeObject(forKey: nsKey)
+            cachedKeys.remove(key)
         }
         
         // Clear from disk cache
@@ -71,6 +75,7 @@ class ImageCacheManager {
     
     func clearAllCache() {
         cache.removeAllObjects()
+        cachedKeys.removeAll()
         clearAllDiskCache()
         print("🗑️ Cleared all image cache")
     }

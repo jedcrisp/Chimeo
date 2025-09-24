@@ -11,6 +11,14 @@ struct DetailRow: View {
     let icon: String
     let title: String
     let value: String
+    let isLink: Bool
+    
+    init(icon: String, title: String, value: String, isLink: Bool = false) {
+        self.icon = icon
+        self.title = title
+        self.value = value
+        self.isLink = isLink
+    }
     
     var body: some View {
         HStack(spacing: 12) {
@@ -28,13 +36,27 @@ struct DetailRow: View {
                     .textCase(.uppercase)
                     .tracking(0.5)
                 
-                Text(value)
-                    .font(.body)
-                    .foregroundColor(.primary)
-                    .lineLimit(nil)
+                if isLink {
+                    Link(value, destination: URL(string: value) ?? URL(string: "https://example.com")!)
+                        .font(.body)
+                        .foregroundColor(.blue)
+                        .lineLimit(1)
+                } else {
+                    Text(value)
+                        .font(.body)
+                        .foregroundColor(.primary)
+                        .lineLimit(nil)
+                }
             }
             
             Spacer()
+            
+            // Link indicator
+            if isLink {
+                Image(systemName: "arrow.up.right.square")
+                    .font(.caption)
+                    .foregroundColor(.blue)
+            }
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 12)

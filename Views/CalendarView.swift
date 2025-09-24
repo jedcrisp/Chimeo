@@ -62,6 +62,22 @@ struct CalendarView: View {
         return alerts
     }
     
+    private func testScheduledAlerts() async {
+        print("🧪 Testing scheduled alerts...")
+        do {
+            let alerts = try await calendarService.fetchScheduledAlertsForDateRange(
+                Date().addingTimeInterval(-86400 * 30), // 30 days ago
+                endDate: Date().addingTimeInterval(86400 * 30) // 30 days from now
+            )
+            print("🧪 Test found \(alerts.count) alerts total")
+            for alert in alerts {
+                print("🧪 Test alert: \(alert.title) - \(alert.scheduledDate) - Active: \(alert.isActive)")
+            }
+        } catch {
+            print("🧪 Test error: \(error)")
+        }
+    }
+    
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
@@ -91,6 +107,12 @@ struct CalendarView: View {
                             
                             Button(action: { showingCreateAlert = true }) {
                                 Label("Schedule Alert", systemImage: "bell.badge.plus")
+                            }
+                            
+                            Button(action: { 
+                                Task { await testScheduledAlerts() }
+                            }) {
+                                Label("Test Alerts", systemImage: "testtube.2")
                             }
                         } label: {
                             Image(systemName: "plus")
@@ -122,6 +144,9 @@ struct CalendarView: View {
                 Task {
                     await loadScheduledAlerts()
                 }
+            }
+            .refreshable {
+                await loadScheduledAlerts()
             }
         }
     }

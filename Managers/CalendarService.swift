@@ -296,10 +296,12 @@ class CalendarService: ObservableObject {
         
         // Get all organizations first
         let organizationsSnapshot = try await db.collection("organizations").getDocuments()
+        print("📋 Found \(organizationsSnapshot.documents.count) organizations")
         var allAlerts: [ScheduledAlert] = []
         
         for orgDoc in organizationsSnapshot.documents {
             let orgId = orgDoc.documentID
+            print("🔍 Checking organization: \(orgId)")
             
             // Query scheduled alerts for this organization within the date range
             let alertsQuery = db.collection("organizations")
@@ -310,10 +312,16 @@ class CalendarService: ObservableObject {
                 .whereField("isActive", isEqualTo: true)
             
             let alertsSnapshot = try await alertsQuery.getDocuments()
+            print("📅 Found \(alertsSnapshot.documents.count) alerts in organization \(orgId)")
             
             for alertDoc in alertsSnapshot.documents {
+                print("📄 Processing alert document: \(alertDoc.documentID)")
                 if let alert = try? alertDoc.data(as: ScheduledAlert.self) {
+                    print("✅ Successfully parsed alert: \(alert.title) for date: \(alert.scheduledDate)")
                     allAlerts.append(alert)
+                } else {
+                    print("❌ Failed to parse alert document: \(alertDoc.documentID)")
+                    print("📄 Document data: \(alertDoc.data())")
                 }
             }
         }
@@ -322,6 +330,9 @@ class CalendarService: ObservableObject {
         allAlerts.sort { $0.scheduledDate < $1.scheduledDate }
         
         print("✅ Found \(allAlerts.count) scheduled alerts for date range")
+        for alert in allAlerts {
+            print("📋 Alert: \(alert.title) - \(alert.scheduledDate)")
+        }
         return allAlerts
     }
 }

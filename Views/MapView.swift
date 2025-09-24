@@ -1101,11 +1101,23 @@ struct OrganizationAnnotationView: View {
                     
                     // Organization logo or icon
                     if let logoURL = organization.logoURL, !logoURL.isEmpty {
-                        // Show organization logo if available using OrganizationLogoView for consistency
-                        OrganizationLogoView(organization: organization, size: isSelected ? 24 : 20, showBorder: false)
-                            .onAppear {
-                                print("🗺️ Map Annotation: Loading logo for \(organization.name) - \(logoURL)")
-                            }
+                        // Show organization logo if available - use CachedAsyncImage for better reliability
+                        CachedAsyncImage(
+                            url: logoURL,
+                            size: isSelected ? 24 : 20,
+                            fallback: AnyView(
+                                Image(systemName: getOrganizationIcon())
+                                    .font(.system(size: isSelected ? 16 : 14, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(width: isSelected ? 24 : 20, height: isSelected ? 24 : 20)
+                                    .background(Color.blue.opacity(0.3))
+                                    .clipShape(Circle())
+                            )
+                        )
+                        .clipShape(Circle())
+                        .onAppear {
+                            print("🗺️ Map Annotation: Attempting to load logo for \(organization.name) - \(logoURL)")
+                        }
                     } else {
                         // Fallback to icon if no logo
                         Image(systemName: getOrganizationIcon())

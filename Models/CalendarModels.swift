@@ -309,12 +309,31 @@ struct ScheduledAlert: Identifiable, Codable {
         let groupName = data["groupName"] as? String
         let calendarEventId = data["calendarEventId"] as? String
         
-        // Handle enums
-        guard let typeString = data["type"] as? String,
-              let type = IncidentType(rawValue: typeString),
-              let severityString = data["severity"] as? String,
-              let severity = IncidentSeverity(rawValue: severityString) else {
-            throw DecodingError.dataCorrupted(DecodingError.Context(codingPath: [], debugDescription: "Invalid type or severity enum"))
+        // Handle enums - provide defaults for empty strings
+        let typeString = data["type"] as? String ?? ""
+        let severityString = data["severity"] as? String ?? ""
+        
+        // Use default values if strings are empty
+        let type: IncidentType
+        if typeString.isEmpty {
+            type = .general
+            print("⚠️ ScheduledAlert: Empty type string, using default: general")
+        } else if let parsedType = IncidentType(rawValue: typeString) {
+            type = parsedType
+        } else {
+            print("⚠️ ScheduledAlert: Invalid type '\(typeString)', using default: general")
+            type = .general
+        }
+        
+        let severity: IncidentSeverity
+        if severityString.isEmpty {
+            severity = .low
+            print("⚠️ ScheduledAlert: Empty severity string, using default: low")
+        } else if let parsedSeverity = IncidentSeverity(rawValue: severityString) {
+            severity = parsedSeverity
+        } else {
+            print("⚠️ ScheduledAlert: Invalid severity '\(severityString)', using default: low")
+            severity = .low
         }
         
         // Handle optional location

@@ -247,6 +247,48 @@ struct ScheduledAlert: Identifiable, Codable {
         _ = try? container.decodeIfPresent(String.self, forKey: .processedAlertId)
     }
     
+    // MARK: - Custom Encoder for Firestore
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        // Encode basic strings
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(description, forKey: .description)
+        try container.encode(organizationId, forKey: .organizationId)
+        try container.encode(organizationName, forKey: .organizationName)
+        try container.encode(postedBy, forKey: .postedBy)
+        try container.encode(postedByUserId, forKey: .postedByUserId)
+        
+        // Encode optional strings
+        try container.encodeIfPresent(groupId, forKey: .groupId)
+        try container.encodeIfPresent(groupName, forKey: .groupName)
+        try container.encodeIfPresent(calendarEventId, forKey: .calendarEventId)
+        
+        // Encode enums
+        try container.encode(type, forKey: .type)
+        try container.encode(severity, forKey: .severity)
+        
+        // Encode optional location
+        try container.encodeIfPresent(location, forKey: .location)
+        
+        // Encode dates as Date objects (Firestore will convert to Timestamps)
+        try container.encode(scheduledDate, forKey: .scheduledDate)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        try container.encodeIfPresent(expiresAt, forKey: .expiresAt)
+        
+        // Encode booleans
+        try container.encode(isRecurring, forKey: .isRecurring)
+        try container.encode(isActive, forKey: .isActive)
+        
+        // Encode arrays
+        try container.encode(imageURLs, forKey: .imageURLs)
+        
+        // Encode optional recurrence pattern
+        try container.encodeIfPresent(recurrencePattern, forKey: .recurrencePattern)
+    }
+    
     // MARK: - Coding Keys
     enum CodingKeys: String, CodingKey {
         case id, title, description, organizationId, organizationName

@@ -64,9 +64,9 @@ struct GroupToggleRow: View {
                 description: "Critical safety notifications",
                 organizationId: "org1",
                 memberCount: 25,
-                isPrivate: false,
                 createdAt: Date(),
-                updatedAt: Date()
+                updatedAt: Date(),
+                isPrivate: false
             ),
             isEnabled: true,
             onToggle: { _ in }
@@ -79,9 +79,9 @@ struct GroupToggleRow: View {
                 description: "Daily weather forecasts and severe weather warnings",
                 organizationId: "org1",
                 memberCount: 150,
-                isPrivate: true,
                 createdAt: Date(),
-                updatedAt: Date()
+                updatedAt: Date(),
+                isPrivate: true
             ),
             isEnabled: false,
             onToggle: { _ in }

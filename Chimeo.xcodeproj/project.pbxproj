@@ -57,6 +57,7 @@
 		82EC4A12677C4068AD2CF69E /* FilterChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82EC4A12677C4068AD2CF69D /* FilterChip.swift */; };
 		8BAD582CB2E247AD8A18FE49 /* ImageCacheManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAD582CB2E247AD8A18FE48 /* ImageCacheManager.swift */; };
 		B032E161123A44AF9364FBF0 /* CachedAsyncImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B032E161123A44AF9364FBF1 /* CachedAsyncImage.swift */; };
+		FAA360D70EF348D9A519F14B /* StatCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA360D70EF348D9A519F14A /* StatCard.swift */; };
 		F4B2618D2E7CF7CE00592CFE /* AdminPlatformStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261672E7CF7CE00592CFE /* AdminPlatformStatsView.swift */; };
 		F4B2618E2E7CF7CE00592CFE /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B2616C2E7CF7CE00592CFE /* AuthView.swift */; };
 		F4B2618F2E7CF7CE00592CFE /* NotificationPreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261772E7CF7CE00592CFE /* NotificationPreferencesView.swift */; };
@@ -195,6 +196,7 @@
 		82EC4A12677C4068AD2CF69D /* FilterChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterChip.swift; sourceTree = "<group>"; };
 		8BAD582CB2E247AD8A18FE48 /* ImageCacheManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCacheManager.swift; sourceTree = "<group>"; };
 		B032E161123A44AF9364FBF1 /* CachedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedAsyncImage.swift; sourceTree = "<group>"; };
+		FAA360D70EF348D9A519F14A /* StatCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatCard.swift; sourceTree = "<group>"; };
 		F4B261642E7CF7CE00592CFE /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		F4B261652E7CF7CE00592CFE /* AdminOrganizationManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminOrganizationManagementView.swift; sourceTree = "<group>"; };
 		F4B261662E7CF7CE00592CFE /* AdminOrganizationReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminOrganizationReviewView.swift; sourceTree = "<group>"; };
@@ -388,6 +390,7 @@
 				9DF9023ABFD04D28865EF4F1 /* InfoRow.swift */,
 				82EC4A12677C4068AD2CF69D /* FilterChip.swift */,
 				B032E161123A44AF9364FBF1 /* CachedAsyncImage.swift */,
+				FAA360D70EF348D9A519F14A /* StatCard.swift */,
 				F46AE55F2E80F0A2000211D5 /* GroupInvitationView.swift */,
 				F46AE5602E80F0A2000211D5 /* InviteUserToGroupView.swift */,
 				F46AE5612E80F0A2000211D5 /* OrganizationGroupSettingsView.swift */,
@@ -734,6 +737,7 @@
 				82EC4A12677C4068AD2CF69E /* FilterChip.swift in Sources */,
 				8BAD582CB2E247AD8A18FE49 /* ImageCacheManager.swift in Sources */,
 				B032E161123A44AF9364FBF0 /* CachedAsyncImage.swift in Sources */,
+				FAA360D70EF348D9A519F14B /* StatCard.swift in Sources */,
 				7966DE5A2E5013F000AB33F7 /* IncidentFeedView.swift in Sources */,
 				7966DE5C2E5013F000AB33F7 /* APIService.swift in Sources */,
 				7966DE5D2E5013F000AB33F7 /* LocationManager.swift in Sources */,

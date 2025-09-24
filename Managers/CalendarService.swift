@@ -279,7 +279,10 @@ class CalendarService: ObservableObject {
             
             for alertDoc in alertsSnapshot.documents {
                 do {
-                    let alert = try alertDoc.data(as: ScheduledAlert.self)
+                    // Create a ScheduledAlert by manually parsing the data and using document ID
+                    let data = alertDoc.data()
+                    let alert = try ScheduledAlert.fromFirestoreData(data, documentId: alertDoc.documentID)
+                    
                     // Filter by isActive in code instead of query
                     if alert.isActive {
                         allAlerts.append(alert)
@@ -324,7 +327,10 @@ class CalendarService: ObservableObject {
             for alertDoc in alertsSnapshot.documents {
                 print("📄 Processing alert document: \(alertDoc.documentID)")
                 do {
-                    let alert = try alertDoc.data(as: ScheduledAlert.self)
+                    // Create a ScheduledAlert by manually parsing the data and using document ID
+                    let data = alertDoc.data()
+                    let alert = try ScheduledAlert.fromFirestoreData(data, documentId: alertDoc.documentID)
+                    
                     // Filter by isActive in code instead of query
                     if alert.isActive {
                         print("✅ Successfully parsed active alert: \(alert.title) for date: \(alert.scheduledDate)")

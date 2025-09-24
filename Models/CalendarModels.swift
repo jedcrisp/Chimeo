@@ -289,6 +289,142 @@ struct ScheduledAlert: Identifiable, Codable {
         try container.encodeIfPresent(recurrencePattern, forKey: .recurrencePattern)
     }
     
+    // MARK: - Firestore Data Parser
+    static func fromFirestoreData(_ data: [String: Any], documentId: String) throws -> ScheduledAlert {
+        // Handle String ID (use document ID if not present in data)
+        let id = data["id"] as? String ?? documentId
+        
+        // Handle basic strings
+        guard let title = data["title"] as? String,
+              let description = data["description"] as? String,
+              let organizationId = data["organizationId"] as? String,
+              let organizationName = data["organizationName"] as? String,
+              let postedBy = data["postedBy"] as? String,
+              let postedByUserId = data["postedByUserId"] as? String else {
+            throw DecodingError.dataCorrupted(DecodingError.Context(codingPath: [], debugDescription: "Missing required string fields"))
+        }
+        
+        // Handle optional strings
+        let groupId = data["groupId"] as? String
+        let groupName = data["groupName"] as? String
+        let calendarEventId = data["calendarEventId"] as? String
+        
+        // Handle enums
+        guard let typeString = data["type"] as? String,
+              let type = IncidentType(rawValue: typeString),
+              let severityString = data["severity"] as? String,
+              let severity = IncidentSeverity(rawValue: severityString) else {
+            throw DecodingError.dataCorrupted(DecodingError.Context(codingPath: [], debugDescription: "Invalid type or severity enum"))
+        }
+        
+        // Handle optional location
+        var location: Location? = nil
+        if let locationData = data["location"] as? [String: Any] {
+            let latitude = locationData["latitude"] as? Double ?? 0.0
+            let longitude = locationData["longitude"] as? Double ?? 0.0
+            let address = locationData["address"] as? String
+            let city = locationData["city"] as? String
+            let state = locationData["state"] as? String
+            let zipCode = locationData["zipCode"] as? String
+            
+            location = Location(
+                id: UUID(),
+                latitude: latitude,
+                longitude: longitude,
+                address: address,
+                city: city,
+                state: state,
+                zipCode: zipCode
+            )
+        }
+        
+        // Handle dates - convert from Firestore Timestamp or Date
+        let scheduledDate: Date
+        if let timestamp = data["scheduledDate"] as? FirebaseFirestore.Timestamp {
+            scheduledDate = timestamp.dateValue()
+        } else if let date = data["scheduledDate"] as? Date {
+            scheduledDate = date
+        } else {
+            throw DecodingError.dataCorrupted(DecodingError.Context(codingPath: [], debugDescription: "Invalid scheduledDate"))
+        }
+        
+        let createdAt: Date
+        if let timestamp = data["createdAt"] as? FirebaseFirestore.Timestamp {
+            createdAt = timestamp.dateValue()
+        } else if let date = data["createdAt"] as? Date {
+            createdAt = date
+        } else {
+            createdAt = Date()
+        }
+        
+        let updatedAt: Date
+        if let timestamp = data["updatedAt"] as? FirebaseFirestore.Timestamp {
+            updatedAt = timestamp.dateValue()
+        } else if let date = data["updatedAt"] as? Date {
+            updatedAt = date
+        } else {
+            updatedAt = Date()
+        }
+        
+        let expiresAt: Date?
+        if let timestamp = data["expiresAt"] as? FirebaseFirestore.Timestamp {
+            expiresAt = timestamp.dateValue()
+        } else if let date = data["expiresAt"] as? Date {
+            expiresAt = date
+        } else {
+            expiresAt = nil
+        }
+        
+        // Handle booleans - convert from Int (0/1) or Bool
+        let isRecurring: Bool
+        if let intValue = data["isRecurring"] as? Int {
+            isRecurring = intValue != 0
+        } else if let boolValue = data["isRecurring"] as? Bool {
+            isRecurring = boolValue
+        } else {
+            isRecurring = false
+        }
+        
+        let isActive: Bool
+        if let intValue = data["isActive"] as? Int {
+            isActive = intValue != 0
+        } else if let boolValue = data["isActive"] as? Bool {
+            isActive = boolValue
+        } else {
+            isActive = true
+        }
+        
+        // Handle arrays
+        let imageURLs = data["imageURLs"] as? [String] ?? []
+        
+        // Handle optional recurrence pattern
+        let recurrencePattern: RecurrencePattern? = nil // Simplified for now
+        
+        return ScheduledAlert(
+            id: id,
+            title: title,
+            description: description,
+            organizationId: organizationId,
+            organizationName: organizationName,
+            groupId: groupId,
+            groupName: groupName,
+            type: type,
+            severity: severity,
+            location: location,
+            scheduledDate: scheduledDate,
+            isRecurring: isRecurring,
+            recurrencePattern: recurrencePattern,
+            postedBy: postedBy,
+            postedByUserId: postedByUserId,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            isActive: isActive,
+            imageURLs: imageURLs,
+            expiresAt: expiresAt,
+            calendarEventId: calendarEventId
+        )
+    }
+    
     // MARK: - Coding Keys
     enum CodingKeys: String, CodingKey {
         case id, title, description, organizationId, organizationName

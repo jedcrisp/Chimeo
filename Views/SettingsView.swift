@@ -16,7 +16,6 @@ struct SettingsView: View {
     @State private var alertMessage = ""
     @State private var showingAlert = false
     @State private var isFixingUsers = false
-    @State private var organizationAlertService = OrganizationAlertService()
     
     private var isCreatorAccount: Bool {
         authManager.currentUser?.email == "jed@onetrack-consulting.com"
@@ -1853,7 +1852,7 @@ struct SettingsView: View {
         }
         
         do {
-            try await organizationAlertService.createTestAlert(
+            try await apiService.createTestAlert(
                 organizationId: organization.id,
                 organizationName: organization.name
             )

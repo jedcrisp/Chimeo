@@ -41,7 +41,7 @@ class OrganizationAlertService: ObservableObject {
             "postedBy": alert.postedBy,
             "postedByUserId": alert.postedByUserId,
             "postedAt": alert.postedAt,
-            "scheduledAlertId": alert.scheduledAlertId ?? "",
+            "scheduledAlertId": alert.scheduledAlertId as Any,
             "isActive": true,
             "createdAt": FieldValue.serverTimestamp(),
             "updatedAt": FieldValue.serverTimestamp(),

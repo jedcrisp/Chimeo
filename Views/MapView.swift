@@ -196,6 +196,7 @@ struct MapView: View {
                 switch annotation.type {
                 case .userLocation:
                     UserLocationAnnotationView()
+                        .environmentObject(authManager)
                 case .organization(let org):
                     OrganizationAnnotationView(
                         organization: org,

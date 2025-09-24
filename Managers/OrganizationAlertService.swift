@@ -371,6 +371,20 @@ private func getCurrentUser() async throws -> User {
         let postedByUserId = data["postedByUserId"] as? String ?? ""
         let isActive = data["isActive"] as? Bool ?? true
         let postedAt = (data["postedAt"] as? Timestamp)?.dateValue() ?? (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+        
+        // Debug logging for timestamp parsing
+        print("🕐 Parsing alert '\(title)' timestamps:")
+        if let postedAtTimestamp = data["postedAt"] as? Timestamp {
+            print("   📅 postedAt from Firestore: \(postedAtTimestamp.dateValue())")
+        } else {
+            print("   ⚠️ postedAt not found or not a Timestamp")
+        }
+        if let createdAtTimestamp = data["createdAt"] as? Timestamp {
+            print("   📅 createdAt from Firestore: \(createdAtTimestamp.dateValue())")
+        } else {
+            print("   ⚠️ createdAt not found or not a Timestamp")
+        }
+        print("   📅 Final postedAt used: \(postedAt)")
         let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
         let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
         

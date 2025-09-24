@@ -589,7 +589,15 @@ struct IncidentFeedAlertRowView: View {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        return formatter.string(from: date)
+        let formatted = formatter.string(from: date)
+        
+        // Debug logging to track timestamp issues
+        print("🕐 Formatting timestamp for alert '\(alert.title)':")
+        print("   📅 Raw date: \(date)")
+        print("   📅 Formatted: \(formatted)")
+        print("   📅 Time since now: \(Date().timeIntervalSince(date)) seconds")
+        
+        return formatted
     }
 }
 

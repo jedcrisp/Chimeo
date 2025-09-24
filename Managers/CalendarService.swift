@@ -268,18 +268,21 @@ class CalendarService: ObservableObject {
             let orgId = orgDoc.documentID
             
             // Query scheduled alerts for this organization within the date range
+            // First get all alerts in the date range, then filter by isActive in code
             let alertsQuery = db.collection("organizations")
                 .document(orgId)
                 .collection("scheduledAlerts")
                 .whereField("scheduledDate", isGreaterThanOrEqualTo: startOfDay)
                 .whereField("scheduledDate", isLessThan: endOfDay)
-                .whereField("isActive", isEqualTo: true)
             
             let alertsSnapshot = try await alertsQuery.getDocuments()
             
             for alertDoc in alertsSnapshot.documents {
                 if let alert = try? alertDoc.data(as: ScheduledAlert.self) {
-                    allAlerts.append(alert)
+                    // Filter by isActive in code instead of query
+                    if alert.isActive {
+                        allAlerts.append(alert)
+                    }
                 }
             }
         }
@@ -304,12 +307,12 @@ class CalendarService: ObservableObject {
             print("🔍 Checking organization: \(orgId)")
             
             // Query scheduled alerts for this organization within the date range
+            // First get all alerts in the date range, then filter by isActive in code
             let alertsQuery = db.collection("organizations")
                 .document(orgId)
                 .collection("scheduledAlerts")
                 .whereField("scheduledDate", isGreaterThanOrEqualTo: startDate)
                 .whereField("scheduledDate", isLessThanOrEqualTo: endDate)
-                .whereField("isActive", isEqualTo: true)
             
             let alertsSnapshot = try await alertsQuery.getDocuments()
             print("📅 Found \(alertsSnapshot.documents.count) alerts in organization \(orgId)")
@@ -317,8 +320,13 @@ class CalendarService: ObservableObject {
             for alertDoc in alertsSnapshot.documents {
                 print("📄 Processing alert document: \(alertDoc.documentID)")
                 if let alert = try? alertDoc.data(as: ScheduledAlert.self) {
-                    print("✅ Successfully parsed alert: \(alert.title) for date: \(alert.scheduledDate)")
-                    allAlerts.append(alert)
+                    // Filter by isActive in code instead of query
+                    if alert.isActive {
+                        print("✅ Successfully parsed active alert: \(alert.title) for date: \(alert.scheduledDate)")
+                        allAlerts.append(alert)
+                    } else {
+                        print("⏸️ Skipping inactive alert: \(alert.title)")
+                    }
                 } else {
                     print("❌ Failed to parse alert document: \(alertDoc.documentID)")
                     print("📄 Document data: \(alertDoc.data())")

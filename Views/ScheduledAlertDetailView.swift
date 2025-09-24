@@ -1,10 +1,3 @@
-//
-//  ScheduledAlertDetailView.swift
-//  Chimeo
-//
-//  Created by AI Assistant on 1/15/25.
-//
-
 import SwiftUI
 
 

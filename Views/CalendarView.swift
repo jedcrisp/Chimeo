@@ -29,17 +29,20 @@ struct CalendarView: View {
     }
     
     private func loadScheduledAlerts() async {
+        print("🔄 Loading scheduled alerts...")
         isLoadingAlerts = true
         
         do {
             let startDate = calendar.date(byAdding: .month, value: -1, to: selectedDate) ?? selectedDate
             let endDate = calendar.date(byAdding: .month, value: 2, to: selectedDate) ?? selectedDate
             
+            print("📅 Loading alerts for date range: \(startDate) to \(endDate)")
             let alerts = try await calendarService.fetchScheduledAlertsForDateRange(startDate, endDate: endDate)
             
             await MainActor.run {
                 self.scheduledAlerts = alerts
                 self.isLoadingAlerts = false
+                print("✅ Loaded \(alerts.count) scheduled alerts into calendar view")
             }
         } catch {
             await MainActor.run {
@@ -50,9 +53,13 @@ struct CalendarView: View {
     }
     
     private func getScheduledAlertsForDate(_ date: Date) -> [ScheduledAlert] {
-        return scheduledAlerts.filter { alert in
+        let alerts = scheduledAlerts.filter { alert in
             calendar.isDate(alert.scheduledDate, inSameDayAs: date)
         }
+        if !alerts.isEmpty {
+            print("📅 Found \(alerts.count) alerts for \(date): \(alerts.map { $0.title })")
+        }
+        return alerts
     }
     
     var body: some View {
@@ -89,11 +96,6 @@ struct CalendarView: View {
                             Image(systemName: "plus")
                         }
                     }
-                }
-            }
-            .onAppear {
-                Task {
-                    try? await calendarService.fetchCalendarData()
                 }
             }
             .sheet(isPresented: $showingCreateEvent) {

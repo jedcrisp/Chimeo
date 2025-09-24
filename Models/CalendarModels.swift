@@ -328,7 +328,6 @@ struct ScheduledAlert: Identifiable, Codable {
             let zipCode = locationData["zipCode"] as? String
             
             location = Location(
-                id: UUID(),
                 latitude: latitude,
                 longitude: longitude,
                 address: address,

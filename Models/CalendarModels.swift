@@ -316,13 +316,13 @@ struct ScheduledAlert: Identifiable, Codable {
         // Use default values if strings are empty
         let type: IncidentType
         if typeString.isEmpty {
-            type = .general
-            print("⚠️ ScheduledAlert: Empty type string, using default: general")
+            type = .other
+            print("⚠️ ScheduledAlert: Empty type string, using default: other")
         } else if let parsedType = IncidentType(rawValue: typeString) {
             type = parsedType
         } else {
-            print("⚠️ ScheduledAlert: Invalid type '\(typeString)', using default: general")
-            type = .general
+            print("⚠️ ScheduledAlert: Invalid type '\(typeString)', using default: other")
+            type = .other
         }
         
         let severity: IncidentSeverity

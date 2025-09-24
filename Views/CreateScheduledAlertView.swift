@@ -38,103 +38,363 @@ struct CreateScheduledAlertView: View {
     
     var body: some View {
         NavigationView {
-            Form {
-                Section("Alert Details") {
-                    TextField("Alert Title", text: $title)
-                    
-                    TextField("Description", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
-                    
-                    Picker("Type", selection: $selectedType) {
-                        ForEach(IncidentType.allCases, id: \.self) { type in
-                            Text(type.displayName).tag(type)
-                        }
-                    }
-                    
-                    Picker("Severity", selection: $selectedSeverity) {
-                        ForEach(IncidentSeverity.allCases, id: \.self) { severity in
-                            Text(severity.displayName).tag(severity)
-                        }
-                    }
-                }
-                
-                Section("Schedule") {
-                    DatePicker("Scheduled Date", selection: $scheduledDate, displayedComponents: [.date, .hourAndMinute])
-                    
-                    Toggle("Repeat", isOn: $isRecurring)
-                    
-                    if isRecurring {
-                        Picker("Frequency", selection: $recurrenceFrequency) {
-                            ForEach(RecurrenceFrequency.allCases, id: \.self) { frequency in
-                                Text(frequency.displayName).tag(frequency)
-                            }
-                        }
-                        
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Header Section
+                    VStack(spacing: 16) {
                         HStack {
-                            Text("Every")
-                            Stepper("\(recurrenceInterval)", value: $recurrenceInterval, in: 1...99)
-                            Text(recurrenceFrequency.rawValue)
+                            Image(systemName: "bell.badge.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                            Text("Schedule New Alert")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                            Spacer()
                         }
                         
-                        DatePicker("End Date", selection: $recurrenceEndDate, displayedComponents: .date)
+                        Text("Create a scheduled alert for your organization")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                }
-                
-                Section("Organization") {
-                    Picker("Organization", selection: $selectedOrganization) {
-                        Text("Select Organization").tag(nil as Organization?)
-                        ForEach(organizations, id: \.id) { org in
-                            Text(org.name).tag(org as Organization?)
-                        }
-                    }
-                    .onChange(of: selectedOrganization) { _, newValue in
-                        loadGroups(for: newValue)
-                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
                     
-                    if !groups.isEmpty {
-                        Picker("Group (Optional)", selection: $selectedGroup) {
-                            Text("All Members").tag(nil as OrganizationGroup?)
-                            ForEach(groups, id: \.id) { group in
-                                Text(group.name).tag(group as OrganizationGroup?)
+                    // Alert Details Card
+                    VStack(alignment: .leading, spacing: 20) {
+                        CardHeader(title: "Alert Details", icon: "exclamationmark.triangle.fill", color: .orange)
+                        
+                        VStack(spacing: 16) {
+                            // Title Field
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Alert Title")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                TextField("Enter alert title", text: $title)
+                                    .textFieldStyle(ModernTextFieldStyle())
+                            }
+                            
+                            // Description Field
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Description")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                TextField("Describe the alert details", text: $description, axis: .vertical)
+                                    .textFieldStyle(ModernTextFieldStyle())
+                                    .lineLimit(3...6)
+                            }
+                            
+                            // Type and Severity Row
+                            HStack(spacing: 16) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Type")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Picker("Type", selection: $selectedType) {
+                                        ForEach(IncidentType.allCases, id: \.self) { type in
+                                            HStack {
+                                                Image(systemName: type.icon)
+                                                    .foregroundColor(type.color)
+                                                Text(type.displayName)
+                                            }
+                                            .tag(type)
+                                        }
+                                    }
+                                    .pickerStyle(MenuPickerStyle())
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(8)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Severity")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Picker("Severity", selection: $selectedSeverity) {
+                                        ForEach(IncidentSeverity.allCases, id: \.self) { severity in
+                                            HStack {
+                                                Image(systemName: severity.icon)
+                                                    .foregroundColor(severity.color)
+                                                Text(severity.displayName)
+                                            }
+                                            .tag(severity)
+                                        }
+                                    }
+                                    .pickerStyle(MenuPickerStyle())
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(8)
+                                }
                             }
                         }
                     }
-                }
-                
-                Section("Location") {
-                    TextField("Address", text: $location)
-                    TextField("City", text: $city)
-                    TextField("State", text: $state)
-                    TextField("ZIP Code", text: $zipCode)
-                }
-                
-                Section("Expiration") {
-                    Toggle("Set Expiration", isOn: $hasExpiration)
+                    .cardStyle()
                     
-                    if hasExpiration {
-                        DatePicker("Expires At", selection: Binding(
-                            get: { expiresAt ?? Date().addingTimeInterval(86400 * 7) },
-                            set: { expiresAt = $0 }
-                        ), displayedComponents: [.date, .hourAndMinute])
+                    // Schedule Card
+                    VStack(alignment: .leading, spacing: 20) {
+                        CardHeader(title: "Schedule", icon: "calendar", color: .blue)
+                        
+                        VStack(spacing: 16) {
+                            // Date Picker
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Scheduled Date & Time")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                DatePicker("", selection: $scheduledDate, displayedComponents: [.date, .hourAndMinute])
+                                    .datePickerStyle(CompactDatePickerStyle())
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(8)
+                            }
+                            
+                            // Recurring Toggle
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Repeat Alert")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Text("Set up recurring alerts")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Toggle("", isOn: $isRecurring)
+                                    .labelsHidden()
+                            }
+                            .padding(.vertical, 8)
+                            
+                            // Recurring Options
+                            if isRecurring {
+                                VStack(spacing: 12) {
+                                    Divider()
+                                    
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("Recurrence Pattern")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                        
+                                        Picker("Frequency", selection: $recurrenceFrequency) {
+                                            ForEach(RecurrenceFrequency.allCases, id: \.self) { frequency in
+                                                Text(frequency.displayName).tag(frequency)
+                                            }
+                                        }
+                                        .pickerStyle(SegmentedPickerStyle())
+                                        
+                                        HStack {
+                                            Text("Every")
+                                                .foregroundColor(.secondary)
+                                            Stepper("\(recurrenceInterval)", value: $recurrenceInterval, in: 1...99)
+                                                .labelsHidden()
+                                            Text(recurrenceFrequency.rawValue)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(Color(.systemGray6))
+                                        .cornerRadius(8)
+                                        
+                                        DatePicker("End Date", selection: $recurrenceEndDate, displayedComponents: .date)
+                                            .datePickerStyle(CompactDatePickerStyle())
+                                    }
+                                }
+                                .padding(.top, 8)
+                            }
+                        }
                     }
+                    .cardStyle()
+                    
+                    // Organization Card
+                    VStack(alignment: .leading, spacing: 20) {
+                        CardHeader(title: "Organization", icon: "building.2", color: .green)
+                        
+                        VStack(spacing: 16) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Select Organization")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Picker("Organization", selection: $selectedOrganization) {
+                                    Text("Choose an organization").tag(nil as Organization?)
+                                    ForEach(organizations, id: \.id) { org in
+                                        HStack {
+                                            if let logoURL = org.logoURL, !logoURL.isEmpty {
+                                                AsyncImage(url: URL(string: logoURL)) { image in
+                                                    image
+                                                        .resizable()
+                                                        .aspectRatio(contentMode: .fill)
+                                                } placeholder: {
+                                                    Image(systemName: "building.2")
+                                                        .foregroundColor(.gray)
+                                                }
+                                                .frame(width: 20, height: 20)
+                                                .clipShape(Circle())
+                                            } else {
+                                                Image(systemName: "building.2")
+                                                    .foregroundColor(.gray)
+                                                    .frame(width: 20, height: 20)
+                                            }
+                                            Text(org.name)
+                                        }
+                                        .tag(org as Organization?)
+                                    }
+                                }
+                                .pickerStyle(MenuPickerStyle())
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(8)
+                                .onChange(of: selectedOrganization) { _, newValue in
+                                    loadGroups(for: newValue)
+                                }
+                            }
+                            
+                            if !groups.isEmpty {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Target Group (Optional)")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Picker("Group", selection: $selectedGroup) {
+                                        Text("All Members").tag(nil as OrganizationGroup?)
+                                        ForEach(groups, id: \.id) { group in
+                                            Text(group.name).tag(group as OrganizationGroup?)
+                                        }
+                                    }
+                                    .pickerStyle(MenuPickerStyle())
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(8)
+                                }
+                            }
+                        }
+                    }
+                    .cardStyle()
+                    
+                    // Location Card
+                    VStack(alignment: .leading, spacing: 20) {
+                        CardHeader(title: "Location", icon: "location", color: .purple)
+                        
+                        VStack(spacing: 16) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Address")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                TextField("Street address", text: $location)
+                                    .textFieldStyle(ModernTextFieldStyle())
+                            }
+                            
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("City")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    TextField("City", text: $city)
+                                        .textFieldStyle(ModernTextFieldStyle())
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("State")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    TextField("State", text: $state)
+                                        .textFieldStyle(ModernTextFieldStyle())
+                                }
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("ZIP Code")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                TextField("ZIP Code", text: $zipCode)
+                                    .textFieldStyle(ModernTextFieldStyle())
+                                    .keyboardType(.numberPad)
+                            }
+                        }
+                    }
+                    .cardStyle()
+                    
+                    // Expiration Card
+                    VStack(alignment: .leading, spacing: 20) {
+                        CardHeader(title: "Expiration", icon: "clock", color: .red)
+                        
+                        VStack(spacing: 16) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Set Expiration")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    Text("Optional: Set when this alert expires")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Toggle("", isOn: $hasExpiration)
+                                    .labelsHidden()
+                            }
+                            .padding(.vertical, 8)
+                            
+                            if hasExpiration {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Expires At")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    DatePicker("", selection: Binding(
+                                        get: { expiresAt ?? Date().addingTimeInterval(86400 * 7) },
+                                        set: { expiresAt = $0 }
+                                    ), displayedComponents: [.date, .hourAndMinute])
+                                    .datePickerStyle(CompactDatePickerStyle())
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(8)
+                                }
+                            }
+                        }
+                    }
+                    .cardStyle()
+                    
+                    // Action Buttons
+                    VStack(spacing: 12) {
+                        Button(action: scheduleAlert) {
+                            HStack {
+                                if isLoading {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                        .foregroundColor(.white)
+                                } else {
+                                    Image(systemName: "bell.badge.fill")
+                                }
+                                Text(isLoading ? "Scheduling..." : "Schedule Alert")
+                                    .fontWeight(.semibold)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [.blue, .blue.opacity(0.8)]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                        .disabled(title.isEmpty || description.isEmpty || selectedOrganization == nil || isLoading)
+                        .opacity((title.isEmpty || description.isEmpty || selectedOrganization == nil || isLoading) ? 0.6 : 1.0)
+                        
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                        .foregroundColor(.secondary)
+                        .padding(.vertical, 8)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
                 }
             }
-            .navigationTitle("Schedule Alert")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Schedule") {
-                        scheduleAlert()
-                    }
-                    .disabled(title.isEmpty || description.isEmpty || selectedOrganization == nil || isLoading)
-                }
-            }
+            .navigationBarHidden(true)
             .alert("Error", isPresented: $showingError) {
                 Button("OK") { }
             } message: {
@@ -278,6 +538,56 @@ extension Color {
         
         let rgb = Int(red * 255) << 16 | Int(green * 255) << 8 | Int(blue * 255) << 0
         return String(format: "#%06x", rgb)
+    }
+}
+
+// MARK: - Custom View Modifiers and Styles
+
+struct CardHeader: View {
+    let title: String
+    let icon: String
+    let color: Color
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(color)
+            Text(title)
+                .font(.headline)
+                .fontWeight(.semibold)
+            Spacer()
+        }
+        .padding(.bottom, 4)
+    }
+}
+
+struct ModernTextFieldStyle: TextFieldStyle {
+    func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color(.systemGray6))
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color(.systemGray4), lineWidth: 1)
+            )
+    }
+}
+
+extension View {
+    func cardStyle() -> some View {
+        self
+            .padding(20)
+            .background(Color(.systemBackground))
+            .cornerRadius(16)
+            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color(.systemGray5), lineWidth: 0.5)
+            )
+            .padding(.horizontal, 20)
     }
 }
 

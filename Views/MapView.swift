@@ -499,6 +499,8 @@ struct MapView: View {
                             zipCode: data["zipCode"] as? String
                         )
                         fetchedOrganizations.append(organization)
+                        
+                        
                     }
                 }
                 

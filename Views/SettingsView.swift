@@ -10,6 +10,7 @@ struct SettingsView: View {
     @EnvironmentObject var biometricAuthManager: BiometricAuthManager
     @EnvironmentObject var serviceCoordinator: ServiceCoordinator
     @EnvironmentObject var weatherNotificationManager: WeatherNotificationManager
+    @EnvironmentObject var apiService: APIService
     @Environment(\.dismiss) private var dismiss
     @State private var showingSignOutAlert = false
     @State private var alertTitle = ""

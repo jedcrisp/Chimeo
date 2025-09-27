@@ -259,7 +259,7 @@ class iOSNotificationService: ObservableObject {
         }
     }
     
-    private func sendFCMPushNotification(to token: String, title: String, body: String, data: [String: String]) async throws {
+    func sendFCMPushNotification(to token: String, title: String, body: String, data: [String: String]) async throws {
         // Use Vercel API to send push notifications
         let url = URL(string: "https://www.chimeo.app/api/send-push-notification")!
         var request = URLRequest(url: url)
@@ -291,7 +291,7 @@ class iOSNotificationService: ObservableObject {
         try await sendEmailViaVercelAPI(to: email, subject: subject, text: body, html: nil)
     }
     
-    private func sendEmailViaVercelAPI(to email: String, subject: String, text: String, html: String? = nil, from: String = "noreply@chimeo.app") async throws {
+    func sendEmailViaVercelAPI(to email: String, subject: String, text: String, html: String? = nil, from: String = "noreply@chimeo.app") async throws {
         let vercelAPIURL = "https://www.chimeo.app/api/send-email"
         
         guard let url = URL(string: vercelAPIURL) else {

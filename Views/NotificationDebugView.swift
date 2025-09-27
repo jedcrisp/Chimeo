@@ -49,6 +49,12 @@ struct NotificationDebugView: View {
                                     }
                                 }
                                 .buttonStyle(.bordered)
+                                
+                                NavigationLink(destination: OrganizationUpdateTestView()) {
+                                    Text("Test Organization Updates")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
                             }
                         }
                         

@@ -1328,6 +1328,9 @@ class APIService: ObservableObject {
             
             print("✅ Successfully removed user \(adminId) as admin from organization \(organizationId)")
             
+            // Send notification to followers
+            await sendAdminRemovedNotification(adminId: adminId, organizationId: organizationId, organizationName: orgData["name"] as? String ?? "Unknown Organization")
+            
             // Refresh local organizations data
             await refreshOrganizations()
             
@@ -1404,6 +1407,9 @@ class APIService: ObservableObject {
             ])
             
             print("✅ Successfully added user \(userId) as admin to organization \(organizationId)")
+            
+            // Send notification to followers
+            await sendAdminAddedNotification(userId: userId, organizationId: organizationId, organizationName: orgData["name"] as? String ?? "Unknown Organization")
             
             // Refresh local organizations data
             await refreshOrganizations()
@@ -5103,6 +5109,85 @@ class APIService: ObservableObject {
             
         } catch {
             print("❌ Error cleaning up invalid logo URLs: \(error)")
+        }
+    }
+    
+    // MARK: - Organization Update Notifications
+    private func sendAdminAddedNotification(userId: String, organizationId: String, organizationName: String) async {
+        do {
+            // Get current user info
+            guard let currentUser = Auth.auth().currentUser else {
+                print("❌ No current user found for admin notification")
+                return
+            }
+            
+            // Get admin user email
+            let db = Firestore.firestore()
+            let adminDoc = try await db.collection("users").document(userId).getDocument()
+            let adminEmail = adminDoc.data()?["email"] as? String ?? "unknown@example.com"
+            
+            // Get current user email
+            let userDoc = try await db.collection("users").document(currentUser.uid).getDocument()
+            let userEmail = userDoc.data()?["email"] as? String ?? currentUser.email ?? "unknown@example.com"
+            
+            // Create update data
+            let updateData = OrganizationUpdateData(
+                organizationId: organizationId,
+                organizationName: organizationName,
+                updateType: OrganizationUpdateType.adminAdded,
+                updatedBy: currentUser.uid,
+                updatedByEmail: userEmail,
+                updateDetails: [
+                    "adminEmail": adminEmail
+                ],
+                timestamp: Date()
+            )
+            
+            // Send notification
+            let notificationService = OrganizationUpdateNotificationService()
+            await notificationService.sendOrganizationUpdateNotification(updateData)
+            
+        } catch {
+            print("❌ Error sending admin added notification: \(error)")
+        }
+    }
+    
+    private func sendAdminRemovedNotification(adminId: String, organizationId: String, organizationName: String) async {
+        do {
+            // Get current user info
+            guard let currentUser = Auth.auth().currentUser else {
+                print("❌ No current user found for admin notification")
+                return
+            }
+            
+            // Get admin user email
+            let db = Firestore.firestore()
+            let adminDoc = try await db.collection("users").document(adminId).getDocument()
+            let adminEmail = adminDoc.data()?["email"] as? String ?? "unknown@example.com"
+            
+            // Get current user email
+            let userDoc = try await db.collection("users").document(currentUser.uid).getDocument()
+            let userEmail = userDoc.data()?["email"] as? String ?? currentUser.email ?? "unknown@example.com"
+            
+            // Create update data
+            let updateData = OrganizationUpdateData(
+                organizationId: organizationId,
+                organizationName: organizationName,
+                updateType: OrganizationUpdateType.adminRemoved,
+                updatedBy: currentUser.uid,
+                updatedByEmail: userEmail,
+                updateDetails: [
+                    "adminEmail": adminEmail
+                ],
+                timestamp: Date()
+            )
+            
+            // Send notification
+            let notificationService = OrganizationUpdateNotificationService()
+            await notificationService.sendOrganizationUpdateNotification(updateData)
+            
+        } catch {
+            print("❌ Error sending admin removed notification: \(error)")
         }
     }
 }

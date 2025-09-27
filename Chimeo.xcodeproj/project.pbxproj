@@ -135,6 +135,9 @@
 		F4B261F02E7CF7ED00592CFE /* ScheduledAlertDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B261EB2E7CF7ED00592CFE /* ScheduledAlertDetailView.swift */; };
 		F4B261FA2E7CF8D400592CFE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F4B261F92E7CF8D400592CFE /* Assets.xcassets */; };
 		F4BF28B12E877C1600251C4B /* SubscriptionPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4BF28B02E877C1600251C4B /* SubscriptionPageView.swift */; };
+		F4BF28B32E88268A00251C4B /* OrganizationUpdateModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4BF28B22E88268A00251C4B /* OrganizationUpdateModels.swift */; };
+		F4BF28B52E8826A800251C4B /* OrganizationUpdateNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4BF28B42E8826A800251C4B /* OrganizationUpdateNotificationService.swift */; };
+		F4BF28B72E882A9100251C4B /* OrganizationUpdateTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4BF28B62E882A9100251C4B /* OrganizationUpdateTestView.swift */; };
 		FAA360D70EF348D9A519F14B /* StatCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA360D70EF348D9A519F14A /* StatCard.swift */; };
 /* End PBXBuildFile section */
 
@@ -281,6 +284,9 @@
 		F4B261EB2E7CF7ED00592CFE /* ScheduledAlertDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledAlertDetailView.swift; sourceTree = "<group>"; };
 		F4B261F92E7CF8D400592CFE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F4BF28B02E877C1600251C4B /* SubscriptionPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionPageView.swift; sourceTree = "<group>"; };
+		F4BF28B22E88268A00251C4B /* OrganizationUpdateModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizationUpdateModels.swift; sourceTree = "<group>"; };
+		F4BF28B42E8826A800251C4B /* OrganizationUpdateNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizationUpdateNotificationService.swift; sourceTree = "<group>"; };
+		F4BF28B62E882A9100251C4B /* OrganizationUpdateTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrganizationUpdateTestView.swift; sourceTree = "<group>"; };
 		FAA360D70EF348D9A519F14A /* StatCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatCard.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -357,6 +363,7 @@
 		7949B3982E50134D00C37BEC /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				F4BF28B22E88268A00251C4B /* OrganizationUpdateModels.swift */,
 				7949B3992E50136900C37BEC /* IncidentModel.swift */,
 				F4B261DB2E7CF7ED00592CFE /* OrganizationRequestModel.swift */,
 				F4B261DC2E7CF7ED00592CFE /* WeatherModels.swift */,
@@ -368,6 +375,7 @@
 		7949B39B2E50138F00C37BEC /* Managers */ = {
 			isa = PBXGroup;
 			children = (
+				F4BF28B42E8826A800251C4B /* OrganizationUpdateNotificationService.swift */,
 				F43E7DD22E863B4600D5869F /* SubscriptionService.swift */,
 				F46AE54B2E80B410000211D5 /* SimpleAuthManager.swift */,
 				F4B261B62E7CF7DF00592CFE /* AuthenticationService.swift */,
@@ -401,6 +409,7 @@
 		7966DE422E5013CA00AB33F7 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				F4BF28B62E882A9100251C4B /* OrganizationUpdateTestView.swift */,
 				F4BF28B02E877C1600251C4B /* SubscriptionPageView.swift */,
 				F43E7DD42E863CD500D5869F /* SubGroupManagementView.swift */,
 				F43E7DD52E863CD500D5869F /* SubscriptionInfoView.swift */,
@@ -681,6 +690,8 @@
 				F4B261DD2E7CF7ED00592CFE /* OrganizationRequestModel.swift in Sources */,
 				F4B261E12E7CF7ED00592CFE /* ScheduledAlertExecutionService.swift in Sources */,
 				F4B261E22E7CF7ED00592CFE /* CalendarService.swift in Sources */,
+				F4BF28B72E882A9100251C4B /* OrganizationUpdateTestView.swift in Sources */,
+				F4BF28B52E8826A800251C4B /* OrganizationUpdateNotificationService.swift in Sources */,
 				7966DE5E2E5013F000AB33F7 /* NotificationManager.swift in Sources */,
 				F4B2618F2E7CF7CE00592CFE /* NotificationPreferencesView.swift in Sources */,
 				F4B261902E7CF7CE00592CFE /* AdminUserManagementView.swift in Sources */,
@@ -702,6 +713,7 @@
 				F4B2619D2E7CF7CE00592CFE /* BiometricReEnrollmentView.swift in Sources */,
 				F43E7DD32E863B4600D5869F /* SubscriptionService.swift in Sources */,
 				F4B2619E2E7CF7CE00592CFE /* MapView.swift in Sources */,
+				F4BF28B32E88268A00251C4B /* OrganizationUpdateModels.swift in Sources */,
 				F4B2619F2E7CF7CE00592CFE /* OrganizationGroupManagementView.swift in Sources */,
 				F4B261A02E7CF7CE00592CFE /* DiscoverOrganizationsView.swift in Sources */,
 				F4B261A12E7CF7CE00592CFE /* AlertRadiusSettingsView.swift in Sources */,

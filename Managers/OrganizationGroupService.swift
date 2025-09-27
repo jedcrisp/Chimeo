@@ -1,9 +1,87 @@
 import Foundation
 import FirebaseFirestore
+import FirebaseAuth
 
 // MARK: - Organization Group Service
 class OrganizationGroupService: ObservableObject {
     private let subscriptionService = SubscriptionService()
+    
+    // MARK: - Notification Methods
+    private func sendGroupCreatedNotification(group: OrganizationGroup, organizationId: String) async {
+        await sendGroupNotification(
+            group: group,
+            organizationId: organizationId,
+            updateType: OrganizationUpdateType.groupCreated
+        )
+    }
+    
+    private func sendGroupUpdatedNotification(group: OrganizationGroup, organizationId: String) async {
+        await sendGroupNotification(
+            group: group,
+            organizationId: organizationId,
+            updateType: OrganizationUpdateType.groupUpdated
+        )
+    }
+    
+    private func sendGroupDeletedNotification(groupName: String, organizationId: String) async {
+        // Create a temporary group object for notification
+        let tempGroup = OrganizationGroup(
+            id: groupName,
+            name: groupName,
+            description: nil,
+            organizationId: organizationId,
+            isActive: false,
+            memberCount: 0,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+        
+        await sendGroupNotification(
+            group: tempGroup,
+            organizationId: organizationId,
+            updateType: OrganizationUpdateType.groupDeleted
+        )
+    }
+    
+    private func sendGroupNotification(group: OrganizationGroup, organizationId: String, updateType: OrganizationUpdateType) async {
+        do {
+            // Get current user info
+            guard let currentUser = Auth.auth().currentUser else {
+                print("❌ No current user found for group notification")
+                return
+            }
+            
+            // Get organization name
+            let db = Firestore.firestore()
+            let orgDoc = try await db.collection("organizations").document(organizationId).getDocument()
+            let organizationName = orgDoc.data()?["name"] as? String ?? "Unknown Organization"
+            
+            // Get current user email
+            let userDoc = try await db.collection("users").document(currentUser.uid).getDocument()
+            let userEmail = userDoc.data()?["email"] as? String ?? currentUser.email ?? "unknown@example.com"
+            
+            // Create update data
+            let updateData = OrganizationUpdateData(
+                organizationId: organizationId,
+                organizationName: organizationName,
+                updateType: updateType,
+                updatedBy: currentUser.uid,
+                updatedByEmail: userEmail,
+                updateDetails: [
+                    "groupName": group.name,
+                    "groupDescription": group.description ?? ""
+                ],
+                timestamp: Date()
+            )
+            
+            // Send notification
+            let notificationService = OrganizationUpdateNotificationService()
+            await notificationService.sendOrganizationUpdateNotification(updateData)
+            
+        } catch {
+            print("❌ Error sending group notification: \(error)")
+        }
+    }
     
     // MARK: - Group Management
     func createOrganizationGroup(group: OrganizationGroup, organizationId: String) async throws -> OrganizationGroup {
@@ -98,6 +176,10 @@ class OrganizationGroupService: ObservableObject {
         
         print("✅ Successfully created organization group: \(createdGroup.name) (ID: \(createdGroup.id))")
         print("   📍 Location: organizations/\(organizationId)/groups/\(group.name)")
+        
+        // Send notification to followers
+        await sendGroupCreatedNotification(group: createdGroup, organizationId: organizationId)
+        
         return createdGroup
     }
     
@@ -150,6 +232,9 @@ class OrganizationGroupService: ObservableObject {
             try await originalRef.delete()
             
             print("✅ Successfully updated organization group: \(newName) (moved from \(originalName))")
+            
+            // Send notification to followers
+            await sendGroupUpdatedNotification(group: group, organizationId: group.organizationId)
         } else {
             // Name hasn't changed, just update the existing document
             let groupRef = db.collection("organizations")
@@ -166,6 +251,9 @@ class OrganizationGroupService: ObservableObject {
             
             try await groupRef.updateData(updateData)
             print("✅ Successfully updated organization group: \(group.name)")
+            
+            // Send notification to followers
+            await sendGroupUpdatedNotification(group: group, organizationId: group.organizationId)
         }
     }
     
@@ -180,6 +268,9 @@ class OrganizationGroupService: ObservableObject {
         
         try await groupRef.delete()
         print("✅ Successfully deleted organization group: \(groupName)")
+        
+        // Send notification to followers
+        await sendGroupDeletedNotification(groupName: groupName, organizationId: organizationId)
     }
     
     // MARK: - Group Fetching
@@ -502,4 +593,5 @@ extension GroupInvitation {
         
         return data
     }
+    
 }

@@ -213,10 +213,20 @@ class OrganizationAlertService: ObservableObject {
                         activeFollowers = followersSnapshot.documents.compactMap { doc in
                             let data = doc.data()
                             print("🔍 Follower doc \(doc.documentID): \(data)")
-                            if let isActive = data["isActive"] as? Bool, isActive {
-                                return doc.documentID
+                            
+                            // Check if follower is active - if no isActive field, assume active
+                            let isActive = data["isActive"] as? Bool ?? true
+                            print("   🔍 isActive: \(isActive)")
+                            
+                            if isActive {
+                                // Use the userId field from the document data, not the document ID
+                                let userId = data["userId"] as? String ?? doc.documentID
+                                print("   ✅ Adding follower with userId: \(userId)")
+                                return userId
+                            } else {
+                                print("   ❌ Follower is not active")
+                                return nil
                             }
-                            return nil
                         }
                         print("📋 Found \(activeFollowers.count) active followers in actual organization subcollection")
                         print("📋 Active follower IDs: \(activeFollowers)")
@@ -308,10 +318,20 @@ class OrganizationAlertService: ObservableObject {
                 activeFollowers = followersSnapshot.documents.compactMap { doc in
                     let data = doc.data()
                     print("🔍 Follower doc \(doc.documentID): \(data)")
-                    if let isActive = data["isActive"] as? Bool, isActive {
-                        return doc.documentID
+                    
+                    // Check if follower is active - if no isActive field, assume active
+                    let isActive = data["isActive"] as? Bool ?? true
+                    print("   🔍 isActive: \(isActive)")
+                    
+                    if isActive {
+                        // Use the userId field from the document data, not the document ID
+                        let userId = data["userId"] as? String ?? doc.documentID
+                        print("   ✅ Adding follower with userId: \(userId)")
+                        return userId
+                    } else {
+                        print("   ❌ Follower is not active")
+                        return nil
                     }
-                    return nil
                 }
                 print("📋 Found \(activeFollowers.count) active followers in subcollection")
                 print("📋 Active follower IDs: \(activeFollowers)")

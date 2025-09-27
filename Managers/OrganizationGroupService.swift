@@ -3,6 +3,7 @@ import FirebaseFirestore
 
 // MARK: - Organization Group Service
 class OrganizationGroupService: ObservableObject {
+    private let subscriptionService = SubscriptionService()
     
     // MARK: - Group Management
     func createOrganizationGroup(group: OrganizationGroup, organizationId: String) async throws -> OrganizationGroup {
@@ -10,6 +11,13 @@ class OrganizationGroupService: ObservableObject {
         print("   🔍 Organization ID being used: \(organizationId)")
         
         let db = Firestore.firestore()
+        
+        // Check subscription limits before creating group
+        print("   💳 Checking subscription limits...")
+        let canCreateGroup = try await subscriptionService.canCreateGroup(organizationId: organizationId)
+        guard canCreateGroup else {
+            throw SubscriptionError.groupLimitExceeded
+        }
         
         // First, verify the organization exists and get the correct document ID
         print("   🔍 Verifying organization exists...")

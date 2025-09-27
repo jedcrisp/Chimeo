@@ -593,11 +593,11 @@ export const diagnoseFCMConfiguration = functions.https.onCall(async (data, cont
     // Check Firebase Admin initialization
     try {
       const app = admin.app();
-      const projectId = app.options.projectId;
-      diagnostics.serviceAccountInfo.projectId = projectId;
+      const projectId = (app.options as any).projectId;
+      (diagnostics.serviceAccountInfo as any).projectId = projectId;
       console.log(`✅ Firebase Admin initialized with project: ${projectId}`);
     } catch (error) {
-      diagnostics.errors.push(`Firebase Admin initialization error: ${error}`);
+      (diagnostics.errors as any[]).push(`Firebase Admin initialization error: ${error}`);
       console.error('❌ Firebase Admin initialization error:', error);
     }
 
@@ -628,15 +628,15 @@ export const diagnoseFCMConfiguration = functions.https.onCall(async (data, cont
           console.log('✅ FCM API is accessible (got expected InvalidRegistration error)');
         } else if (apiError instanceof Error && apiError.message.includes('404')) {
           diagnostics.fcmApiAvailable = false;
-          diagnostics.errors.push('FCM API returned 404 - project may not have FCM enabled');
+          (diagnostics.errors as any[]).push('FCM API returned 404 - project may not have FCM enabled');
           console.error('❌ FCM API 404 error - project may not have FCM enabled');
         } else {
-          diagnostics.errors.push(`FCM API error: ${apiError}`);
+          (diagnostics.errors as any[]).push(`FCM API error: ${apiError}`);
           console.error('❌ FCM API error:', apiError);
         }
       }
     } catch (error) {
-      diagnostics.errors.push(`FCM messaging error: ${error}`);
+      (diagnostics.errors as any[]).push(`FCM messaging error: ${error}`);
       console.error('❌ FCM messaging error:', error);
     }
 
@@ -646,7 +646,7 @@ export const diagnoseFCMConfiguration = functions.https.onCall(async (data, cont
       FIREBASE_CONFIG: process.env.FIREBASE_CONFIG ? 'present' : 'missing',
       GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'present' : 'missing'
     };
-    diagnostics.environmentVariables = envVars;
+    (diagnostics as any).environmentVariables = envVars;
 
     console.log('🔍 FCM Configuration Diagnostics:', JSON.stringify(diagnostics, null, 2));
     

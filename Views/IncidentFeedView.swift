@@ -21,14 +21,76 @@ struct IncidentFeedView: View {
     @State private var errorMessage = ""
     
     // Check if user has organization admin access
-    private var hasOrganizationAdminAccess: Bool {
-        // Check if user is admin of any organization
+    @State private var hasOrganizationAdminAccess = false
+    
+    private func checkAdminAccess() async {
+        print("🔍 Checking admin access for user...")
+        // Check if user is admin of any organization by checking all organizations
         if let currentUser = authManager.currentUser {
-            return currentUser.isOrganizationAdmin == true || 
-                   currentUser.isAdmin == true ||
-                   !(currentUser.organizations?.isEmpty ?? true)
+            print("   👤 Current user: \(currentUser.name ?? "Unknown") (\(currentUser.id))")
+            print("   📧 Email: \(currentUser.email ?? "Unknown")")
+            print("   👑 isOrganizationAdmin: \(currentUser.isOrganizationAdmin ?? false)")
+            print("   🔧 isAdmin: \(currentUser.isAdmin)")
+            print("   🏢 organizations: \(currentUser.organizations ?? [])")
+            
+            // First check local properties as a quick check
+            let localAdminCheck = currentUser.isOrganizationAdmin == true || 
+                                 currentUser.isAdmin == true ||
+                                 !(currentUser.organizations?.isEmpty ?? true)
+            
+            print("   ✅ Local admin check result: \(localAdminCheck)")
+            
+            if localAdminCheck {
+                print("   🎉 User has admin access based on local properties")
+                await MainActor.run {
+                    self.hasOrganizationAdminAccess = true
+                }
+                return
+            }
+            
+            // If local check fails, do a more thorough check by looking at all organizations
+            // This is more reliable but slower
+            print("   🔍 Local check failed, checking database...")
+            do {
+                let db = Firestore.firestore()
+                let orgsSnapshot = try await db.collection("organizations").getDocuments()
+                
+                print("   📊 Found \(orgsSnapshot.documents.count) organizations")
+                
+                var isAdminOfAnyOrg = false
+                for orgDoc in orgsSnapshot.documents {
+                    let orgData = orgDoc.data()
+                    let orgName = orgData["name"] as? String ?? "Unknown"
+                    if let adminIds = orgData["adminIds"] as? [String: Bool] {
+                        print("   🏢 Organization: \(orgName)")
+                        print("      Admin IDs: \(adminIds.keys.joined(separator: ", "))")
+                        if adminIds[currentUser.id] == true {
+                            print("      ✅ User is admin of this organization!")
+                            isAdminOfAnyOrg = true
+                            break
+                        } else {
+                            print("      ❌ User is not admin of this organization")
+                        }
+                    } else {
+                        print("   🏢 Organization: \(orgName) - No adminIds found")
+                    }
+                }
+                
+                print("   🎯 Final admin check result: \(isAdminOfAnyOrg)")
+                await MainActor.run {
+                    self.hasOrganizationAdminAccess = isAdminOfAnyOrg
+                }
+            } catch {
+                print("❌ Error checking admin access: \(error)")
+                await MainActor.run {
+                    self.hasOrganizationAdminAccess = false
+                }
+            }
+        } else {
+            await MainActor.run {
+                self.hasOrganizationAdminAccess = false
+            }
         }
-        return false
     }
     
     var body: some View {
@@ -74,6 +136,12 @@ struct IncidentFeedView: View {
                 Task {
                     await serviceCoordinator.checkAndRestoreAuthenticationState()
                     loadAlerts()
+                    await checkAdminAccess()
+                }
+            }
+            .onChange(of: authManager.currentUser?.id) { _, _ in
+                Task {
+                    await checkAdminAccess()
                 }
             }
             .alert("Error Loading Alerts", isPresented: $showingErrorAlert) {
@@ -379,9 +447,15 @@ struct IncidentFeedView: View {
                 }
                 
                 print("📡 Fetching alerts from followed organizations...")
-                let fetchedAlerts = try await serviceCoordinator.getFollowingOrganizationAlerts()
-                
-                print("📥 Loaded \(fetchedAlerts.count) alerts from API")
+                let fetchedAlerts: [OrganizationAlert]
+                do {
+                    fetchedAlerts = try await serviceCoordinator.getFollowingOrganizationAlerts()
+                    print("📥 Loaded \(fetchedAlerts.count) alerts from API")
+                } catch {
+                    print("❌ Error fetching followed organization alerts: \(error)")
+                    print("❌ Error details: \(error.localizedDescription)")
+                    throw error
+                }
                 for alert in fetchedAlerts {
                     print("📋 Alert: '\(alert.title)' - Type: \(alert.type.rawValue), Severity: \(alert.severity.rawValue)")
                     print("   📍 Organization ID: \(alert.organizationId)")
@@ -916,7 +990,10 @@ struct GroupSelectionView: View {
                             groups: groups, // Add the fetched groups
                             adminIds: organization.adminIds,
                             createdAt: organization.createdAt,
-                            updatedAt: organization.updatedAt
+                            updatedAt: organization.updatedAt,
+                            groupsArePrivate: organization.groupsArePrivate,
+                            allowPublicGroupJoin: organization.allowPublicGroupJoin,
+                            subscriptionLevel: organization.subscriptionLevel
                         )
                         
                         adminOrgs.append(orgWithGroups)

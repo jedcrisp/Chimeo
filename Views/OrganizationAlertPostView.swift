@@ -212,17 +212,28 @@ struct OrganizationAlertPostView: View {
         let currentUserId: String
         let currentUserName: String
         
+        print("🔍 Debugging user ID lookup for alert creation:")
+        print("   APIService currentUser: \(apiService.currentUser?.id ?? "nil")")
+        print("   Firebase Auth currentUser: \(Auth.auth().currentUser?.uid ?? "nil")")
+        print("   UserDefaults currentUserId: \(UserDefaults.standard.string(forKey: "currentUserId") ?? "nil")")
+        
         if let apiUserId = apiService.currentUser?.id, !apiUserId.isEmpty {
             currentUserId = apiUserId
             currentUserName = apiService.currentUser?.name ?? "Organization Admin"
+            print("   ✅ Using APIService user ID: \(apiUserId)")
         } else if let firebaseUserId = Auth.auth().currentUser?.uid {
             currentUserId = firebaseUserId
             currentUserName = Auth.auth().currentUser?.displayName ?? "Organization Admin"
-        } else {
-            // This should not happen if user is properly authenticated
-            currentUserId = "unknown"
+            print("   ✅ Using Firebase Auth user ID: \(firebaseUserId)")
+        } else if let defaultsUserId = UserDefaults.standard.string(forKey: "currentUserId"), !defaultsUserId.isEmpty {
+            currentUserId = defaultsUserId
             currentUserName = "Organization Admin"
-            print("⚠️ Warning: No user ID found for alert creation")
+            print("   ✅ Using UserDefaults user ID: \(defaultsUserId)")
+        } else {
+            // Generate a temporary user ID for this session
+            currentUserId = "temp_\(UUID().uuidString.prefix(8))"
+            currentUserName = "Organization Admin"
+            print("   ⚠️ No user ID found, using temporary ID: \(currentUserId)")
         }
         
         // Create the alert with conditional type and severity

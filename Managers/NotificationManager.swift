@@ -613,7 +613,227 @@ class NotificationManager: NSObject, ObservableObject {
         print("📱 5. Testing push notification sending...")
         testPushNotificationSending()
         
+        // 6. Test push notification system
+        print("📱 6. Testing push notification system...")
+        Task {
+            await testPushNotificationSystem()
+        }
+        
+        // 7. Test Firebase Cloud Function
+        print("📱 7. Testing Firebase Cloud Function...")
+        Task {
+            await testFirebaseCloudFunction()
+        }
+        
         print("🧪 ===== END COMPREHENSIVE TEST =====")
+    }
+    
+    // MARK: - Test Push Notification System
+    func testPushNotificationSystem() async {
+        print("🧪 Testing push notification system...")
+        
+        // Create a test alert object and test the notification system directly
+        let testAlert = OrganizationAlert(
+            id: "test-alert-id",
+            title: "Test Push Notification",
+            description: "Testing if push notifications work for followers",
+            organizationId: "velocity_physical_therapy_north_denton",
+            organizationName: "Velocity Physical Therapy North Denton",
+            groupId: "Road Closures",
+            groupName: "Road Closures",
+            type: .other,
+            severity: .medium,
+            location: nil,
+            postedBy: "Test User",
+            postedByUserId: "test-user-id",
+            postedAt: Date()
+        )
+        
+        // Test the notification system directly
+        await testNotificationSystemForAlert(testAlert)
+    }
+    
+    // MARK: - Test Firebase Cloud Function
+    func testFirebaseCloudFunction() async {
+        print("🔥 Testing Firebase Cloud Function...")
+        
+        // Create a real alert that should trigger the Firebase Cloud Function
+        let testAlert = OrganizationAlert(
+            id: UUID().uuidString,
+            title: "Firebase Cloud Function Test",
+            description: "This alert should trigger the Firebase Cloud Function automatically",
+            organizationId: "velocity_physical_therapy_north_denton",
+            organizationName: "Velocity Physical Therapy North Denton",
+            groupId: "Road Closures",
+            groupName: "Road Closures",
+            type: .other,
+            severity: .medium,
+            location: nil,
+            postedBy: "Test User",
+            postedByUserId: "test-user-id",
+            postedAt: Date()
+        )
+        
+        print("🔥 Creating alert that should trigger Firebase Cloud Function...")
+        print("🔥 Check Firebase Functions logs for: sendAlertNotifications")
+        
+        do {
+            // This should trigger the Firebase Cloud Function automatically
+            try await postOrganizationAlert(testAlert)
+            print("🔥 Alert created - Firebase Cloud Function should have triggered!")
+            print("🔥 Check Firebase Console > Functions > Logs for sendAlertNotifications")
+        } catch {
+            print("❌ Failed to create test alert: \(error)")
+        }
+    }
+    
+    // MARK: - Post Organization Alert (Helper)
+    private func postOrganizationAlert(_ alert: OrganizationAlert) async throws {
+        // Convert alert to dictionary
+        let alertData = alert.toDictionary()
+        
+        // Add to organization's alerts subcollection
+        let alertRef = Firestore.firestore().collection("organizations")
+            .document(alert.organizationId)
+            .collection("alerts")
+            .document()
+        
+        try await alertRef.setData(alertData)
+        
+        print("✅ Organization alert posted successfully")
+        print("   📍 Location: organizations/\(alert.organizationId)/alerts/\(alertRef.documentID)")
+        print("   🔥 This should trigger Firebase function: sendAlertNotifications")
+        print("   📊 Alert data: \(alertData)")
+        
+        // Update organization alert count
+        try await Firestore.firestore().collection("organizations").document(alert.organizationId).updateData([
+            "alertCount": FieldValue.increment(Int64(1))
+        ])
+        
+        print("📊 Organization alert count updated")
+    }
+    
+    // MARK: - Test Notification System for Alert
+    private func testNotificationSystemForAlert(_ alert: OrganizationAlert) async {
+        print("🚨🚨🚨 iOS APP NOTIFICATION SYSTEM TRIGGERED 🚨🚨🚨")
+        print("📱 Alert: \(alert.title)")
+        print("   Organization: \(alert.organizationName)")
+        print("   Group: \(alert.groupName ?? "None")")
+        print("   🚫 Alert creator ID: \(alert.postedByUserId)")
+        
+        do {
+            // Get organization followers
+            print("🔍 Looking up organization: \(alert.organizationId)")
+            let orgDoc = try await Firestore.firestore().collection("organizations").document(alert.organizationId).getDocument()
+            
+            if !orgDoc.exists {
+                print("❌ Organization document does not exist: \(alert.organizationId)")
+                return
+            }
+            
+            guard let orgData = orgDoc.data() else {
+                print("❌ No organization data found for: \(alert.organizationId)")
+                return
+            }
+            
+            // Try to get followers from the organization document first
+            var activeFollowers: [String] = []
+            
+            if let followerIds = orgData["followers"] as? [String: Bool] {
+                activeFollowers = followerIds.compactMap { $0.value ? $0.key : nil }
+                print("📋 Found \(activeFollowers.count) active followers in organization document")
+            } else {
+                print("⚠️ No followers field in organization document, checking subcollection...")
+                
+                // Try to get followers from the subcollection
+                let followersSnapshot = try await Firestore.firestore()
+                    .collection("organizations")
+                    .document(alert.organizationId)
+                    .collection("followers")
+                    .getDocuments()
+                
+                activeFollowers = followersSnapshot.documents.compactMap { doc in
+                    let data = doc.data()
+                    if let isActive = data["isActive"] as? Bool, isActive {
+                        return doc.documentID
+                    }
+                    return nil
+                }
+                print("📋 Found \(activeFollowers.count) active followers in subcollection")
+            }
+            
+            if activeFollowers.isEmpty {
+                print("❌ No followers found for organization: \(alert.organizationId)")
+                print("   Organization data: \(orgData)")
+                return
+            }
+            
+            // Filter out the alert creator (if we have a valid postedByUserId)
+            let followersExcludingCreator: [String]
+            if alert.postedByUserId != "unknown" && !alert.postedByUserId.isEmpty {
+                followersExcludingCreator = activeFollowers.filter { $0 != alert.postedByUserId }
+                print("🚫 Excluded alert creator (\(alert.postedByUserId)) - \(followersExcludingCreator.count) followers remaining")
+            } else {
+                followersExcludingCreator = activeFollowers
+                print("⚠️ Alert creator ID is unknown, not excluding anyone - \(followersExcludingCreator.count) followers")
+            }
+            
+            // Send notifications to eligible followers
+            print("📱 SENDING NOTIFICATIONS TO \(followersExcludingCreator.count) ELIGIBLE FOLLOWERS:")
+            print("   🔍 Follower IDs: \(followersExcludingCreator)")
+            
+            for followerId in followersExcludingCreator {
+                print("   📱 Processing follower: \(followerId)")
+                
+                // Test push notification
+                await testPushNotificationForUser(userId: followerId, alert: alert)
+            }
+            
+            print("🎉 NOTIFICATION PROCESSING COMPLETE")
+            
+        } catch {
+            print("❌ Error in notification system test: \(error)")
+        }
+    }
+    
+    // MARK: - Test Push Notification for User
+    private func testPushNotificationForUser(userId: String, alert: OrganizationAlert) async {
+        do {
+            // Get user's FCM token from Firestore
+            let userDoc = try await Firestore.firestore().collection("users").document(userId).getDocument()
+            
+            guard userDoc.exists else {
+                print("❌ User document does not exist: \(userId)")
+                return
+            }
+            
+            guard let userData = userDoc.data() else {
+                print("❌ User document has no data: \(userId)")
+                return
+            }
+            
+            print("🔍 User data for \(userId): \(userData.keys.joined(separator: ", "))")
+            
+            guard let fcmToken = userData["fcmToken"] as? String, !fcmToken.isEmpty else {
+                print("❌ No FCM token found for user \(userId)")
+                print("   Available fields: \(userData.keys.joined(separator: ", "))")
+                print("   fcmToken value: \(userData["fcmToken"] ?? "nil")")
+                return
+            }
+            
+            print("📱 PUSH NOTIFICATION DETAILS:")
+            print("   To: \(userId)")
+            print("   Token: \(fcmToken.prefix(20))...")
+            print("   Title: New Alert: \(alert.title)")
+            print("   Body: \(alert.description)")
+            print("   Organization: \(alert.organizationName)")
+            print("   Group: \(alert.groupName ?? "None")")
+            
+            print("✅ Push notification details logged for user \(userId)")
+            
+        } catch {
+            print("❌ Failed to process push notification for user \(userId): \(error)")
+        }
     }
     
     // MARK: - Test Push Notification Sending

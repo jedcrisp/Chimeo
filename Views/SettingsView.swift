@@ -19,7 +19,7 @@ struct SettingsView: View {
     @State private var isFixingUsers = false
     
     private var isCreatorAccount: Bool {
-        authManager.currentUser?.email == "jed@onetrack-consulting.com"
+        authManager.currentUser?.email == "jed@chimeo.app"
     }
     
     var body: some View {

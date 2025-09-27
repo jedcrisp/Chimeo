@@ -124,7 +124,7 @@ struct TermsOfServiceView: View {
                             .font(.title2)
                             .fontWeight(.semibold)
                         
-                        Text("If you have questions about these Terms of Service, please contact us at:\n\nEmail: legal@localalert.com\n\nAddress: OneTrack Consulting\nAttn: Legal Department\n[Address]")
+                        Text("If you have questions about these Terms of Service, please contact us at:\n\nEmail: legal@chimeo.app\n\nAddress: OneTrack Consulting\nAttn: Legal Department\n[Address]")
                             .font(.body)
                             .foregroundColor(.secondary)
                     }

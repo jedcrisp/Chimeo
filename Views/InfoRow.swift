@@ -33,8 +33,8 @@ struct InfoRow: View {
     VStack(spacing: 0) {
         InfoRow(label: "Developer", value: "Jed Crisp")
         InfoRow(label: "Company", value: "OneTrack Consulting")
-        InfoRow(label: "Contact", value: "jed@onetrack-consulting.com")
-        InfoRow(label: "Website", value: "https://onetrack-consulting.com")
+        InfoRow(label: "Contact", value: "jed@chimeo.app")
+        InfoRow(label: "Website", value: "https://www.chimeo.app")
     }
     .padding()
     .background(Color(.systemBackground))

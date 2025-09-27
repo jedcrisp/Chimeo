@@ -295,7 +295,8 @@ struct AdminInvitationRowView: View {
         location: Location(latitude: 0, longitude: 0),
         verified: false,
         groupsArePrivate: true,
-        allowPublicGroupJoin: false
+        allowPublicGroupJoin: false,
+        subscriptionLevel: .free
     ))
     .environmentObject(SimpleAuthManager())
 }

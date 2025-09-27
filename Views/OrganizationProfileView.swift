@@ -100,6 +100,11 @@ struct OrganizationProfileView: View {
                 
                 // Post Alert Button removed for org admins - they will post alerts through group selection
                 
+                // Subscription Info Section (only for organization admins)
+                if isOrganizationAdmin {
+                    subscriptionSection
+                }
+                
                 // Groups Section (only for organization admins)
                 if isOrganizationAdmin {
                     groupsSection
@@ -289,6 +294,7 @@ struct OrganizationProfileView: View {
                                            updatedAt: self.currentOrganization.updatedAt,
                                            groupsArePrivate: self.currentOrganization.groupsArePrivate,
                                            allowPublicGroupJoin: self.currentOrganization.allowPublicGroupJoin,
+                                           subscriptionLevel: self.currentOrganization.subscriptionLevel,
                                            address: self.currentOrganization.address,
                                            city: self.currentOrganization.city,
                                            state: self.currentOrganization.state,
@@ -516,6 +522,76 @@ struct OrganizationProfileView: View {
             }
             .padding(.horizontal)
         }
+    }
+    
+    private var subscriptionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: organization.subscriptionLevel.icon)
+                    .foregroundColor(organization.subscriptionLevel.color)
+                    .font(.title2)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(organization.subscriptionLevel.displayName) Plan")
+                        .font(.headline)
+                        .foregroundColor(organization.subscriptionLevel.color)
+                    
+                    Text("Subscription Level")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                HStack(spacing: 8) {
+                    NavigationLink(destination: SubscriptionInfoView(organization: currentOrganization)) {
+                        Text("Details")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    }
+                    
+                    NavigationLink(destination: SubscriptionPageView(organization: currentOrganization)) {
+                        Text("Plans")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+            
+            // Quick stats
+            HStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Groups")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text("\(organization.groupCount) / \(organization.subscriptionFeatures.maxGroups == -1 ? "∞" : String(organization.subscriptionFeatures.maxGroups))")
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                }
+                
+                if organization.subscriptionFeatures.maxSubGroups > 0 {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Sub-Groups")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text("0 / \(organization.subscriptionFeatures.maxSubGroups == -1 ? "∞" : String(organization.subscriptionFeatures.maxSubGroups))")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                    }
+                }
+                
+                Spacer()
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+        }
+        .padding(.horizontal)
     }
     
     private var groupsSection: some View {
@@ -1339,6 +1415,7 @@ struct OrganizationProfileView: View {
                         updatedAt: self.currentOrganization.updatedAt,
                         groupsArePrivate: self.currentOrganization.groupsArePrivate,
                         allowPublicGroupJoin: self.currentOrganization.allowPublicGroupJoin,
+                        subscriptionLevel: self.currentOrganization.subscriptionLevel,
                         address: self.currentOrganization.address,
                         city: self.currentOrganization.city,
                         state: self.currentOrganization.state,
@@ -1791,7 +1868,8 @@ struct OrganizationContactSheet: View {
                 followerCount: 150,
                 website: "https://test.com",
                 phone: "555-0123",
-                email: "test@test.com"
+                email: "test@test.com",
+                subscriptionLevel: .pro
             )
         )
         .environmentObject(APIService())

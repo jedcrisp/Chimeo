@@ -277,7 +277,10 @@ struct DirectionsView: View {
             followerCount: 1500,
             website: nil,
             phone: nil,
-            email: nil
+            email: nil,
+            groupsArePrivate: false,
+            allowPublicGroupJoin: true,
+            subscriptionLevel: .free
         ),
         verified: true,
         confidence: 0.95,

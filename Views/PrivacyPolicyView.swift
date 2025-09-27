@@ -107,7 +107,7 @@ struct PrivacyPolicyView: View {
                             .font(.title2)
                             .fontWeight(.semibold)
                         
-                        Text("If you have any questions about this Privacy Policy or our data practices, please contact us at:\n\nEmail: privacy@localalert.com\n\nAddress: OneTrack Consulting\nAttn: Privacy Officer\n[Address]")
+                        Text("If you have any questions about this Privacy Policy or our data practices, please contact us at:\n\nEmail: privacy@chimeo.app\n\nAddress: OneTrack Consulting\nAttn: Privacy Officer\n[Address]")
                             .font(.body)
                             .foregroundColor(.secondary)
                     }

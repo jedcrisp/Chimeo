@@ -93,12 +93,12 @@ struct AboutView: View {
                             
                             InfoRow(
                                 label: "Contact",
-                                value: "jed@onetrack-consulting.com"
+                                value: "jed@chimeo.app"
                             )
                             
                             InfoRow(
                                 label: "Website",
-                                value: "https://onetrack-consulting.com"
+                                value: "https://www.chimeo.app"
                             )
                         }
                         .padding(.horizontal, 20)

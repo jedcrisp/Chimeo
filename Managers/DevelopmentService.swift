@@ -11,7 +11,7 @@ class DevelopmentService: ObservableObject {
         
         let guestUser = User(
             id: "admin-001",
-            email: "admin@localalert.com",
+            email: "admin@chimeo.app",
             name: "Admin User",
             phone: nil,
             homeLocation: Location(

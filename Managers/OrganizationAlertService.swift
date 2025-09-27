@@ -66,8 +66,14 @@ class OrganizationAlertService: ObservableObject {
             "alertCount": FieldValue.increment(Int64(1))
         ])
         
+        print("📊 Organization alert count updated")
+        
         // Send notifications to followers
+        print("📱 About to call sendNotificationsToFollowers...")
+        print("🔥 NOTE: Firebase Cloud Function should also trigger automatically!")
+        print("🔥 Check Firebase Functions logs for: sendAlertNotifications")
         await sendNotificationsToFollowers(for: alert)
+        print("📱 sendNotificationsToFollowers completed")
     }
     
     // MARK: - Test Alert Creation
@@ -94,35 +100,238 @@ class OrganizationAlertService: ObservableObject {
         print("🧪 Test alert created successfully")
     }
     
+    // MARK: - Test Notification System
+    func testNotificationSystem() async {
+        print("🧪 Testing notification system with existing alert...")
+        
+        // Create a test alert object
+        let testAlert = OrganizationAlert(
+            id: "test-alert-id",
+            title: "Test Push Notification",
+            description: "Testing if push notifications work for followers",
+            organizationId: "velocity_physical_therapy_north_denton",
+            organizationName: "Velocity Physical Therapy North Denton",
+            groupId: "Road Closures",
+            groupName: "Road Closures",
+            type: .other,
+            severity: .medium,
+            location: nil,
+            postedBy: "Test User",
+            postedByUserId: "test-user-id",
+            postedAt: Date()
+        )
+        
+        // Test the notification system directly
+        await sendNotificationsToFollowers(for: testAlert)
+        print("🧪 Notification system test completed")
+    }
+    
+    // MARK: - Test Firebase Cloud Function
+    func testFirebaseCloudFunction() async throws {
+        print("🔥 Testing Firebase Cloud Function...")
+        
+        // Create a real alert that should trigger the Firebase Cloud Function
+        let testAlert = OrganizationAlert(
+            id: UUID().uuidString,
+            title: "Firebase Cloud Function Test",
+            description: "This alert should trigger the Firebase Cloud Function automatically",
+            organizationId: "velocity_physical_therapy_north_denton",
+            organizationName: "Velocity Physical Therapy North Denton",
+            groupId: "Road Closures",
+            groupName: "Road Closures",
+            type: .other,
+            severity: .medium,
+            location: nil,
+            postedBy: "Test User",
+            postedByUserId: "test-user-id",
+            postedAt: Date()
+        )
+        
+        print("🔥 Creating alert that should trigger Firebase Cloud Function...")
+        print("🔥 Check Firebase Functions logs for: sendAlertNotifications")
+        
+        // This should trigger the Firebase Cloud Function automatically
+        try await postOrganizationAlert(testAlert)
+        
+        print("🔥 Alert created - Firebase Cloud Function should have triggered!")
+        print("🔥 Check Firebase Console > Functions > Logs for sendAlertNotifications")
+    }
+    
     // MARK: - Send Notifications to Followers
     private func sendNotificationsToFollowers(for alert: OrganizationAlert) async {
-        print("🚨🚨🚨 ABOUT TO SEND NOTIFICATIONS TO FOLLOWERS 🚨🚨🚨")
+        print("🚨🚨🚨 iOS APP NOTIFICATION SYSTEM TRIGGERED 🚨🚨🚨")
         print("📱 Alert: \(alert.title)")
         print("   Organization: \(alert.organizationName)")
         print("   Group: \(alert.groupName ?? "None")")
         print("   🚫 Alert creator ID: \(alert.postedByUserId)")
         
         do {
-            // Get current user to exclude them from notifications
-            let currentUser = try await getCurrentUser()
-            print("   🚫 Current user ID: \(currentUser.id)")
-            print("   🚫 Excluding alert creator from notifications: \(currentUser.id == alert.postedByUserId)")
-            
             // Get organization followers
+            print("🔍 Looking up organization: \(alert.organizationId)")
             let orgDoc = try await Firestore.firestore().collection("organizations").document(alert.organizationId).getDocument()
             
-            guard let orgData = orgDoc.data(),
-                  let followerIds = orgData["followers"] as? [String: Bool] else {
-                print("❌ No followers found for organization: \(alert.organizationId)")
+            if !orgDoc.exists {
+                print("❌ Organization document does not exist: \(alert.organizationId)")
+                
+                // Try to find the organization by name as a fallback
+                print("🔍 Attempting to find organization by name: \(alert.organizationName)")
+                let orgsQuery = try await Firestore.firestore().collection("organizations")
+                    .whereField("name", isEqualTo: alert.organizationName)
+                    .getDocuments()
+                
+                if let matchingOrg = orgsQuery.documents.first {
+                    let actualOrgId = matchingOrg.documentID
+                    print("✅ Found organization by name with ID: \(actualOrgId)")
+                    print("   Original ID: \(alert.organizationId)")
+                    print("   Actual ID: \(actualOrgId)")
+                    
+                    // Use the actual organization document
+                    let actualOrgData = matchingOrg.data()
+                    // Try to get followers from the actual organization document first
+                    var activeFollowers: [String] = []
+                    
+                    print("🔍 Actual organization data keys: \(actualOrgData.keys.sorted())")
+                    print("🔍 Follower count from actual org data: \(actualOrgData["followerCount"] ?? "nil")")
+                    
+                    if let followerIds = actualOrgData["followers"] as? [String: Bool] {
+                        activeFollowers = followerIds.compactMap { $0.value ? $0.key : nil }
+                        print("📋 Found \(activeFollowers.count) active followers in actual organization document")
+                        print("📋 Follower IDs: \(activeFollowers)")
+                    } else {
+                        print("⚠️ No followers field in actual organization document, checking subcollection...")
+                        print("🔍 Available fields: \(actualOrgData.keys.sorted())")
+                        
+                        // Try to get followers from the subcollection
+                        let followersSnapshot = try await Firestore.firestore()
+                            .collection("organizations")
+                            .document(actualOrgId)
+                            .collection("followers")
+                            .getDocuments()
+                        
+                        print("🔍 Subcollection query returned \(followersSnapshot.documents.count) documents")
+                        
+                        activeFollowers = followersSnapshot.documents.compactMap { doc in
+                            let data = doc.data()
+                            print("🔍 Follower doc \(doc.documentID): \(data)")
+                            if let isActive = data["isActive"] as? Bool, isActive {
+                                return doc.documentID
+                            }
+                            return nil
+                        }
+                        print("📋 Found \(activeFollowers.count) active followers in actual organization subcollection")
+                        print("📋 Active follower IDs: \(activeFollowers)")
+                    }
+                    
+                    if activeFollowers.isEmpty {
+                        print("❌ No followers found in actual organization: \(actualOrgId)")
+                        return
+                    }
+                    
+                    // Filter out the alert creator (if we have a valid postedByUserId)
+                    let followersExcludingCreator: [String]
+                    if alert.postedByUserId != "unknown" && !alert.postedByUserId.isEmpty {
+                        followersExcludingCreator = activeFollowers.filter { $0 != alert.postedByUserId }
+                        print("🚫 Excluded alert creator (\(alert.postedByUserId)) - \(followersExcludingCreator.count) followers remaining")
+                    } else {
+                        followersExcludingCreator = activeFollowers
+                        print("⚠️ Alert creator ID is unknown, not excluding anyone - \(followersExcludingCreator.count) followers")
+                    }
+                    
+                    // Filter followers by group preferences if alert has a specific group
+                    let eligibleFollowers: [String]
+                    if alert.groupId != nil {
+                        eligibleFollowers = try await notificationService.filterFollowersByGroupPreferences(
+                            followers: followersExcludingCreator, 
+                            alert: alert
+                        )
+                        print("✅ Filtered down to \(eligibleFollowers.count) eligible followers for group: \(alert.groupName ?? "Unknown")")
+                    } else {
+                        eligibleFollowers = followersExcludingCreator
+                        print("✅ Alert has no specific group - all \(followersExcludingCreator.count) followers are eligible")
+                    }
+                    
+                    // Send notifications to eligible followers using FCM and email
+                    print("📱 SENDING NOTIFICATIONS TO \(eligibleFollowers.count) ELIGIBLE FOLLOWERS:")
+                    for followerId in eligibleFollowers {
+                        print("   📱 Sending to follower: \(followerId)")
+                        
+                        // Send push notification
+                        await notificationService.sendNotificationToUser(userId: followerId, alert: alert)
+                        
+                        // Send email notification
+                        do {
+                            let followerEmail = try await getFollowerEmail(userId: followerId)
+                            try await notificationService.sendAlertNotificationEmail(to: followerEmail, alert: alert)
+                            print("   📧 Email sent to: \(followerEmail)")
+                        } catch {
+                            print("   ❌ Failed to send email to follower \(followerId): \(error)")
+                        }
+                    }
+                    
+                    print("✅ FCM and email notifications sent to \(eligibleFollowers.count) eligible followers")
+                    print("🚨🚨🚨 NOTIFICATION FUNCTION COMPLETED 🚨🚨🚨")
+                    return
+                } else {
+                    print("❌ No organization found with name: \(alert.organizationName)")
+                    return
+                }
+            }
+            
+            guard let orgData = orgDoc.data() else {
+                print("❌ No organization data found for: \(alert.organizationId)")
                 return
             }
             
-            let activeFollowers = followerIds.compactMap { $0.value ? $0.key : nil }
-            print("📋 Found \(activeFollowers.count) active followers")
+            // Try to get followers from the organization document first
+            var activeFollowers: [String] = []
             
-            // Filter out the alert creator
-            let followersExcludingCreator = activeFollowers.filter { $0 != alert.postedByUserId }
-            print("🚫 Excluded alert creator - \(followersExcludingCreator.count) followers remaining")
+            print("🔍 Organization data keys: \(orgData.keys.sorted())")
+            print("🔍 Follower count from org data: \(orgData["followerCount"] ?? "nil")")
+            
+            if let followerIds = orgData["followers"] as? [String: Bool] {
+                activeFollowers = followerIds.compactMap { $0.value ? $0.key : nil }
+                print("📋 Found \(activeFollowers.count) active followers in organization document")
+                print("📋 Follower IDs: \(activeFollowers)")
+            } else {
+                print("⚠️ No followers field in organization document, checking subcollection...")
+                print("🔍 Available fields: \(orgData.keys.sorted())")
+                
+                // Try to get followers from the subcollection
+                let followersSnapshot = try await Firestore.firestore()
+                    .collection("organizations")
+                    .document(alert.organizationId)
+                    .collection("followers")
+                    .getDocuments()
+                
+                print("🔍 Subcollection query returned \(followersSnapshot.documents.count) documents")
+                
+                activeFollowers = followersSnapshot.documents.compactMap { doc in
+                    let data = doc.data()
+                    print("🔍 Follower doc \(doc.documentID): \(data)")
+                    if let isActive = data["isActive"] as? Bool, isActive {
+                        return doc.documentID
+                    }
+                    return nil
+                }
+                print("📋 Found \(activeFollowers.count) active followers in subcollection")
+                print("📋 Active follower IDs: \(activeFollowers)")
+            }
+            
+            if activeFollowers.isEmpty {
+                print("❌ No followers found for organization: \(alert.organizationId)")
+                print("   Organization data: \(orgData)")
+                return
+            }
+            
+            // Filter out the alert creator (if we have a valid postedByUserId)
+            let followersExcludingCreator: [String]
+            if alert.postedByUserId != "unknown" && !alert.postedByUserId.isEmpty {
+                followersExcludingCreator = activeFollowers.filter { $0 != alert.postedByUserId }
+                print("🚫 Excluded alert creator (\(alert.postedByUserId)) - \(followersExcludingCreator.count) followers remaining")
+            } else {
+                followersExcludingCreator = activeFollowers
+                print("⚠️ Alert creator ID is unknown, not excluding anyone - \(followersExcludingCreator.count) followers")
+            }
             
             // Filter followers by group preferences if alert has a specific group
             let eligibleFollowers: [String]
@@ -137,14 +346,31 @@ class OrganizationAlertService: ObservableObject {
                 print("✅ Alert has no specific group - all \(followersExcludingCreator.count) followers are eligible")
             }
             
-            // Send notifications to eligible followers using FCM
+            // Send notifications to eligible followers using FCM and email
             print("📱 SENDING NOTIFICATIONS TO \(eligibleFollowers.count) ELIGIBLE FOLLOWERS:")
+            print("   🔍 Follower IDs: \(eligibleFollowers)")
+            
             for followerId in eligibleFollowers {
-                print("   📱 Sending to follower: \(followerId)")
+                print("   📱 Processing follower: \(followerId)")
+                
+                // Send push notification
+                print("   📱 Sending push notification to: \(followerId)")
                 await notificationService.sendNotificationToUser(userId: followerId, alert: alert)
+                
+                // Send email notification
+                do {
+                    let followerEmail = try await getFollowerEmail(userId: followerId)
+                    print("   📧 Sending email to: \(followerEmail)")
+                    try await notificationService.sendAlertNotificationEmail(to: followerEmail, alert: alert)
+                    print("   ✅ Email sent successfully to: \(followerEmail)")
+                } catch {
+                    print("   ❌ Failed to send email to follower \(followerId): \(error)")
+                }
             }
             
-            print("✅ FCM notifications sent to \(eligibleFollowers.count) eligible followers")
+            print("🎉 NOTIFICATION PROCESSING COMPLETE")
+            
+            print("✅ FCM and email notifications sent to \(eligibleFollowers.count) eligible followers")
             print("🚨🚨🚨 NOTIFICATION FUNCTION COMPLETED 🚨🚨🚨")
         
         } catch {
@@ -154,6 +380,18 @@ class OrganizationAlertService: ObservableObject {
     }
 
 // MARK: - Helper Functions
+private func getFollowerEmail(userId: String) async throws -> String {
+    let db = Firestore.firestore()
+    let userDoc = try await db.collection("users").document(userId).getDocument()
+    
+    guard let userData = userDoc.data(),
+          let email = userData["email"] as? String else {
+        throw NSError(domain: "OrganizationAlertService", code: -1, userInfo: [NSLocalizedDescriptionKey: "User email not found"])
+    }
+    
+    return email
+}
+
 private func getCurrentUser() async throws -> User {
     // First try to get current user from Firebase Auth
     if let firebaseUser = Auth.auth().currentUser {

@@ -16,11 +16,12 @@ struct MainTabView: View {
     @State private var forceShowCalendar = false
     
     private var isCreatorAccount: Bool {
-        authManager.currentUser?.email == "jed@onetrack-consulting.com"
+        authManager.currentUser?.email == "jed@chimeo.app"
     }
     
-    private var tabs: some View {
-        Group {
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            // Map Tab
             MapView()
                 .environmentObject(authManager)
                 .tabItem {
@@ -29,6 +30,7 @@ struct MainTabView: View {
                 }
                 .tag(0)
 
+            // Feed Tab
             IncidentFeedView()
                 .environmentObject(authManager)
                 .tabItem {
@@ -37,6 +39,7 @@ struct MainTabView: View {
                 }
                 .tag(1)
 
+            // My Alerts Tab
             MyAlertsView()
                 .environmentObject(authManager)
                 .tabItem {
@@ -45,84 +48,49 @@ struct MainTabView: View {
                 }
                 .tag(2)
             
-            // Calendar tab for organization admins
-            if isOrganizationAdmin || forceShowCalendar {
+            // Discover Tab
+            DiscoverOrganizationsView()
+                .tabItem {
+                    Image(systemName: "building.2")
+                    Text("Discover")
+                }
+                .tag(3)
+            
+            // Creator-specific tabs
+            if isCreatorAccount {
+                CreatorRequestsView()
+                    .tabItem {
+                        Image(systemName: "doc.text.magnifyingglass")
+                        Text("Requests")
+                    }
+                    .tag(4)
+            }
+            
+            // Invitations Tab
+            GroupInvitationView()
+                .environmentObject(authManager)
+                .tabItem {
+                    Image(systemName: "envelope")
+                    Text("Invitations")
+                }
+                .tag(isCreatorAccount ? 5 : 4)
+            
+            // Settings Tab
+            SettingsTabView()
+                .tabItem {
+                    Image(systemName: "gear")
+                    Text("Settings")
+                }
+                .tag(isCreatorAccount ? 6 : 5)
+            
+            // Calendar Tab (for admins and creator)
+            if isOrganizationAdmin || forceShowCalendar || isCreatorAccount {
                 CalendarView()
                     .tabItem {
                         Image(systemName: "calendar")
                         Text("Calendar")
                     }
                     .tag(7)
-            }
-        }
-    }
-    
-    private var creatorTabs: some View {
-        Group {
-            DiscoverOrganizationsView()
-                .tabItem {
-                    Image(systemName: "building.2")
-                    Text("Discover")
-                }
-                .tag(3)
-            
-            CreatorRequestsView()
-                .tabItem {
-                    Image(systemName: "doc.text.magnifyingglass")
-                    Text("Requests")
-                }
-                .tag(4)
-            
-            GroupInvitationView()
-                .environmentObject(authManager)
-                .tabItem {
-                    Image(systemName: "envelope")
-                    Text("Invitations")
-                }
-                .tag(5)
-            
-            SettingsTabView()
-                .tabItem {
-                    Image(systemName: "gear")
-                    Text("Settings")
-                }
-                .tag(6)
-        }
-    }
-    
-    private var regularTabs: some View {
-        Group {
-            DiscoverOrganizationsView()
-                .tabItem {
-                    Image(systemName: "building.2")
-                    Text("Discover")
-                }
-                .tag(3)
-            
-            GroupInvitationView()
-                .environmentObject(authManager)
-                .tabItem {
-                    Image(systemName: "envelope")
-                    Text("Invitations")
-                }
-                .tag(4)
-            
-            SettingsTabView()
-                .tabItem {
-                    Image(systemName: "gear")
-                    Text("Settings")
-                }
-                .tag(5)
-        }
-    }
-    
-    var body: some View {
-        TabView(selection: $selectedTab) {
-            tabs
-            if isCreatorAccount {
-                creatorTabs
-            } else {
-                regularTabs
             }
         }
         .environmentObject(locationManager)

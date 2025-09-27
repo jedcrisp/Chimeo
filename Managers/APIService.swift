@@ -6,7 +6,6 @@ import FirebaseAuth
 import FirebaseCore
 import FirebaseFirestore
 import GoogleSignIn
-import FirebaseFunctions
 import FirebaseMessaging
 import FirebaseAuth
 
@@ -17,7 +16,8 @@ import FirebaseAuth
 // AuthError is defined in AuthenticationService.swift
 
 class APIService: ObservableObject {
-    private let baseURL = "https://api.localalert.com" // Replace with your actual API URL
+    private let baseURL = "https://api.chimeo.app" // Chimeo API URL
+    private let vercelAPIURL = "https://www.chimeo.app/api/send-email" // Vercel API endpoint
     var authToken: String?
     
     @Published var isAuthenticated = false
@@ -26,6 +26,9 @@ class APIService: ObservableObject {
     @Published var organizations: [Organization] = []
     @Published var pendingRequests: [OrganizationRequest] = []
     
+    // MARK: - Services
+    private let organizationAlertService: OrganizationAlertService
+    
     init() {
         print("🚀 APIService: Initializing...")
         
@@ -33,6 +36,7 @@ class APIService: ObservableObject {
         self.isAuthenticated = false
         self.authToken = nil
         self.currentUser = nil
+        self.organizationAlertService = OrganizationAlertService()
         
         print("🔐 APIService: Set initial state - isAuthenticated: \(self.isAuthenticated)")
         
@@ -315,7 +319,7 @@ class APIService: ObservableObject {
         // Create a sample admin user for testing
         let sampleUser = User(
             id: "admin-001",
-            email: "admin@localalert.com",
+            email: "admin@chimeo.app",
             name: "Admin User",
             phone: nil,
             profilePhotoURL: nil,
@@ -412,7 +416,7 @@ class APIService: ObservableObject {
         // Create new user with mock ID
         let newUser = User(
             id: mockUserId,
-            email: "apple_user_\(mockUserId.prefix(8))@localalert.com",
+            email: "apple_user_\(mockUserId.prefix(8))@chimeo.app",
             name: "Apple User",
             phone: nil,
             profilePhotoURL: nil,
@@ -1014,7 +1018,8 @@ class APIService: ObservableObject {
             createdAt: createdAt,
             updatedAt: updatedAt,
             groupsArePrivate: groupsArePrivate,
-            allowPublicGroupJoin: allowPublicGroupJoin
+            allowPublicGroupJoin: allowPublicGroupJoin,
+            subscriptionLevel: .free // Default to free for existing organizations
         )
     }
     
@@ -2723,6 +2728,11 @@ class APIService: ObservableObject {
                 let orgAlerts = try await getOrganizationAlerts(organizationId: organization.id)
                 print("📢 Found \(orgAlerts.count) alerts from \(organization.name)")
                 
+                // Debug: Show all alerts and their groups
+                for alert in orgAlerts {
+                    print("   📋 Alert: '\(alert.title)' - Group: '\(alert.groupName ?? "None")' (ID: \(alert.groupId ?? "None"))")
+                }
+                
                 // Filter alerts by group preferences
                 let filteredAlerts = orgAlerts.filter { alert in
                     // If alert has no group (general organization alert), include it
@@ -2734,6 +2744,11 @@ class APIService: ObservableObject {
                     // Check if user has enabled this group
                     let isGroupEnabled = groupPreferences[groupId] ?? false
                     print("   📋 Alert '\(alert.title)' from group '\(alert.groupName ?? "Unknown")' (ID: \(groupId)) - Enabled: \(isGroupEnabled)")
+                    
+                    if !isGroupEnabled {
+                        print("   🚫 EXCLUDED: Alert '\(alert.title)' because group '\(groupId)' is not enabled")
+                        print("   🔧 Available group preferences: \(groupPreferences)")
+                    }
                     
                     return isGroupEnabled
                 }
@@ -3127,8 +3142,8 @@ class APIService: ObservableObject {
         print("   4. Approve or reject the request")
         print("   5. If approved, create their organization profile")
         print("")
-        print("📧 ADMIN EMAIL: jed@localalert.com")
-        print("🔗 ADMIN PANEL: https://admin.localalert.com/requests/\(request.id)")
+        print("📧 ADMIN EMAIL: jed@chimeo.app")
+        print("🔗 ADMIN PANEL: https://www.chimeo.app/org-requests/\(request.id)")
         print(String(repeating: "=", count: 60))
         print("")
         
@@ -3142,13 +3157,115 @@ class APIService: ObservableObject {
     }
     
     private func sendEmailNotification(_ request: OrganizationRequest) async {
-        // Check if this is a creator account that should receive notifications
-        if isCreatorAccount() {
-            print("📧 CREATOR ACCOUNT NOTIFICATION: New organization request received")
-            print("   Organization: \(request.name)")
-            print("   Type: \(request.type.displayName)")
-            print("   Request ID: \(request.id)")
-            print("   📱 Review in the Requests tab of LocalAlert app")
+        // Send admin notification email
+        await sendAdminNotificationEmail(request)
+        
+        // Send confirmation email to the organization
+        await sendOrganizationRequestConfirmationEmail(request)
+    }
+    
+    private func sendAdminNotificationEmail(_ request: OrganizationRequest) async {
+        let subject = "New Organization Request - \(request.name)"
+        let text = """
+        A new organization has requested to join Chimeo:
+        
+        Organization: \(request.name)
+        Type: \(request.type.displayName)
+        Contact: \(request.contactPersonName) (\(request.contactPersonEmail))
+        Phone: \(request.contactPersonPhone)
+        Address: \(request.fullAddress)
+        Website: \(request.website ?? "Not provided")
+        
+        Description:
+        \(request.description)
+        
+        Please review this request in the admin panel.
+        """
+        
+        let html = """
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2 style="color: #2563eb;">New Organization Request</h2>
+            <p><strong>Organization:</strong> \(request.name)</p>
+            <p><strong>Type:</strong> \(request.type.displayName)</p>
+            <p><strong>Contact:</strong> \(request.contactPersonName) (<a href="mailto:\(request.contactPersonEmail)">\(request.contactPersonEmail)</a>)</p>
+            <p><strong>Phone:</strong> \(request.contactPersonPhone)</p>
+            <p><strong>Address:</strong> \(request.fullAddress)</p>
+            <p><strong>Website:</strong> \(request.website ?? "Not provided")</p>
+            
+            <h3>Description:</h3>
+            <p>\(request.description)</p>
+            
+            <p style="margin-top: 30px; padding: 15px; background-color: #f3f4f6; border-left: 4px solid #2563eb;">
+                Please review this request in the admin panel.
+            </p>
+        </body>
+        </html>
+        """
+        
+        do {
+            try await sendEmailViaVercelAPI(
+                to: "jed@chimeo.app",
+                subject: subject,
+                text: text,
+                html: html
+            )
+        } catch {
+            print("❌ Failed to send admin notification email: \(error)")
+        }
+    }
+    
+    private func sendOrganizationRequestConfirmationEmail(_ request: OrganizationRequest) async {
+        let subject = "Organization Request Received - Chimeo"
+        let text = """
+        Dear \(request.contactPersonName),
+        
+        Thank you for your interest in joining Chimeo! We have received your organization request for \(request.name).
+        
+        Request Details:
+        - Organization: \(request.name)
+        - Type: \(request.type.displayName)
+        - Request ID: \(request.id)
+        - Submitted: \(request.submittedAt)
+        
+        Our team will review your request and get back to you within 2-3 business days. If you have any questions, please don't hesitate to contact us.
+        
+        Best regards,
+        The Chimeo Team
+        """
+        
+        let html = """
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2 style="color: #2563eb;">Organization Request Received</h2>
+            <p>Dear \(request.contactPersonName),</p>
+            
+            <p>Thank you for your interest in joining Chimeo! We have received your organization request for <strong>\(request.name)</strong>.</p>
+            
+            <h3>Request Details:</h3>
+            <ul>
+                <li><strong>Organization:</strong> \(request.name)</li>
+                <li><strong>Type:</strong> \(request.type.displayName)</li>
+                <li><strong>Request ID:</strong> \(request.id)</li>
+                <li><strong>Submitted:</strong> \(request.submittedAt)</li>
+            </ul>
+            
+            <p>Our team will review your request and get back to you within 2-3 business days. If you have any questions, please don't hesitate to contact us.</p>
+            
+            <p>Best regards,<br>The Chimeo Team</p>
+        </body>
+        </html>
+        """
+        
+        do {
+            try await sendEmailViaVercelAPI(
+                to: request.contactPersonEmail,
+                subject: subject,
+                text: text,
+                html: html
+            )
+        } catch {
+            print("❌ Failed to send organization request confirmation email: \(error)")
         }
     }
     
@@ -4276,6 +4393,45 @@ class APIService: ObservableObject {
         return try await unfollowOrganization(organization.id)
     }
     
+    // MARK: - Vercel API Email Service
+    private func sendEmailViaVercelAPI(to email: String, subject: String, text: String, html: String? = nil) async throws {
+        guard let url = URL(string: vercelAPIURL) else {
+            throw APIError.custom("Invalid Vercel API URL")
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let emailData: [String: Any] = [
+            "to": email,
+            "subject": subject,
+            "text": text,
+            "html": html ?? text,
+            "from": "noreply@chimeo.app"
+        ]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: emailData)
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIError.custom("Invalid response from Vercel API")
+            }
+            
+            if httpResponse.statusCode == 200 {
+                print("✅ Email sent successfully via Vercel API to: \(email)")
+            } else {
+                let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+                throw APIError.custom("Vercel API error (\(httpResponse.statusCode)): \(errorMessage)")
+            }
+        } catch {
+            print("❌ Failed to send email via Vercel API: \(error)")
+            throw error
+        }
+    }
+    
     // MARK: - Email Notifications
     private func sendApprovalConfirmationEmail(requestId: String, notes: String) async {
         let request = try? await getOrganizationRequest(requestId)
@@ -4284,12 +4440,66 @@ class APIService: ObservableObject {
             return
         }
         
-        // Check if this is a creator account that should send notifications
-        if isCreatorAccount() {
-            print("📧 CREATOR ACCOUNT: Sending approval confirmation to \(orgRequest.contactPersonEmail)")
-            print("   Organization: \(orgRequest.name)")
-            print("   Request ID: \(requestId)")
-            print("   Notes: \(notes.isEmpty ? "No additional notes" : notes)")
+        let subject = "Your Organization Has Been Approved - Chimeo"
+        let text = """
+        Dear \(orgRequest.contactPersonName),
+        
+        Great news! Your organization request for \(orgRequest.name) has been approved.
+        
+        You can now access the Chimeo platform and start creating alerts for your community.
+        
+        Next Steps:
+        1. Download the Chimeo app from the App Store
+        2. Sign in with your registered email: \(orgRequest.contactPersonEmail)
+        3. Start creating and managing alerts for your organization
+        
+        \(notes.isEmpty ? "" : "\nAdditional Notes:\n\(notes)\n")
+        
+        If you have any questions or need assistance getting started, please don't hesitate to contact our support team.
+        
+        Welcome to Chimeo!
+        The Chimeo Team
+        """
+        
+        let html = """
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2 style="color: #16a34a;">🎉 Your Organization Has Been Approved!</h2>
+            <p>Dear \(orgRequest.contactPersonName),</p>
+            
+            <p>Great news! Your organization request for <strong>\(orgRequest.name)</strong> has been approved.</p>
+            
+            <p>You can now access the Chimeo platform and start creating alerts for your community.</p>
+            
+            <h3>Next Steps:</h3>
+            <ol>
+                <li>Download the Chimeo app from the App Store</li>
+                <li>Sign in with your registered email: <strong>\(orgRequest.contactPersonEmail)</strong></li>
+                <li>Start creating and managing alerts for your organization</li>
+            </ol>
+            
+            \(notes.isEmpty ? "" : "<h3>Additional Notes:</h3><p>\(notes)</p>")
+            
+            <p>If you have any questions or need assistance getting started, please don't hesitate to contact our support team.</p>
+            
+            <p style="margin-top: 30px; padding: 15px; background-color: #f0f9ff; border-left: 4px solid #2563eb;">
+                <strong>Welcome to Chimeo!</strong><br>
+                The Chimeo Team
+            </p>
+        </body>
+        </html>
+        """
+        
+        do {
+            try await sendEmailViaVercelAPI(
+                to: orgRequest.contactPersonEmail,
+                subject: subject,
+                text: text,
+                html: html
+            )
+            print("✅ Approval confirmation email sent to: \(orgRequest.contactPersonEmail)")
+        } catch {
+            print("❌ Failed to send approval confirmation email: \(error)")
         }
     }
     
@@ -4300,12 +4510,59 @@ class APIService: ObservableObject {
             return
         }
         
-        // Check if this is a creator account that should send notifications
-        if isCreatorAccount() {
-            print("📧 CREATOR ACCOUNT: Sending rejection confirmation to \(orgRequest.contactPersonEmail)")
-            print("   Organization: \(orgRequest.name)")
-            print("   Reason: \(reason)")
-            print("   Request ID: \(requestId)")
+        let subject = "Organization Request Update - Chimeo"
+        let text = """
+        Dear \(orgRequest.contactPersonName),
+        
+        Thank you for your interest in Chimeo. After careful review, we are unable to approve your organization request for \(orgRequest.name) at this time.
+        
+        Reason for Rejection:
+        \(reason)
+        
+        \(notes.isEmpty ? "" : "\nAdditional Notes:\n\(notes)\n")
+        
+        We encourage you to address the issues mentioned above and consider reapplying in the future. If you have any questions about this decision or would like to discuss your application further, please don't hesitate to contact us.
+        
+        Thank you for your understanding.
+        
+        Best regards,
+        The Chimeo Team
+        """
+        
+        let html = """
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2 style="color: #dc2626;">Organization Request Update</h2>
+            <p>Dear \(orgRequest.contactPersonName),</p>
+            
+            <p>Thank you for your interest in Chimeo. After careful review, we are unable to approve your organization request for <strong>\(orgRequest.name)</strong> at this time.</p>
+            
+            <h3>Reason for Rejection:</h3>
+            <p style="padding: 15px; background-color: #fef2f2; border-left: 4px solid #dc2626; margin: 20px 0;">
+                \(reason)
+            </p>
+            
+            \(notes.isEmpty ? "" : "<h3>Additional Notes:</h3><p>\(notes)</p>")
+            
+            <p>We encourage you to address the issues mentioned above and consider reapplying in the future. If you have any questions about this decision or would like to discuss your application further, please don't hesitate to contact us.</p>
+            
+            <p>Thank you for your understanding.</p>
+            
+            <p>Best regards,<br>The Chimeo Team</p>
+        </body>
+        </html>
+        """
+        
+        do {
+            try await sendEmailViaVercelAPI(
+                to: orgRequest.contactPersonEmail,
+                subject: subject,
+                text: text,
+                html: html
+            )
+            print("✅ Rejection confirmation email sent to: \(orgRequest.contactPersonEmail)")
+        } catch {
+            print("❌ Failed to send rejection confirmation email: \(error)")
         }
     }
     
@@ -4316,12 +4573,63 @@ class APIService: ObservableObject {
             return
         }
         
-        // Check if this is a creator account that should send notifications
-        if isCreatorAccount() {
-            print("📧 CREATOR ACCOUNT: Sending more info request to \(orgRequest.contactPersonEmail)")
-            print("   Organization: \(orgRequest.name)")
-            print("   Info needed: \(infoNeeded)")
-            print("   Request ID: \(requestId)")
+        let subject = "Additional Information Needed - Chimeo"
+        let text = """
+        Dear \(orgRequest.contactPersonName),
+        
+        Thank you for your organization request for \(orgRequest.name). We need some additional information to complete our review process.
+        
+        Information Needed:
+        \(infoNeeded)
+        
+        \(notes.isEmpty ? "" : "\nAdditional Notes:\n\(notes)\n")
+        
+        Please provide the requested information as soon as possible so we can continue processing your application. You can reply to this email with the additional details.
+        
+        If you have any questions about what information is needed, please don't hesitate to contact us.
+        
+        Thank you for your patience.
+        
+        Best regards,
+        The Chimeo Team
+        """
+        
+        let html = """
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <h2 style="color: #d97706;">Additional Information Needed</h2>
+            <p>Dear \(orgRequest.contactPersonName),</p>
+            
+            <p>Thank you for your organization request for <strong>\(orgRequest.name)</strong>. We need some additional information to complete our review process.</p>
+            
+            <h3>Information Needed:</h3>
+            <p style="padding: 15px; background-color: #fffbeb; border-left: 4px solid #d97706; margin: 20px 0;">
+                \(infoNeeded)
+            </p>
+            
+            \(notes.isEmpty ? "" : "<h3>Additional Notes:</h3><p>\(notes)</p>")
+            
+            <p>Please provide the requested information as soon as possible so we can continue processing your application. You can reply to this email with the additional details.</p>
+            
+            <p>If you have any questions about what information is needed, please don't hesitate to contact us.</p>
+            
+            <p>Thank you for your patience.</p>
+            
+            <p>Best regards,<br>The Chimeo Team</p>
+        </body>
+        </html>
+        """
+        
+        do {
+            try await sendEmailViaVercelAPI(
+                to: orgRequest.contactPersonEmail,
+                subject: subject,
+                text: text,
+                html: html
+            )
+            print("✅ More info request email sent to: \(orgRequest.contactPersonEmail)")
+        } catch {
+            print("❌ Failed to send more info request email: \(error)")
         }
     }
     
@@ -4332,7 +4640,7 @@ class APIService: ObservableObject {
     
     // MARK: - Creator Account Check
     func isCreatorAccount() -> Bool {
-        return currentUser?.email == "jed@onetrack-consulting.com"
+        return currentUser?.email == "jed@chimeo.app"
     }
     
     // MARK: - Password Management
@@ -4491,45 +4799,8 @@ class APIService: ObservableObject {
         
         print("👤 Current user: \(finalUser.name ?? "Unknown") (ID: \(finalUser.id))")
         
-        // Check if Firebase Functions are available
+        // Create a test notification document in Firestore
         do {
-            // Call Firebase Function to send test notification
-            let functions = Functions.functions()
-            
-            let testData: [String: Any] = [
-                "userId": finalUser.id,
-                "title": "🧪 Test Push Notification",
-                "body": "This is a test push notification sent at \(Date()) to verify FCM is working correctly."
-            ]
-            
-            print("📞 Calling Firebase Function: testFCMNotification")
-            print("🔐 Using Firebase Auth user: \(Auth.auth().currentUser?.uid ?? "none")")
-            
-            // Ensure we're authenticated with Firebase Auth
-            guard Auth.auth().currentUser != nil else {
-                print("❌ No Firebase Auth user - cannot call authenticated function")
-                throw APIError.custom("User must be authenticated with Firebase")
-            }
-            
-            let result = try await functions.httpsCallable("testFCMNotification").call(testData)
-            
-            if let data = result.data as? [String: Any] {
-                let success = data["success"] as? Bool ?? false
-                if success {
-                    print("✅ Test push notification sent successfully via Firebase Functions")
-                } else {
-                    print("❌ Test push notification failed")
-                    throw APIError.custom("Test push notification failed")
-                }
-            } else {
-                print("❌ Unexpected result format from Firebase Function")
-                throw APIError.custom("Unexpected result format")
-            }
-        } catch {
-            print("⚠️ Firebase Functions not available or not deployed: \(error)")
-            print("🔄 Falling back to local notification test...")
-            
-            // Fallback: Create a test notification document in Firestore
             let db = Firestore.firestore()
             let testNotificationData: [String: Any] = [
                 "title": "🧪 Test Push Notification",
@@ -4545,8 +4816,10 @@ class APIService: ObservableObject {
             
             try await db.collection("testNotifications").addDocument(data: testNotificationData)
             print("✅ Test notification document created in Firestore")
-            print("📱 Note: To send actual push notifications, deploy Firebase Functions")
-            print("📱 Run: firebase deploy --only functions")
+            print("📱 Note: Push notifications are now handled by the Vercel API")
+        } catch {
+            print("❌ Failed to create test notification: \(error)")
+            throw error
         }
     }
     

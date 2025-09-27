@@ -873,12 +873,12 @@ exports.executeScheduledAlerts = functions.pubsub
 });
 // 🚨 Execute individual scheduled alert
 async function executeScheduledAlert(orgId, alertId, alert) {
+    var _a, _b;
     console.log(`🚨 Executing scheduled alert: ${alert.title}`);
     // Create organization alert from scheduled alert
     // Calculate expiration date from the scheduled date, not the execution date
-    const scheduledDate = alert.scheduledDate?.toDate?.() || new Date();
+    const scheduledDate = ((_b = (_a = alert.scheduledDate) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) || new Date();
     const expirationDate = new Date(scheduledDate.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days from scheduled date
-    
     const organizationAlert = {
         title: alert.title,
         description: alert.description,

@@ -69,7 +69,7 @@ struct CreatorRequestsView: View {
     @State private var showingRequestDetail = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack {
                 if isLoading {
                     ProgressView("Loading requests...")

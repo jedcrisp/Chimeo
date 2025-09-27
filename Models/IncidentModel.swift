@@ -89,6 +89,197 @@ enum IncidentSeverity: String, CaseIterable, Codable {
     }
 }
 
+// MARK: - Subscription Level
+enum SubscriptionLevel: String, CaseIterable, Codable {
+    case free = "free"
+    case pro = "pro"
+    case enterprise = "enterprise"
+    
+    var displayName: String {
+        switch self {
+        case .free:
+            return "Free"
+        case .pro:
+            return "Pro"
+        case .enterprise:
+            return "Enterprise"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .free:
+            return .gray
+        case .pro:
+            return .blue
+        case .enterprise:
+            return .purple
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .free:
+            return "star"
+        case .pro:
+            return "star.fill"
+        case .enterprise:
+            return "crown.fill"
+        }
+    }
+}
+
+// MARK: - Subscription Features
+struct SubscriptionFeatures {
+    let maxGroups: Int
+    let maxSubGroups: Int
+    let maxMembersPerGroup: Int
+    let advancedAnalytics: Bool
+    let customBranding: Bool
+    let prioritySupport: Bool
+    let apiAccess: Bool
+    let customIntegrations: Bool
+    
+    static func features(for level: SubscriptionLevel) -> SubscriptionFeatures {
+        switch level {
+        case .free:
+            return SubscriptionFeatures(
+                maxGroups: 3,
+                maxSubGroups: 0,
+                maxMembersPerGroup: 50,
+                advancedAnalytics: false,
+                customBranding: false,
+                prioritySupport: false,
+                apiAccess: false,
+                customIntegrations: false
+            )
+        case .pro:
+            return SubscriptionFeatures(
+                maxGroups: 10,
+                maxSubGroups: 5,
+                maxMembersPerGroup: 200,
+                advancedAnalytics: true,
+                customBranding: true,
+                prioritySupport: true,
+                apiAccess: false,
+                customIntegrations: false
+            )
+        case .enterprise:
+            return SubscriptionFeatures(
+                maxGroups: -1, // Unlimited
+                maxSubGroups: -1, // Unlimited
+                maxMembersPerGroup: -1, // Unlimited
+                advancedAnalytics: true,
+                customBranding: true,
+                prioritySupport: true,
+                apiAccess: true,
+                customIntegrations: true
+            )
+        }
+    }
+}
+
+// MARK: - Organization Subscription
+struct OrganizationSubscription: Identifiable, Codable {
+    let id: String
+    let organizationId: String
+    let subscriptionLevel: SubscriptionLevel
+    let planId: String
+    let startDate: Date
+    let endDate: Date?
+    let isActive: Bool
+    let autoRenew: Bool
+    let createdAt: Date
+    let updatedAt: Date
+    
+    init(id: String = UUID().uuidString, organizationId: String, subscriptionLevel: SubscriptionLevel, planId: String, startDate: Date = Date(), endDate: Date? = nil, isActive: Bool = true, autoRenew: Bool = true, createdAt: Date = Date(), updatedAt: Date = Date()) {
+        self.id = id
+        self.organizationId = organizationId
+        self.subscriptionLevel = subscriptionLevel
+        self.planId = planId
+        self.startDate = startDate
+        self.endDate = endDate
+        self.isActive = isActive
+        self.autoRenew = autoRenew
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+    
+    var features: SubscriptionFeatures {
+        return SubscriptionFeatures.features(for: subscriptionLevel)
+    }
+    
+    var isExpired: Bool {
+        guard let endDate = endDate else { return false }
+        return endDate < Date()
+    }
+    
+    var daysUntilExpiry: Int? {
+        guard let endDate = endDate else { return nil }
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.day], from: Date(), to: endDate)
+        return components.day
+    }
+}
+
+// MARK: - Sub Group Model
+struct SubGroup: Identifiable, Codable, Hashable {
+    let id: String
+    let name: String
+    let description: String?
+    let parentGroupId: String
+    let organizationId: String
+    let isActive: Bool
+    let memberCount: Int
+    let createdAt: Date
+    let updatedAt: Date
+    
+    // Privacy settings
+    let isPrivate: Bool
+    let allowPublicJoin: Bool
+    
+    init(id: String = UUID().uuidString, name: String, description: String? = nil, parentGroupId: String, organizationId: String, isActive: Bool = true, memberCount: Int = 0, createdAt: Date = Date(), updatedAt: Date = Date(), isPrivate: Bool = false, allowPublicJoin: Bool = true) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.parentGroupId = parentGroupId
+        self.organizationId = organizationId
+        self.isActive = isActive
+        self.memberCount = memberCount
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.isPrivate = isPrivate
+        self.allowPublicJoin = allowPublicJoin
+    }
+}
+
+// MARK: - Subscription Errors
+enum SubscriptionError: LocalizedError {
+    case subGroupLimitExceeded
+    case groupLimitExceeded
+    case invalidSubscriptionData
+    case invalidSubGroupData
+    case invalidGroupData
+    case organizationNotFound
+    
+    var errorDescription: String? {
+        switch self {
+        case .subGroupLimitExceeded:
+            return "Sub-group limit exceeded for your subscription level"
+        case .groupLimitExceeded:
+            return "Group limit exceeded for your subscription level"
+        case .invalidSubscriptionData:
+            return "Invalid subscription data"
+        case .invalidSubGroupData:
+            return "Invalid sub-group data"
+        case .invalidGroupData:
+            return "Invalid group data"
+        case .organizationNotFound:
+            return "Organization not found"
+        }
+    }
+}
+
 // MARK: - Location
 struct Location: Codable, Identifiable {
     let id: UUID
@@ -200,6 +391,9 @@ struct Organization: Identifiable, Codable, Hashable {
     let groupsArePrivate: Bool
     let allowPublicGroupJoin: Bool
     
+    // Subscription level
+    let subscriptionLevel: SubscriptionLevel
+    
     // Direct access to address fields (flat in Firestore)
     let address: String?
     let city: String?
@@ -225,6 +419,7 @@ struct Organization: Identifiable, Codable, Hashable {
         case updatedAt
         case groupsArePrivate
         case allowPublicGroupJoin
+        case subscriptionLevel
         // Map flat address fields to nested location
         case address
         case city
@@ -232,7 +427,7 @@ struct Organization: Identifiable, Codable, Hashable {
         case zipCode
     }
     
-    init(id: String = UUID().uuidString, name: String, type: String, description: String? = nil, location: Location, verified: Bool = false, followerCount: Int = 0, logoURL: String? = nil, website: String? = nil, phone: String? = nil, email: String? = nil, groups: [OrganizationGroup]? = nil, adminIds: [String: Bool]? = nil, createdAt: Date? = nil, updatedAt: Date? = nil, groupsArePrivate: Bool = false, allowPublicGroupJoin: Bool = true, address: String? = nil, city: String? = nil, state: String? = nil, zipCode: String? = nil) {
+    init(id: String = UUID().uuidString, name: String, type: String, description: String? = nil, location: Location, verified: Bool = false, followerCount: Int = 0, logoURL: String? = nil, website: String? = nil, phone: String? = nil, email: String? = nil, groups: [OrganizationGroup]? = nil, adminIds: [String: Bool]? = nil, createdAt: Date? = nil, updatedAt: Date? = nil, groupsArePrivate: Bool = false, allowPublicGroupJoin: Bool = true, subscriptionLevel: SubscriptionLevel = .free, address: String? = nil, city: String? = nil, state: String? = nil, zipCode: String? = nil) {
         self.id = id
         self.name = name
         self.type = type
@@ -250,6 +445,7 @@ struct Organization: Identifiable, Codable, Hashable {
         self.updatedAt = updatedAt
         self.groupsArePrivate = groupsArePrivate
         self.allowPublicGroupJoin = allowPublicGroupJoin
+        self.subscriptionLevel = subscriptionLevel
         self.address = address
         self.city = city
         self.state = state
@@ -279,6 +475,9 @@ struct Organization: Identifiable, Codable, Hashable {
         // Decode private groups settings
         self.groupsArePrivate = try container.decodeIfPresent(Bool.self, forKey: .groupsArePrivate) ?? false
         self.allowPublicGroupJoin = try container.decodeIfPresent(Bool.self, forKey: .allowPublicGroupJoin) ?? true
+        
+        // Decode subscription level
+        self.subscriptionLevel = try container.decodeIfPresent(SubscriptionLevel.self, forKey: .subscriptionLevel) ?? .free
         
         // Decode flat address fields
         self.address = try container.decodeIfPresent(String.self, forKey: .address)
@@ -329,6 +528,7 @@ struct Organization: Identifiable, Codable, Hashable {
         try container.encodeIfPresent(updatedAt, forKey: .updatedAt)
         try container.encode(groupsArePrivate, forKey: .groupsArePrivate)
         try container.encode(allowPublicGroupJoin, forKey: .allowPublicGroupJoin)
+        try container.encode(subscriptionLevel, forKey: .subscriptionLevel)
         
         // Encode location as nested object
         try container.encode(location, forKey: .location)
@@ -346,6 +546,10 @@ struct Organization: Identifiable, Codable, Hashable {
     
     var isAdmin: Bool {
         return adminIds?.isEmpty == false
+    }
+    
+    var subscriptionFeatures: SubscriptionFeatures {
+        return SubscriptionFeatures.features(for: subscriptionLevel)
     }
     
     // Generate a clean, URL-friendly ID for Firestore
@@ -776,6 +980,53 @@ struct OrganizationAlert: Identifiable, Codable {
         let calendar = Calendar.current
         let components = calendar.dateComponents([.day], from: Date(), to: expiresAt)
         return components.day ?? 0
+    }
+    
+    func toDictionary() -> [String: Any] {
+        var dict: [String: Any] = [
+            "id": id,
+            "title": title,
+            "description": description,
+            "organizationId": organizationId,
+            "organizationName": organizationName,
+            "type": type.rawValue,
+            "severity": severity.rawValue,
+            "postedBy": postedBy,
+            "postedByUserId": postedByUserId,
+            "postedAt": postedAt,
+            "expiresAt": expiresAt,
+            "imageURLs": imageURLs,
+            "isActive": isActive
+        ]
+        
+        if let groupId = groupId {
+            dict["groupId"] = groupId
+        }
+        
+        if let groupName = groupName {
+            dict["groupName"] = groupName
+        }
+        
+        if let location = location {
+            dict["location"] = [
+                "latitude": location.latitude,
+                "longitude": location.longitude,
+                "address": location.address,
+                "city": location.city,
+                "state": location.state,
+                "zipCode": location.zipCode
+            ]
+        }
+        
+        if let distance = distance {
+            dict["distance"] = distance
+        }
+        
+        if let scheduledAlertId = scheduledAlertId {
+            dict["scheduledAlertId"] = scheduledAlertId
+        }
+        
+        return dict
     }
 }
 

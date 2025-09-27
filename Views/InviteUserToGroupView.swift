@@ -188,7 +188,8 @@ struct InviteUserToGroupView: View {
             OrganizationGroup(id: "group2", name: "Group 2", organizationId: "test-org")
         ],
         groupsArePrivate: true,
-        allowPublicGroupJoin: false
+        allowPublicGroupJoin: false,
+        subscriptionLevel: .pro
     ))
     .environmentObject(SimpleAuthManager())
 }
